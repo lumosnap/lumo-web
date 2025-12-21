@@ -1,0 +1,111 @@
+// API composable for public routes
+export function useApi() {
+    const config = useRuntimeConfig()
+    const baseUrl = config.public.apiBase
+
+    async function fetchApi<T>(
+        endpoint: string,
+        options: RequestInit = {}
+    ): Promise<{ success: boolean; data?: T; message?: string; error?: string }> {
+        try {
+            const response = await fetch(`${baseUrl}${endpoint}`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers,
+                },
+                ...options,
+            })
+
+            const json = await response.json()
+
+            if (!response.ok) {
+                return {
+                    success: false,
+                    error: json.message || `Error: ${response.status}`,
+                }
+            }
+
+            return {
+                success: true,
+                data: json.data,
+                message: json.message,
+            }
+        } catch (error) {
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Network error',
+            }
+        }
+    }
+
+    // Get album by share token
+    async function getAlbum(token: string, page: number = 1) {
+        return fetchApi<{
+            album: {
+                id: string
+                title: string
+                eventDate: string | null
+                totalImages: number
+                shareLinkToken: string
+            }
+            images: Array<{
+                id: number
+                originalFilename: string
+                width: number
+                height: number
+                createdAt: string
+                url: string
+                thumbnailUrl: string
+            }>
+            pagination: {
+                currentPage: number
+                totalPages: number
+                totalImages: number
+                hasNextPage: boolean
+                hasPrevPage: boolean
+            }
+        }>(`/api/v1/share/${token}?page=${page}`)
+    }
+
+    // Get favorites for album
+    async function getFavorites(token: string, clientName?: string) {
+        const params = clientName ? `?clientName=${encodeURIComponent(clientName)}` : ''
+        return fetchApi<Array<{
+            id: number
+            albumId: string
+            imageId: number
+            clientName: string
+            notes: string | null
+            createdAt: string
+        }>>(`/api/v1/share/${token}/favorites${params}`)
+    }
+
+    // Create favorite
+    async function createFavorite(token: string, imageId: number, clientName: string, notes?: string) {
+        return fetchApi<{
+            id: number
+            albumId: string
+            imageId: number
+            clientName: string
+            notes: string | null
+            createdAt: string
+        }>(`/api/v1/share/${token}/favorites`, {
+            method: 'POST',
+            body: JSON.stringify({ imageId, clientName, notes }),
+        })
+    }
+
+    // Delete favorite
+    async function deleteFavorite(token: string, favoriteId: number) {
+        return fetchApi<void>(`/api/v1/share/${token}/favorites/${favoriteId}`, {
+            method: 'DELETE',
+        })
+    }
+
+    return {
+        getAlbum,
+        getFavorites,
+        createFavorite,
+        deleteFavorite,
+    }
+}
