@@ -36,7 +36,7 @@
             <div class="hero-visual group">
                 <div class="hero-glow group-hover:opacity-60"></div>
 
-                <div class="mock-browser group-hover:rotate-0">
+                <div class="mock-browser">
                     <!-- Mock Browser Header -->
                     <div class="h-12 border-b border-slate-100 bg-slate-50 flex items-center px-4 gap-2">
                         <div class="flex gap-1.5">
@@ -45,7 +45,7 @@
                             <div class="w-3 h-3 rounded-full bg-slate-300"></div>
                         </div>
                         <div
-                            class="ml-4 px-3 py-1.5 rounded-md bg-white border border-slate-200 text-xs text-slate-400 flex items-center gap-2 w-64 shadow-sm">
+                            class="ml-4 px-3 py-1.5 rounded-md bg-white border border-slate-200 text-xs text-slate-400 flex items-center gap-2 flex-1 shadow-sm">
                             <div class="w-3 h-3 rounded-full bg-green-400"></div>
                             lumosnap.com/share/wedding-album
                         </div>
@@ -410,7 +410,7 @@
                 <!-- Visual Mockup -->
                 <div class="story-visual">
                     <div
-                        class="story-card group relative overflow-hidden">
+                        class="story-card group relative overflow-hidden max-w-xs">
                         <div
                             class="flex flex-col h-full bg-[#E5DDD5] rounded-2xl overflow-hidden border border-slate-200 font-sans relative">
                             <!-- WhatsApp Header -->

@@ -125,7 +125,6 @@ html {
     position: relative;
     max-width: 64rem;
     margin: 5rem auto 0;
-    perspective: 1000px;
 }
 
 .hero-glow {
@@ -135,7 +134,7 @@ html {
     border-radius: 1.5rem;
     filter: blur(24px);
     opacity: 0.4;
-    transition: opacity 1s;
+    transition: opacity 0.5s;
 }
 
 .hero-visual:hover .hero-glow {
@@ -147,14 +146,14 @@ html {
     background: white;
     border-radius: 1rem;
     overflow: hidden;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     border: 1px solid var(--slate-200);
-    transform: rotateX(6deg);
-    transition: transform 0.7s;
+    transition: all 0.5s;
 }
 
 .hero-visual:hover .mock-browser {
-    transform: rotateX(0deg);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-4px);
 }
 
 /* Problem Section */
