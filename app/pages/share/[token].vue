@@ -1,120 +1,155 @@
 <template>
-  <div>
+  <div class="h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden flex flex-col">
     <!-- Loading State -->
-    <div v-if="loading" class="min-h-screen flex items-center justify-center">
-      <div class="text-center">
-        <div class="w-12 h-12 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p class="text-[var(--color-text-secondary)]">Loading album...</p>
-      </div>
+    <div v-if="loading" class="flex-1 flex flex-col items-center justify-center">
+      <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+      <p class="text-slate-500 font-medium">Loading album...</p>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="min-h-screen flex items-center justify-center">
-      <div class="text-center max-w-md mx-auto px-4">
-        <div class="text-6xl mb-6">😕</div>
-        <h1 class="text-3xl font-bold mb-4">Album Not Found</h1>
-        <p class="text-[var(--color-text-secondary)] mb-8">
-          This album link may have expired or the album doesn't exist. Please check with the photographer for a valid link.
-        </p>
-        <NuxtLink to="/" class="btn btn-primary">
-          Go to Homepage
-        </NuxtLink>
-      </div>
+    <div v-else-if="error" class="flex-1 flex flex-col items-center justify-center text-center max-w-md mx-auto px-4">
+      <div class="text-6xl mb-6">😕</div>
+      <h1 class="text-3xl font-bold mb-4 text-slate-900">Album Not Found</h1>
+      <p class="text-slate-500 mb-8 leading-relaxed">
+        This album link may have expired or the album doesn't exist. Please check with the photographer for a valid link.
+      </p>
+      <NuxtLink to="/" class="inline-flex items-center justify-center px-6 py-3 bg-slate-900 text-white rounded-full font-semibold hover:bg-slate-800 transition-colors">
+        Go to Homepage
+      </NuxtLink>
     </div>
 
-    <!-- Album Content -->
-    <NuxtLayout v-else-if="albumInfo" name="album" :album-title="albumInfo.title" :total-images="albumInfo.totalImages" :event-date="formattedEventDate">
-      <template #header-actions>
-        <!-- Filter Toggle -->
-        <button 
-          @click="showFavoritesOnly = !showFavoritesOnly"
-          :class="[
-            'btn text-sm py-2 px-4',
-            showFavoritesOnly ? 'btn-primary' : 'btn-secondary'
-          ]"
-        >
-          <span>❤️</span>
-          <span class="hidden sm:inline">{{ showFavoritesOnly ? 'Show All' : 'Favorites' }}</span>
-          <span v-if="favoriteIds.size > 0" class="ml-1">({{ favoriteIds.size }})</span>
-        </button>
-        
-        <!-- Client Name (shown as static, cannot be changed once set) -->
-        <span 
-          v-if="clientName"
-          class="text-sm text-[var(--color-text-secondary)] px-3 py-2"
-        >
-          {{ clientName }}
-        </span>
-      </template>
+    <!-- Main Content Area (Split View) -->
+    <div v-else-if="albumInfo" class="flex-1 flex flex-col md:flex-row overflow-hidden animate-fade-in">
+      
+      <!-- Left Sidebar -->
+      <aside class="w-full md:w-80 lg:w-96 border-b md:border-b-0 md:border-r border-slate-200 bg-white p-6 flex flex-col gap-6 shrink-0 overflow-y-auto z-10 shadow-sm md:shadow-none">
+        <!-- Album Info -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Portfolio</div>
+            <div class="flex items-center gap-1.5 text-emerald-600 text-[10px] font-medium bg-emerald-50 px-2 py-1 rounded-full">
+              <Icon name="lucide:check-circle-2" size="12" /> Synced
+            </div>
+          </div>
+          <h1 class="text-3xl font-serif italic text-slate-900 mb-2">{{ albumInfo.title }}</h1>
+          <p class="text-sm text-slate-400 font-medium">
+            {{ formattedEventDate }} • {{ albumInfo.totalImages }} Photos
+          </p>
+        </div>
 
-      <!-- Image Grid -->
-      <div class="container py-6">
-        <div v-if="filteredImages.length === 0" class="text-center py-20">
-          <div class="text-5xl mb-4">{{ showFavoritesOnly ? '💔' : '📭' }}</div>
-          <h2 class="text-xl font-semibold mb-2">
-            {{ showFavoritesOnly ? 'No favorites yet' : 'No photos in this album' }}
+        <!-- Client Profile Card -->
+        <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 shadow-inner">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-indigo-200">
+              {{ clientName ? clientName.charAt(0).toUpperCase() : '?' }}
+            </div>
+            <div class="text-sm overflow-hidden">
+              <p class="text-slate-900 font-semibold truncate">{{ clientName || 'Guest' }}</p>
+              <p class="text-slate-500 text-xs">Client Access</p>
+            </div>
+          </div>
+          
+          <!-- Favorites Toggle -->
+          <button 
+            @click="showFavoritesOnly = !showFavoritesOnly"
+            class="w-full flex items-center justify-center gap-2 text-sm font-medium px-4 py-2 rounded-xl shadow-sm border transition-all duration-200"
+            :class="showFavoritesOnly 
+              ? 'bg-rose-50 text-rose-600 border-rose-100 ring-2 ring-rose-100' 
+              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'"
+          >
+            <Icon name="lucide:heart" size="16" :fill="showFavoritesOnly ? 'currentColor' : 'none'" />
+            <span>{{ showFavoritesOnly ? 'Showing Favorites' : 'Show Favorites' }}</span>
+            <span class="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md text-xs ml-1">{{ favoriteIds.size }}</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Right Grid Area -->
+      <main class="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 relative" ref="scrollContainer" @scroll="handleScroll">
+        
+        <!-- Empty State -->
+        <div v-if="filteredImages.length === 0" class="h-full flex flex-col items-center justify-center text-center p-8 opacity-60">
+          <div class="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center mb-6 text-4xl">
+            {{ showFavoritesOnly ? '💔' : '📷' }}
+          </div>
+          <h2 class="text-xl font-bold text-slate-900 mb-2">
+            {{ showFavoritesOnly ? 'No favorites yet' : 'No photos found' }}
           </h2>
-          <p class="text-[var(--color-text-secondary)]">
-            {{ showFavoritesOnly ? 'Tap the heart icon on photos you love!' : 'Check back later for photos.' }}
+          <p class="text-slate-500 max-w-xs">
+            {{ showFavoritesOnly ? 'Tap the heart icon on photos you love to add them to your collection.' : 'This album seems to be empty.' }}
           </p>
           <button 
             v-if="showFavoritesOnly"
             @click="showFavoritesOnly = false"
-            class="btn btn-secondary mt-6"
+            class="mt-6 px-6 py-2 bg-white border border-slate-200 rounded-full text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
           >
-            Show All Photos
+            View All Photos
           </button>
         </div>
-        
-        <div v-else class="image-grid">
+
+        <!-- Image Grid -->
+        <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           <div 
             v-for="image in filteredImages" 
             :key="image.id"
-            class="image-card group"
+            class="group relative aspect-[4/5] rounded-xl overflow-hidden bg-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all duration-300"
             @click="openLightbox(image)"
           >
             <img 
               :src="image.thumbnailUrl || image.url"
               :alt="image.originalFilename"
               loading="lazy"
-              class="transition-transform duration-300 group-hover:scale-105"
+              class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
             />
             
-            <!-- Favorite Button -->
+            <!-- Gradient Overlay -->
+            <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+            <!-- Favorite Button (Overlay) -->
             <button
               @click.stop="toggleFavorite(image)"
-              :class="[
-                'favorite-btn',
-                favoriteIds.has(image.id) && 'active'
-              ]"
+              class="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10"
+              :class="favoriteIds.has(image.id) 
+                ? 'bg-rose-500 text-white shadow-lg scale-100' 
+                : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40 opacity-0 group-hover:opacity-100 scale-90 hover:scale-100'"
             >
-              {{ favoriteIds.has(image.id) ? '❤️' : '🤍' }}
+              <Icon name="lucide:heart" size="14" :fill="favoriteIds.has(image.id) ? 'currentColor' : 'none'" />
             </button>
             
-            <!-- Overlay -->
-            <div class="image-overlay">
-              <span class="text-sm truncate">{{ image.originalFilename }}</span>
+            <!-- Filename (Overlay) -->
+            <div class="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <p class="text-white text-xs font-medium truncate">{{ image.originalFilename }}</p>
             </div>
           </div>
         </div>
-      </div>
-    </NuxtLayout>
+
+        <!-- Loading More Indicator -->
+        <div v-if="loadingMore" class="py-8 flex justify-center">
+          <div class="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </main>
+    </div>
 
     <!-- Client Name Modal -->
     <Teleport to="body">
-      <div v-if="showNameModal" class="modal-backdrop" @click.self="closeNameModal">
-        <div class="modal-content">
-          <h2 class="text-xl font-semibold mb-2">What's your name?</h2>
-          <p class="text-[var(--color-text-secondary)] text-sm mb-6">
-            This helps the photographer identify your favorite picks.
-          </p>
+      <div v-if="showNameModal" class="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 animate-fade-in">
+          <div class="text-center mb-6">
+            <div class="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600">
+              <Icon name="lucide:user" size="32" />
+            </div>
+            <h2 class="text-2xl font-bold text-slate-900 mb-2">Welcome!</h2>
+            <p class="text-slate-500 text-sm">
+              Please enter your name to start picking your favorites. This helps the photographer identify your selection.
+            </p>
+          </div>
           
           <form @submit.prevent="saveName">
             <input
               v-model="nameInput"
               type="text"
-              placeholder="Enter your first name"
-              class="input mb-4"
+              placeholder="Your Name"
+              class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all mb-6 text-slate-900 placeholder:text-slate-400"
               autofocus
               required
               minlength="1"
@@ -126,19 +161,15 @@
                 v-if="clientName"
                 type="button" 
                 @click="closeNameModal"
-                class="btn btn-secondary flex-1"
+                class="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition-colors"
               >
                 Cancel
               </button>
-              <button type="submit" class="btn btn-primary flex-1">
-                Continue
+              <button type="submit" class="flex-1 px-4 py-3 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20">
+                Start Browsing
               </button>
             </div>
           </form>
-          
-          <p class="text-[var(--color-text-muted)] text-xs mt-4 text-center">
-            A unique identifier will be added to your name
-          </p>
         </div>
       </div>
     </Teleport>
@@ -147,59 +178,55 @@
     <Teleport to="body">
       <div 
         v-if="lightboxImage" 
-        class="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
+        class="fixed inset-0 z-[70] bg-black/95 backdrop-blur-xl flex items-center justify-center"
         @click="lightboxImage = null"
       >
         <!-- Close Button -->
         <button 
-          class="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+          class="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white"
           @click="lightboxImage = null"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <Icon name="lucide:x" size="24" />
         </button>
         
-        <!-- Favorite Button -->
+        <!-- Favorite Button (Lightbox) -->
         <button
           @click.stop="toggleFavorite(lightboxImage)"
-          class="absolute top-4 left-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-xl"
+          class="absolute top-6 left-6 w-10 h-10 rounded-full flex items-center justify-center transition-colors text-white"
+          :class="favoriteIds.has(lightboxImage.id) ? 'bg-rose-500 hover:bg-rose-600' : 'bg-white/10 hover:bg-white/20'"
         >
-          {{ favoriteIds.has(lightboxImage.id) ? '❤️' : '🤍' }}
+          <Icon name="lucide:heart" size="20" :fill="favoriteIds.has(lightboxImage.id) ? 'currentColor' : 'none'" />
         </button>
         
         <!-- Image -->
-        <img 
-          :src="lightboxImage.url"
-          :alt="lightboxImage.originalFilename"
-          class="max-w-full max-h-full object-contain p-4"
-          @click.stop
-        />
+        <div class="relative max-w-[90vw] max-h-[85vh]" @click.stop>
+          <img 
+            :src="lightboxImage.url"
+            :alt="lightboxImage.originalFilename"
+            class="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+          />
+        </div>
         
         <!-- Navigation Arrows -->
         <button 
           v-if="currentImageIndex > 0"
           @click.stop="navigateLightbox(-1)"
-          class="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+          class="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
+          <Icon name="lucide:chevron-left" size="28" />
         </button>
         
         <button 
           v-if="currentImageIndex < filteredImages.length - 1"
           @click.stop="navigateLightbox(1)"
-          class="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+          class="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
+          <Icon name="lucide:chevron-right" size="28" />
         </button>
         
         <!-- Image Info -->
-        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-center">
-          <p class="text-sm text-white/80">{{ lightboxImage.originalFilename }}</p>
+        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 text-center">
+          <p class="text-sm font-medium text-white/90 mb-1">{{ lightboxImage.originalFilename }}</p>
           <p class="text-xs text-white/50">{{ currentImageIndex + 1 }} of {{ filteredImages.length }}</p>
         </div>
       </div>
@@ -210,7 +237,7 @@
 <script setup lang="ts">
 import { generateClientName } from '~/utils/animalNames'
 
-// Disable default layout for this page - we use album layout conditionally
+// Disable default layout for this page
 definePageMeta({
   layout: false
 })
@@ -234,6 +261,7 @@ const showNameModal = ref(false)
 const nameInput = ref('')
 const lightboxImage = ref<ImageData | null>(null)
 const loadingMore = ref(false)
+const scrollContainer = ref<HTMLElement | null>(null)
 
 // Client name from localStorage
 const CLIENT_NAME_KEY = 'lumosnap_client_name'
@@ -269,6 +297,17 @@ const formattedEventDate = computed(() => {
     day: 'numeric'
   })
 })
+
+// Infinite Scroll Handler
+const handleScroll = () => {
+  if (!scrollContainer.value || loadingMore.value || !pagination.value?.hasNextPage) return
+  
+  const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value
+  // Load more when user is 200px from bottom
+  if (scrollHeight - scrollTop - clientHeight < 200) {
+    loadMoreImages()
+  }
+}
 
 // Load more images (pagination)
 async function loadMoreImages() {
@@ -399,3 +438,4 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
 })
 </script>
+
