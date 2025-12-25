@@ -426,47 +426,48 @@
                             </div>
 
                             <!-- Chat Area -->
-                            <div class="p-4 space-y-3 relative">
+                            <div class="p-3 space-y-2 relative overflow-y-auto max-h-96">
                                 <!-- Background Pattern Overlay (Subtle) -->
                                 <div
                                     class="absolute inset-0 opacity-5 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
                                 </div>
 
-                                <!-- Message 1 (Client) -->
+                                <!-- Message 1 (You - Photographer) -->
+                                <div
+                                    class="relative z-10 self-end ml-auto bg-[#DCF8C6] p-2 rounded-lg rounded-tr-none shadow-sm max-w-[85%] text-sm text-slate-800 float-right clear-both">
+                                    <div>Hey Sarah, did you pick the photos you like?</div>
+                                    <div class="text-[10px] text-slate-500 text-right mt-1">2:30 PM ✓✓</div>
+                                </div>
+                                <div class="clear-both"></div>
+
+                                <!-- Message 2 (Client - Sarah) -->
                                 <div
                                     class="relative z-10 self-start bg-white p-2 rounded-lg rounded-tl-none shadow-sm max-w-[85%] text-sm text-slate-800">
-                                    <div class="text-xs text-orange-500 font-medium mb-1">You</div>
-                                    <div
-                                        class="bg-slate-100 border-l-4 border-orange-500 p-1 mb-1 rounded-sm text-xs text-slate-500 truncate">
-                                        IMG_8922.JPG
-                                    </div>
-                                    <div>Can you make this one brighter?</div>
-                                    <div class="text-[10px] text-slate-400 text-right mt-1">10:42 AM</div>
+                                    <div>Took me 2 days to download everything 😅 I like the 3rd and 4th with the red dress!</div>
+                                    <div class="text-[10px] text-slate-400 text-right mt-1">4:15 PM</div>
                                 </div>
 
-                                <!-- Message 2 (Client - Image) -->
+                                <!-- Message 3 (You - Photographer) -->
                                 <div
-                                    class="relative z-10 self-start bg-white p-1 rounded-lg rounded-tl-none shadow-sm max-w-[70%]">
-                                    <img src="https://images.unsplash.com/photo-1520854222323-22176412f716?q=80&w=200&auto=format&fit=crop"
-                                        class="rounded-md mb-1 opacity-80" alt="Screenshot">
-                                    <div class="px-1 text-sm text-slate-800">And this one too!</div>
-                                    <div class="text-[10px] text-slate-400 text-right px-1">10:43 AM</div>
+                                    class="relative z-10 self-end ml-auto bg-[#DCF8C6] p-2 rounded-lg rounded-tr-none shadow-sm max-w-[85%] text-sm text-slate-800 float-right clear-both">
+                                    <div>3rd and 4th? Can you reply to the exact files?</div>
+                                    <div class="text-[10px] text-slate-500 text-right mt-1">4:22 PM ✓✓</div>
+                                </div>
+                                <div class="clear-both"></div>
+
+                                <!-- Message 4 (Client - Sarah frustrated) -->
+                                <div
+                                    class="relative z-10 self-start bg-white p-2 rounded-lg rounded-tl-none shadow-sm max-w-[85%] text-sm text-slate-800">
+                                    <div>Oh no I have to scroll through all of them again to find them 🥴</div>
+                                    <div class="text-[10px] text-slate-400 text-right mt-1">4:25 PM</div>
                                 </div>
 
-                                <!-- Message 3 (You) -->
+                                <!-- Message 5 (You - Photographer's desperate attempt) -->
                                 <div
-                                    class="relative z-10 self-end ml-auto bg-[#DCF8C6] p-2 rounded-lg rounded-tr-none shadow-sm max-w-[85%] text-sm text-slate-800 float-right">
-                                    <div>Which one is that? The screenshot is blurry 😅</div>
-                                    <div
-                                        class="flex items-center justify-end gap-1 text-[10px] text-slate-500 mt-1">
-                                        <span>10:45 AM</span>
-                                        <span class="text-blue-500">
-                                            <Icon name="lucide:check" size="12" class="inline -mr-1" stroke-width="3" />
-                                            <Icon name="lucide:check" size="12" class="inline" stroke-width="3" />
-                                        </span>
-                                    </div>
+                                    class="relative z-10 self-end ml-auto bg-[#DCF8C6] p-2 rounded-lg rounded-tr-none shadow-sm max-w-[85%] text-sm text-slate-800 float-right clear-both">
+                                    <div>Maybe try scrolling to the middle? I think the red dress ones are around there...</div>
+                                    <div class="text-[10px] text-slate-500 text-right mt-1">4:28 PM ✓✓</div>
                                 </div>
-                                <!-- Clear float -->
                                 <div class="clear-both"></div>
                             </div>
                         </div>
