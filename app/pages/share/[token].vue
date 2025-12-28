@@ -1,9 +1,37 @@
 <template>
   <div class="h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden flex flex-col">
     <!-- Loading State -->
-    <div v-if="loading" class="flex-1 flex flex-col items-center justify-center">
-      <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-      <p class="text-slate-500 font-medium">Loading album...</p>
+    <!-- Loading State (Skeleton) -->
+    <div v-if="loading" class="flex-1 flex flex-col md:flex-row overflow-hidden animate-fade-in">
+      <!-- Left Sidebar Skeleton -->
+      <aside class="w-full md:w-80 lg:w-96 border-b md:border-b-0 md:border-r border-slate-200 bg-white p-6 flex flex-col gap-6 shrink-0 z-10">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <div class="h-4 w-20 bg-slate-200 rounded animate-pulse"></div>
+            <div class="h-6 w-16 bg-emerald-50 rounded-full animate-pulse"></div>
+          </div>
+          <div class="h-10 w-3/4 bg-slate-200 rounded mb-2 animate-pulse"></div>
+          <div class="h-4 w-1/2 bg-slate-200 rounded animate-pulse"></div>
+        </div>
+
+        <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 shadow-inner">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-full bg-slate-200 animate-pulse"></div>
+            <div class="flex-1">
+              <div class="h-4 w-24 bg-slate-200 rounded mb-1 animate-pulse"></div>
+              <div class="h-3 w-16 bg-slate-200 rounded animate-pulse"></div>
+            </div>
+          </div>
+          <div class="h-10 w-full bg-white rounded-xl border border-slate-200 animate-pulse"></div>
+        </div>
+      </aside>
+
+      <!-- Right Grid Skeleton -->
+      <main class="flex-1 overflow-hidden bg-slate-50 p-4 md:p-8">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div v-for="i in 10" :key="i" class="aspect-[4/5] rounded-xl bg-slate-200 animate-pulse"></div>
+        </div>
+      </main>
     </div>
 
     <!-- Error State -->
@@ -257,6 +285,11 @@ async function loadMoreImages() {
   }
   
   loadingMore.value = false
+}
+
+function onImageLoad(event: Event) {
+  const img = event.target as HTMLImageElement
+  img.classList.remove('opacity-0')
 }
 
 // Methods
