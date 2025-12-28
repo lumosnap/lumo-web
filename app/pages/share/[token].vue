@@ -39,15 +39,6 @@
 
         <!-- Client Profile Card -->
         <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 shadow-inner">
-          <div class="flex items-center gap-3 mb-4">
-            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-indigo-200">
-              {{ clientName ? clientName.charAt(0).toUpperCase() : '?' }}
-            </div>
-            <div class="text-sm overflow-hidden">
-              <p class="text-slate-900 font-semibold truncate">{{ clientName || 'Guest' }}</p>
-              <p class="text-slate-500 text-xs">Client Access</p>
-            </div>
-          </div>
           
           <!-- Favorites Toggle -->
           <button 
@@ -87,13 +78,16 @@
           </button>
         </div>
 
-        <!-- Image Grid -->
-        <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          <div 
+        <!-- Image Grid (Photoswipe) -->
+        <div v-else id="gallery" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <a 
             v-for="image in filteredImages" 
             :key="image.id"
-            class="group relative aspect-[4/5] rounded-xl overflow-hidden bg-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all duration-300"
-            @click="openLightbox(image)"
+            :href="image.url"
+            :data-pswp-width="image.width"
+            :data-pswp-height="image.height"
+            target="_blank"
+            class="group relative aspect-[4/5] rounded-xl overflow-hidden bg-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all duration-300 block"
           >
             <img 
               :src="image.thumbnailUrl || image.url"
@@ -107,7 +101,7 @@
 
             <!-- Favorite Button (Overlay) -->
             <button
-              @click.stop="toggleFavorite(image)"
+              @click.stop.prevent="toggleFavorite(image)"
               class="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10"
               :class="favoriteIds.has(image.id) 
                 ? 'bg-rose-500 text-white shadow-lg scale-100' 
@@ -120,7 +114,7 @@
             <div class="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <p class="text-white text-xs font-medium truncate">{{ image.originalFilename }}</p>
             </div>
-          </div>
+          </a>
         </div>
 
         <!-- Loading More Indicator -->
@@ -173,69 +167,13 @@
         </div>
       </div>
     </Teleport>
-
-    <!-- Lightbox -->
-    <Teleport to="body">
-      <div 
-        v-if="lightboxImage" 
-        class="fixed inset-0 z-[70] bg-black/95 backdrop-blur-xl flex items-center justify-center"
-        @click="lightboxImage = null"
-      >
-        <!-- Close Button -->
-        <button 
-          class="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white"
-          @click="lightboxImage = null"
-        >
-          <Icon name="lucide:x" size="24" />
-        </button>
-        
-        <!-- Favorite Button (Lightbox) -->
-        <button
-          @click.stop="toggleFavorite(lightboxImage)"
-          class="absolute top-6 left-6 w-10 h-10 rounded-full flex items-center justify-center transition-colors text-white"
-          :class="favoriteIds.has(lightboxImage.id) ? 'bg-rose-500 hover:bg-rose-600' : 'bg-white/10 hover:bg-white/20'"
-        >
-          <Icon name="lucide:heart" size="20" :fill="favoriteIds.has(lightboxImage.id) ? 'currentColor' : 'none'" />
-        </button>
-        
-        <!-- Image -->
-        <div class="relative max-w-[90vw] max-h-[85vh]" @click.stop>
-          <img 
-            :src="lightboxImage.url"
-            :alt="lightboxImage.originalFilename"
-            class="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-          />
-        </div>
-        
-        <!-- Navigation Arrows -->
-        <button 
-          v-if="currentImageIndex > 0"
-          @click.stop="navigateLightbox(-1)"
-          class="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white"
-        >
-          <Icon name="lucide:chevron-left" size="28" />
-        </button>
-        
-        <button 
-          v-if="currentImageIndex < filteredImages.length - 1"
-          @click.stop="navigateLightbox(1)"
-          class="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white"
-        >
-          <Icon name="lucide:chevron-right" size="28" />
-        </button>
-        
-        <!-- Image Info -->
-        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 text-center">
-          <p class="text-sm font-medium text-white/90 mb-1">{{ lightboxImage.originalFilename }}</p>
-          <p class="text-xs text-white/50">{{ currentImageIndex + 1 }} of {{ filteredImages.length }}</p>
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { generateClientName } from '~/utils/animalNames'
+import PhotoSwipeLightbox from 'photoswipe/lightbox'
+import 'photoswipe/style.css'
 
 // Disable default layout for this page
 definePageMeta({
@@ -259,9 +197,9 @@ const favorites = ref<Awaited<ReturnType<typeof api.getFavorites>>['data']>([])
 const showFavoritesOnly = ref(false)
 const showNameModal = ref(false)
 const nameInput = ref('')
-const lightboxImage = ref<ImageData | null>(null)
 const loadingMore = ref(false)
 const scrollContainer = ref<HTMLElement | null>(null)
+let lightbox: PhotoSwipeLightbox | null = null
 
 // Client name from localStorage
 const CLIENT_NAME_KEY = 'lumosnap_client_name'
@@ -282,11 +220,6 @@ const filteredImages = computed(() => {
     return images.value.filter(img => favoriteIds.value.has(img.id))
   }
   return images.value
-})
-
-const currentImageIndex = computed(() => {
-  if (!lightboxImage.value) return -1
-  return filteredImages.value.findIndex(img => img.id === lightboxImage.value!.id)
 })
 
 const formattedEventDate = computed(() => {
@@ -327,17 +260,6 @@ async function loadMoreImages() {
 }
 
 // Methods
-function openLightbox(image: ImageData) {
-  lightboxImage.value = image
-}
-
-function navigateLightbox(direction: number) {
-  const newIndex = currentImageIndex.value + direction
-  if (newIndex >= 0 && newIndex < filteredImages.value.length) {
-    lightboxImage.value = filteredImages.value[newIndex]
-  }
-}
-
 async function toggleFavorite(image: ImageData) {
   if (!clientName.value) {
     showNameModal.value = true
@@ -361,6 +283,38 @@ async function toggleFavorite(image: ImageData) {
       favorites.value = [...(favorites.value || []), result.data]
     }
   }
+  
+  // Update lightbox UI if open
+  updateLightboxFavoriteUI()
+}
+
+function updateLightboxFavoriteUI() {
+  if (!lightbox || !lightbox.pswp) return
+  
+  const currSlide = lightbox.pswp.currSlide
+  if (!currSlide || !currSlide.data.element) return
+  
+  // We need to find the image object that corresponds to the current slide
+  // The element in data is the <a> tag we clicked
+  const anchor = currSlide.data.element as HTMLAnchorElement
+  // Find image by URL since that's what we have in the anchor
+  const image = images.value.find(img => img.url === anchor.href)
+  
+  if (image) {
+    const isFavorited = favoriteIds.value.has(image.id)
+    const heartIcon = document.querySelector('.pswp-favorite-icon')
+    if (heartIcon) {
+      if (isFavorited) {
+        heartIcon.classList.add('text-rose-500')
+        heartIcon.classList.remove('text-white')
+        heartIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
+      } else {
+        heartIcon.classList.remove('text-rose-500')
+        heartIcon.classList.add('text-white')
+        heartIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
+      }
+    }
+  }
 }
 
 function saveName() {
@@ -380,17 +334,46 @@ function closeNameModal() {
   }
 }
 
-// Keyboard navigation for lightbox
-function handleKeydown(e: KeyboardEvent) {
-  if (!lightboxImage.value) return
+function initLightbox() {
+  lightbox = new PhotoSwipeLightbox({
+    gallery: '#gallery',
+    children: 'a',
+    pswpModule: () => import('photoswipe'),
+    padding: { top: 0, bottom: 0, left: 0, right: 0 }, // Edge to edge
+    bgOpacity: 0.95,
+    showHideOpacity: true,
+  })
+
+  // Add Favorite Button
+  lightbox.on('uiRegister', () => {
+    lightbox!.pswp!.ui!.registerElement({
+      name: 'favorite-button',
+      order: 9,
+      isButton: true,
+      tagName: 'button',
+      html: '<span class="pswp-favorite-icon text-white"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></span>',
+      onClick: (event, el, pswp) => {
+        const currSlide = pswp.currSlide
+        if (currSlide && currSlide.data.element) {
+          const anchor = currSlide.data.element as HTMLAnchorElement
+          const image = images.value.find(img => img.url === anchor.href)
+          if (image) {
+            toggleFavorite(image)
+          }
+        }
+      }
+    })
+  })
+
+  lightbox.on('change', () => {
+    updateLightboxFavoriteUI()
+  })
   
-  if (e.key === 'Escape') {
-    lightboxImage.value = null
-  } else if (e.key === 'ArrowLeft') {
-    navigateLightbox(-1)
-  } else if (e.key === 'ArrowRight') {
-    navigateLightbox(1)
-  }
+  lightbox.on('openingAnimationStart', () => {
+    updateLightboxFavoriteUI()
+  })
+
+  lightbox.init()
 }
 
 // Load data on mount
@@ -425,17 +408,21 @@ onMounted(async () => {
   
   loading.value = false
   
+  // Initialize Lightbox
+  await nextTick()
+  initLightbox()
+  
   // Show name modal if no client name
   if (!clientName.value) {
     showNameModal.value = true
   }
-  
-  // Add keyboard listener
-  window.addEventListener('keydown', handleKeydown)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown)
+  if (lightbox) {
+    lightbox.destroy()
+    lightbox = null
+  }
 })
 </script>
 
