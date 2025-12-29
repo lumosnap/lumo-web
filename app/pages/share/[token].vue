@@ -302,6 +302,12 @@ async function toggleShowFavorites() {
   showFavoritesOnly.value = !showFavoritesOnly.value
   gridLoading.value = true
   
+  // Destroy lightbox as the gallery element will be removed
+  if (lightbox) {
+    lightbox.destroy()
+    lightbox = null
+  }
+  
   // Reset pagination and images
   pagination.value = null
   images.value = []
@@ -315,6 +321,10 @@ async function toggleShowFavorites() {
   }
   
   gridLoading.value = false
+  
+  // Re-initialize lightbox after DOM update
+  await nextTick()
+  initLightbox()
 }
 
 // Client name from localStorage
@@ -531,6 +541,10 @@ function initLightbox() {
     bgOpacity: 0.95,
     showHideOpacity: true,
     trapFocus: false, // Allow focus on our custom modal
+    arrowPrevSVG: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>',
+    arrowNextSVG: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg>',
+    closeSVG: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 18 18"/></svg>',
+    zoomSVG: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-maximize-2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>',
   })
 
   // Add Favorite Button
@@ -540,7 +554,7 @@ function initLightbox() {
       order: 9,
       isButton: true,
       tagName: 'button',
-      html: '<span class="pswp-favorite-icon text-white"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></span>',
+      html: '<div class="pswp-custom-icon pswp-favorite-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></div>',
       onClick: (event, el, pswp) => {
         const currSlide = pswp.currSlide
         if (currSlide && currSlide.data.element) {
@@ -559,17 +573,13 @@ function initLightbox() {
       order: 10,
       isButton: true,
       tagName: 'button',
-      html: '<span class="text-white"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>',
+      html: '<div class="pswp-custom-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>',
       onClick: (event, el, pswp) => {
         const currSlide = pswp.currSlide
         if (currSlide && currSlide.data.element) {
           const anchor = currSlide.data.element as HTMLAnchorElement
           const image = images.value.find(img => img.url === anchor.href)
           if (image) {
-             // Open a custom modal or prompt for notes
-             // Since we can't easily inject a full Vue component into Photoswipe's DOM, 
-             // we'll use a simple prompt or a hidden Vue modal that we trigger.
-             // Let's use a Vue state to show a modal over the lightbox.
              openNoteModal(image, el)
           }
         }
@@ -687,6 +697,105 @@ onUnmounted(() => {
   }
 })
 </script>
+
+<style>
+/* Photoswipe UI Overrides */
+.pswp__button {
+  background: none !important;
+  transition: all 0.2s ease;
+  opacity: 0.8;
+}
+
+.pswp__button:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Force all icons to be white */
+.pswp__button svg {
+  stroke: white !important;
+  fill: none !important;
+  width: 24px !important;
+  height: 24px !important;
+}
+
+/* Specific fix for heart icon fill state */
+.pswp-favorite-icon svg.text-rose-500 {
+  stroke: #f43f5e !important; /* rose-500 */
+  fill: #f43f5e !important;
+}
+
+.pswp__button--arrow--left,
+.pswp__button--arrow--right {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px);
+  border-radius: 50%;
+  width: 48px !important;
+  height: 48px !important;
+  margin-top: -24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.pswp__button--arrow--left:hover,
+.pswp__button--arrow--right:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.pswp__button--close,
+.pswp__button--zoom {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  width: 44px !important;
+  height: 44px !important;
+  margin: 10px 10px 0 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+}
+
+.pswp__button--close:hover,
+.pswp__button--zoom:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.pswp-custom-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.pswp__button--favorite-button,
+.pswp__button--notes-button {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  width: 44px !important;
+  height: 44px !important;
+  margin: 10px 10px 0 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.pswp__button--favorite-button:hover,
+.pswp__button--notes-button:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.pswp__counter {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  opacity: 0.8;
+  margin-top: 15px;
+  margin-left: 20px;
+}
+</style>
 
 
 
