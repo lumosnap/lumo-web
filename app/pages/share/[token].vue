@@ -589,7 +589,38 @@ function updateLightboxFavoriteUI() {
   }
 }
 
-function saveName() {
+async function fetchAlbum(page = 1) {
+  const token = route.params.token as string
+  const result = await api.getAlbum(token, page, clientName.value, showFavoritesOnly.value)
+  
+  if (!result.success || !result.data) {
+    if (page === 1) {
+      error.value = true
+      loading.value = false
+    }
+    return
+  }
+  
+  if (page === 1) {
+    albumInfo.value = result.data.album
+    images.value = result.data.images
+    pagination.value = result.data.pagination
+    loading.value = false
+    
+    // Re-initialize lightbox
+    await nextTick()
+    if (lightbox) {
+      lightbox.destroy()
+      lightbox = null
+    }
+    initLightbox()
+  } else {
+    images.value = [...images.value, ...result.data.images]
+    pagination.value = result.data.pagination
+  }
+}
+
+async function saveName() {
   if (!nameInput.value.trim()) return
   
   const animal = animals[selectedAnimalIndex.value]
@@ -602,13 +633,10 @@ function saveName() {
   localStorage.setItem(CLIENT_NAME_KEY, fullName)
   showNameModal.value = false
   nameInput.value = ''
-}
-
-function closeNameModal() {
-  if (clientName.value) {
-    showNameModal.value = false
-    nameInput.value = ''
-  }
+  
+  // Refetch data with new name to sync favorites
+  loading.value = true
+  await fetchAlbum(1)
 }
 
 function closeNoteModal() {
@@ -750,24 +778,7 @@ onMounted(async () => {
   }
 
   // Fetch album
-  const token = route.params.token as string
-  const albumResult = await api.getAlbum(token, 1, clientName.value)
-  
-  if (!albumResult.success || !albumResult.data) {
-    error.value = true
-    loading.value = false
-    return
-  }
-  
-  albumInfo.value = albumResult.data.album
-  images.value = albumResult.data.images
-  pagination.value = albumResult.data.pagination
-  
-  loading.value = false
-  
-  // Initialize Lightbox
-  await nextTick()
-  initLightbox()
+  await fetchAlbum(1)
   
   // Show name modal if no client name
   if (!clientName.value) {
