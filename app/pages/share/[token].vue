@@ -172,43 +172,99 @@
 
     <!-- Client Name Modal -->
     <Teleport to="body">
-      <div v-if="showNameModal" class="fixed inset-0 z-[200000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 animate-fade-in">
-          <div class="text-center mb-6">
-            <div class="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600">
-              <Icon name="lucide:user" size="32" />
-            </div>
-            <h2 class="text-2xl font-bold text-slate-900 mb-2">Welcome!</h2>
-            <p class="text-slate-500 text-sm">
-              Please enter your name to start picking your favorites. This helps the photographer identify your selection.
+      <div v-if="showNameModal" class="fixed inset-0 z-[200000] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 animate-fade-in relative overflow-hidden">
+          <!-- Background Decoration -->
+          <div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-50 to-white -z-10"></div>
+          
+          <div class="text-center mb-8">
+            <h2 class="text-3xl font-bold text-slate-900 mb-2 font-serif">Welcome!</h2>
+            <p class="text-slate-500 text-sm font-medium">
+              Let's get you set up to browse photos
             </p>
           </div>
           
           <form @submit.prevent="saveName">
-            <input
-              v-model="nameInput"
-              type="text"
-              placeholder="Your Name"
-              class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all mb-6 text-slate-900 placeholder:text-slate-400"
-              autofocus
-              required
-              minlength="1"
-              maxlength="50"
-            />
-            
-            <div class="flex gap-3">
-              <button 
-                v-if="clientName"
-                type="button" 
-                @click="closeNameModal"
-                class="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button type="submit" class="flex-1 px-4 py-3 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20">
-                Start Browsing
-              </button>
+            <!-- Animal Carousel -->
+            <div class="mb-8">
+              <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 text-center">Pick your spirit animal</label>
+              
+              <div class="relative flex items-center justify-center h-48">
+                <!-- Prev Button -->
+                <button 
+                  type="button"
+                  @click="prevAnimal"
+                  class="absolute left-0 z-10 w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-colors shadow-sm"
+                >
+                  <Icon name="lucide:chevron-left" size="16" />
+                </button>
+
+                <!-- Carousel Window -->
+                <div class="overflow-hidden w-full px-10 py-8">
+                  <div 
+                    class="flex items-center justify-center transition-transform duration-300 ease-out"
+                    :style="{ transform: `translateX(0)` }"
+                  >
+                    <div 
+                      v-for="(animal, index) in visibleAnimals" 
+                      :key="animal?.name || index"
+                      @click="selectAnimal(index)"
+                      class="flex flex-col items-center justify-center cursor-pointer transition-all duration-300 transform px-2"
+                      :class="index === 1 ? 'scale-125 opacity-100 z-10' : 'scale-75 opacity-40 blur-[1px]'"
+                    >
+                      <template v-if="animal">
+                        <div class="text-6xl mb-2 transition-transform duration-300" :class="{ 'animate-bounce-subtle': index === 1 }">
+                          {{ animal.emoji }}
+                        </div>
+                        <div class="text-xs font-bold capitalize transition-colors duration-300" :class="index === 1 ? 'text-indigo-600' : 'text-transparent'">
+                          {{ animal.name }}
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Next Button -->
+                <button 
+                  type="button"
+                  @click="nextAnimal"
+                  class="absolute right-0 z-10 w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-colors shadow-sm"
+                >
+                  <Icon name="lucide:chevron-right" size="16" />
+                </button>
+              </div>
             </div>
+
+            <!-- Name Input -->
+            <div class="mb-8">
+              <div class="relative group">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Icon name="lucide:user" size="18" class="text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                </div>
+                <input
+                  v-model="nameInput"
+                  type="text"
+                  placeholder="Enter your name"
+                  class="w-full pl-11 pr-4 py-4 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-indigo-500 focus:bg-white outline-none transition-all text-slate-900 placeholder:text-slate-400 font-medium text-lg"
+                  autofocus
+                  required
+                  minlength="1"
+                  maxlength="50"
+                />
+              </div>
+            </div>
+            
+            <button 
+              type="submit" 
+              class="w-full py-4 rounded-2xl bg-slate-900 text-white font-bold text-lg hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98]"
+              :disabled="!nameInput.trim()"
+            >
+              Start Browsing
+            </button>
+
+            <p class="mt-6 text-center text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
+              Keep the name and animal consistent across devices to keep the data synced.
+            </p>
           </form>
         </div>
       </div>
@@ -265,7 +321,7 @@
 </template>
 
 <script setup lang="ts">
-import { generateClientName } from '~/utils/animalNames'
+import { animals } from '~/utils/animalNames'
 import PhotoSwipeLightbox from 'photoswipe/lightbox'
 import 'photoswipe/style.css'
 
@@ -292,10 +348,34 @@ const pagination = ref<AlbumData['pagination'] | null>(null)
 const showFavoritesOnly = ref(false)
 const showNameModal = ref(false)
 const nameInput = ref('')
+const selectedAnimalIndex = ref(0)
 const loadingMore = ref(false)
 const gridLoading = ref(false)
 const scrollContainer = ref<HTMLElement | null>(null)
 let lightbox: PhotoSwipeLightbox | null = null
+
+// Carousel Logic
+const visibleAnimals = computed(() => {
+  const total = animals.length
+  const current = selectedAnimalIndex.value
+  const prev = (current - 1 + total) % total
+  const next = (current + 1) % total
+  return [animals[prev], animals[current], animals[next]]
+})
+
+function nextAnimal() {
+  selectedAnimalIndex.value = (selectedAnimalIndex.value + 1) % animals.length
+}
+
+function prevAnimal() {
+  selectedAnimalIndex.value = (selectedAnimalIndex.value - 1 + animals.length) % animals.length
+}
+
+function selectAnimal(viewIndex: number) {
+  // viewIndex is 0 (prev), 1 (current), 2 (next)
+  if (viewIndex === 0) prevAnimal()
+  if (viewIndex === 2) nextAnimal()
+}
 
 // Methods
 async function toggleShowFavorites() {
@@ -512,9 +592,14 @@ function updateLightboxFavoriteUI() {
 function saveName() {
   if (!nameInput.value.trim()) return
   
-  const generatedName = generateClientName(nameInput.value.trim())
-  clientName.value = generatedName
-  localStorage.setItem(CLIENT_NAME_KEY, generatedName)
+  const animal = animals[selectedAnimalIndex.value]
+  if (!animal) return
+
+  const cleanName = nameInput.value.trim().toLowerCase().replace(/\s+/g, '')
+  const fullName = `${animal.emoji} ${cleanName}-${animal.name}`
+  
+  clientName.value = fullName
+  localStorage.setItem(CLIENT_NAME_KEY, fullName)
   showNameModal.value = false
   nameInput.value = ''
 }
