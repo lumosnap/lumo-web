@@ -39,7 +39,12 @@ export function useApi() {
     }
 
     // Get album by share token
-    async function getAlbum(token: string, page: number = 1) {
+    async function getAlbum(token: string, page: number = 1, clientName?: string, favoritesOnly?: boolean) {
+        const params = new URLSearchParams()
+        params.append('page', page.toString())
+        if (clientName) params.append('clientName', clientName)
+        if (favoritesOnly) params.append('favorites', 'true')
+
         return fetchApi<{
             album: {
                 id: string
@@ -47,6 +52,8 @@ export function useApi() {
                 eventDate: string | null
                 totalImages: number
                 shareLinkToken: string
+                favoritedPhotosCount: number
+                ownerName: string
             }
             images: Array<{
                 id: number
@@ -56,6 +63,17 @@ export function useApi() {
                 createdAt: string
                 url: string
                 thumbnailUrl: string
+                favoriteCount: number
+                comments: Array<{
+                    clientName: string
+                    notes: string | null
+                    createdAt: string
+                }>
+                userFavorite: {
+                    id: number
+                    notes: string | null
+                    createdAt: string
+                } | null
             }>
             pagination: {
                 currentPage: number
@@ -64,20 +82,7 @@ export function useApi() {
                 hasNextPage: boolean
                 hasPrevPage: boolean
             }
-        }>(`/api/v1/share/${token}?page=${page}`)
-    }
-
-    // Get favorites for album
-    async function getFavorites(token: string, clientName?: string) {
-        const params = clientName ? `?clientName=${encodeURIComponent(clientName)}` : ''
-        return fetchApi<Array<{
-            id: number
-            albumId: string
-            imageId: number
-            clientName: string
-            notes: string | null
-            createdAt: string
-        }>>(`/api/v1/share/${token}/favorites${params}`)
+        }>(`/api/v1/share/${token}?${params.toString()}`)
     }
 
     // Create favorite
@@ -95,17 +100,33 @@ export function useApi() {
         })
     }
 
+    // Update favorite notes
+    async function updateFavoriteNotes(token: string, favoriteId: number, clientName: string, notes: string) {
+        return fetchApi<{
+            id: number
+            albumId: string
+            imageId: number
+            clientName: string
+            notes: string | null
+            createdAt: string
+        }>(`/api/v1/share/${token}/favorites/${favoriteId}/notes`, {
+            method: 'PATCH',
+            body: JSON.stringify({ clientName, notes }),
+        })
+    }
+
     // Delete favorite
-    async function deleteFavorite(token: string, favoriteId: number) {
+    async function deleteFavorite(token: string, favoriteId: number, clientName: string) {
         return fetchApi<void>(`/api/v1/share/${token}/favorites/${favoriteId}`, {
             method: 'DELETE',
+            body: JSON.stringify({ clientName }),
         })
     }
 
     return {
         getAlbum,
-        getFavorites,
         createFavorite,
         deleteFavorite,
+        updateFavoriteNotes,
     }
 }

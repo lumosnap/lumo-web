@@ -54,7 +54,7 @@
         <!-- Album Info -->
         <div>
           <div class="flex items-center justify-between mb-2">
-            <div class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Portfolio</div>
+            <div class="text-xs font-bold text-indigo-600 uppercase tracking-wider">{{ albumInfo.ownerName }}</div>
             <div class="flex items-center gap-1.5 text-emerald-600 text-[10px] font-medium bg-emerald-50 px-2 py-1 rounded-full">
               <Icon name="lucide:check-circle-2" size="12" /> Synced
             </div>
@@ -70,15 +70,14 @@
           
           <!-- Favorites Toggle -->
           <button 
-            @click="showFavoritesOnly = !showFavoritesOnly"
+            @click="toggleShowFavorites"
             class="w-full flex items-center justify-center gap-2 text-sm font-medium px-4 py-2 rounded-xl shadow-sm border transition-all duration-200"
             :class="showFavoritesOnly 
               ? 'bg-rose-50 text-rose-600 border-rose-100 ring-2 ring-rose-100' 
               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'"
           >
             <Icon name="lucide:heart" size="16" :fill="showFavoritesOnly ? 'currentColor' : 'none'" />
-            <span>{{ showFavoritesOnly ? 'Showing Favorites' : 'Show Favorites' }}</span>
-            <span class="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md text-xs ml-1">{{ favoriteIds.size }}</span>
+            <span>{{ showFavoritesOnly ? 'Show All Images' : `Show Favorites (${albumInfo?.favoritedPhotosCount || 0})` }}</span>
           </button>
         </div>
       </aside>
@@ -86,8 +85,13 @@
       <!-- Right Grid Area -->
       <main class="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 relative" ref="scrollContainer" @scroll="handleScroll">
         
+        <!-- Grid Loading State -->
+        <div v-if="gridLoading" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div v-for="i in 10" :key="i" class="aspect-[4/5] rounded-xl bg-slate-200 animate-pulse"></div>
+        </div>
+
         <!-- Empty State -->
-        <div v-if="filteredImages.length === 0" class="h-full flex flex-col items-center justify-center text-center p-8 opacity-60">
+        <div v-else-if="images.length === 0" class="h-full flex flex-col items-center justify-center text-center p-8 opacity-60">
           <div class="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center mb-6 text-4xl">
             {{ showFavoritesOnly ? '💔' : '📷' }}
           </div>
@@ -99,7 +103,7 @@
           </p>
           <button 
             v-if="showFavoritesOnly"
-            @click="showFavoritesOnly = false"
+            @click="toggleShowFavorites"
             class="mt-6 px-6 py-2 bg-white border border-slate-200 rounded-full text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
           >
             View All Photos
@@ -109,7 +113,7 @@
         <!-- Image Grid (Photoswipe) -->
         <div v-else id="gallery" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           <a 
-            v-for="image in filteredImages" 
+            v-for="image in images" 
             :key="image.id"
             :href="image.url"
             :data-pswp-width="image.width"
@@ -130,12 +134,26 @@
             <!-- Favorite Button (Overlay) -->
             <button
               @click.stop.prevent="toggleFavorite(image)"
-              class="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10"
-              :class="favoriteIds.has(image.id) 
+              class="absolute top-3 right-3 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10 px-2 gap-1.5"
+              :class="image.userFavorite 
                 ? 'bg-rose-500 text-white shadow-lg scale-100' 
-                : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40 opacity-0 group-hover:opacity-100 scale-90 hover:scale-100'"
+                : (image.favoriteCount > 0 
+                    ? 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40' 
+                    : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40 opacity-0 group-hover:opacity-100 scale-90 hover:scale-100 w-8')"
             >
-              <Icon name="lucide:heart" size="14" :fill="favoriteIds.has(image.id) ? 'currentColor' : 'none'" />
+              <Icon name="lucide:heart" size="14" :fill="image.userFavorite || image.favoriteCount > 0 ? 'currentColor' : 'none'" />
+              <span v-if="image.favoriteCount > 0" class="text-xs font-bold">{{ image.favoriteCount }}</span>
+            </button>
+
+            <!-- Note Indicator (Overlay) -->
+            <button
+              @click.stop.prevent="openNoteModal(image, $event.target as HTMLElement)"
+              class="absolute top-3 right-14 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10 hover:bg-white/40 shadow-sm"
+              :class="image.userFavorite?.notes 
+                ? 'bg-indigo-500 text-white shadow-md opacity-100' 
+                : 'bg-white/20 backdrop-blur-md text-white opacity-0 group-hover:opacity-100 scale-90 hover:scale-100'"
+            >
+              <Icon name="lucide:message-square" size="14" fill="currentColor" />
             </button>
             
             <!-- Filename (Overlay) -->
@@ -154,7 +172,7 @@
 
     <!-- Client Name Modal -->
     <Teleport to="body">
-      <div v-if="showNameModal" class="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      <div v-if="showNameModal" class="fixed inset-0 z-[200000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 animate-fade-in">
           <div class="text-center mb-6">
             <div class="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600">
@@ -195,6 +213,54 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- Note Popover -->
+    <Teleport to="body">
+      <div 
+        v-if="showNoteModal" 
+        class="fixed inset-0 z-[200000] pointer-events-none"
+      >
+        <!-- Backdrop (Invisible but clickable to close) -->
+        <div class="absolute inset-0 pointer-events-auto" @click="closeNoteModal"></div>
+        
+        <!-- Popover Content -->
+        <div 
+          class="absolute bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-xs p-4 pointer-events-auto border border-white/20 z-50 origin-top transition-all duration-200 ease-out"
+          :class="showNoteModal ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'"
+          :style="popoverStyle"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Icon name="lucide:message-square" size="16" class="text-indigo-600" />
+              Photo Note
+            </h3>
+            <button @click="closeNoteModal" class="text-slate-400 hover:text-slate-600 transition-colors">
+              <Icon name="lucide:x" size="16" />
+            </button>
+          </div>
+          
+          <textarea
+            ref="noteTextarea"
+            v-model="noteInput"
+            placeholder="Add your comments..."
+            class="w-full px-3 py-2 rounded-xl bg-white/50 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all mb-3 text-slate-900 placeholder:text-slate-400 min-h-[80px] text-sm resize-none"
+            autofocus
+            @keydown.ctrl.enter="handleSaveNote"
+            @keydown.meta.enter="handleSaveNote"
+          ></textarea>
+          
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-slate-400">Press Enter to save</span>
+            <button 
+              @click="handleSaveNote"
+              class="px-4 py-1.5 rounded-lg bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -207,6 +273,8 @@ import 'photoswipe/style.css'
 definePageMeta({
   layout: false
 })
+
+
 
 const route = useRoute()
 const api = useApi()
@@ -221,33 +289,47 @@ const error = ref(false)
 const albumInfo = ref<AlbumData['album'] | null>(null)
 const images = ref<AlbumData['images']>([])
 const pagination = ref<AlbumData['pagination'] | null>(null)
-const favorites = ref<Awaited<ReturnType<typeof api.getFavorites>>['data']>([])
 const showFavoritesOnly = ref(false)
 const showNameModal = ref(false)
 const nameInput = ref('')
 const loadingMore = ref(false)
+const gridLoading = ref(false)
 const scrollContainer = ref<HTMLElement | null>(null)
 let lightbox: PhotoSwipeLightbox | null = null
+
+// Methods
+async function toggleShowFavorites() {
+  showFavoritesOnly.value = !showFavoritesOnly.value
+  gridLoading.value = true
+  
+  // Reset pagination and images
+  pagination.value = null
+  images.value = []
+  
+  const token = route.params.token as string
+  const result = await api.getAlbum(token, 1, clientName.value, showFavoritesOnly.value)
+  
+  if (result.success && result.data) {
+    images.value = result.data.images
+    pagination.value = result.data.pagination
+  }
+  
+  gridLoading.value = false
+}
 
 // Client name from localStorage
 const CLIENT_NAME_KEY = 'lumosnap_client_name'
 const clientName = ref('')
 
 // Computed
-const favoriteIds = computed(() => new Set(favorites.value?.map(f => f.imageId) || []))
-
-const favoriteIdToRecordId = computed(() => {
-  const map = new Map<number, number>()
-  favorites.value?.forEach(f => map.set(f.imageId, f.id))
-  return map
-})
-
-const filteredImages = computed(() => {
-  if (!images.value?.length) return []
-  if (showFavoritesOnly.value) {
-    return images.value.filter(img => favoriteIds.value.has(img.id))
-  }
-  return images.value
+const favoriteIds = computed(() => {
+  const set = new Set<number>()
+  images.value.forEach(img => {
+    if (img.userFavorite) {
+      set.add(img.id)
+    }
+  })
+  return set
 })
 
 const formattedEventDate = computed(() => {
@@ -278,7 +360,7 @@ async function loadMoreImages() {
   const token = route.params.token as string
   const nextPage = pagination.value.currentPage + 1
   
-  const result = await api.getAlbum(token, nextPage)
+  const result = await api.getAlbum(token, nextPage, clientName.value, showFavoritesOnly.value)
   if (result.success && result.data) {
     images.value = [...images.value, ...result.data.images]
     pagination.value = result.data.pagination
@@ -293,31 +375,95 @@ function onImageLoad(event: Event) {
 }
 
 // Methods
+function openLightbox(image: ImageData) {
+  if (!lightbox) return
+  
+  const index = images.value.findIndex(img => img.id === image.id)
+  if (index !== -1) {
+    const galleryElement = document.querySelector('#gallery') as HTMLElement
+    if (galleryElement) {
+      lightbox.loadAndOpen(index, { gallery: galleryElement })
+    }
+  }
+}
+
 async function toggleFavorite(image: ImageData) {
   if (!clientName.value) {
     showNameModal.value = true
     return
   }
 
-  const isFavorited = favoriteIds.value.has(image.id)
   const token = route.params.token as string
+  const isFavorited = !!image.userFavorite
 
-  if (isFavorited) {
-    const recordId = favoriteIdToRecordId.value.get(image.id)
-    if (recordId) {
-      const result = await api.deleteFavorite(token, recordId)
-      if (result.success) {
-        favorites.value = favorites.value?.filter(f => f.id !== recordId) || []
+  if (isFavorited && image.userFavorite) {
+    const recordId = image.userFavorite.id
+    const result = await api.deleteFavorite(token, recordId, clientName.value)
+    if (result.success) {
+      // Optimistic update
+      const index = images.value.findIndex(img => img.id === image.id)
+      if (index !== -1 && images.value[index]) {
+        images.value[index].userFavorite = null
+        images.value[index].favoriteCount = Math.max(0, images.value[index].favoriteCount - 1)
       }
     }
   } else {
     const result = await api.createFavorite(token, image.id, clientName.value)
     if (result.success && result.data) {
-      favorites.value = [...(favorites.value || []), result.data]
+      // Optimistic update
+      const index = images.value.findIndex(img => img.id === image.id)
+      if (index !== -1 && images.value[index]) {
+        images.value[index].userFavorite = {
+            id: result.data.id,
+            notes: result.data.notes,
+            createdAt: result.data.createdAt
+        }
+        images.value[index].favoriteCount += 1
+      }
     }
   }
   
   // Update lightbox UI if open
+  updateLightboxFavoriteUI()
+}
+
+async function saveNote(image: ImageData, note: string) {
+  if (!clientName.value) {
+    showNameModal.value = true
+    return
+  }
+
+  const token = route.params.token as string
+  const isFavorited = !!image.userFavorite
+
+  if (isFavorited && image.userFavorite) {
+    const recordId = image.userFavorite.id
+    const result = await api.updateFavoriteNotes(token, recordId, clientName.value, note)
+    if (result.success && result.data) {
+      // Update local state
+      const index = images.value.findIndex(img => img.id === image.id)
+      if (index !== -1 && images.value[index]) {
+          images.value[index].userFavorite = {
+              ...images.value[index].userFavorite!,
+              notes: note
+          }
+      }
+    }
+  } else {
+    // Create favorite with note
+    const result = await api.createFavorite(token, image.id, clientName.value, note)
+    if (result.success && result.data) {
+      const index = images.value.findIndex(img => img.id === image.id)
+      if (index !== -1 && images.value[index]) {
+        images.value[index].userFavorite = {
+            id: result.data.id,
+            notes: result.data.notes,
+            createdAt: result.data.createdAt
+        }
+        images.value[index].favoriteCount += 1
+      }
+    }
+  }
   updateLightboxFavoriteUI()
 }
 
@@ -327,20 +473,23 @@ function updateLightboxFavoriteUI() {
   const currSlide = lightbox.pswp.currSlide
   if (!currSlide || !currSlide.data.element) return
   
-  // We need to find the image object that corresponds to the current slide
-  // The element in data is the <a> tag we clicked
   const anchor = currSlide.data.element as HTMLAnchorElement
-  // Find image by URL since that's what we have in the anchor
   const image = images.value.find(img => img.url === anchor.href)
   
   if (image) {
-    const isFavorited = favoriteIds.value.has(image.id)
+    const isFavorited = !!image.userFavorite
+
+    // Update Heart Icon
     const heartIcon = document.querySelector('.pswp-favorite-icon')
     if (heartIcon) {
       if (isFavorited) {
         heartIcon.classList.add('text-rose-500')
         heartIcon.classList.remove('text-white')
         heartIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
+      } else if (image.favoriteCount > 0) {
+        heartIcon.classList.add('text-white')
+        heartIcon.classList.remove('text-rose-500')
+         heartIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
       } else {
         heartIcon.classList.remove('text-rose-500')
         heartIcon.classList.add('text-white')
@@ -367,6 +516,12 @@ function closeNameModal() {
   }
 }
 
+function closeNoteModal() {
+  showNoteModal.value = false
+  currentNoteImage.value = null
+  noteInput.value = ''
+}
+
 function initLightbox() {
   lightbox = new PhotoSwipeLightbox({
     gallery: '#gallery',
@@ -375,6 +530,7 @@ function initLightbox() {
     padding: { top: 0, bottom: 0, left: 0, right: 0 }, // Edge to edge
     bgOpacity: 0.95,
     showHideOpacity: true,
+    trapFocus: false, // Allow focus on our custom modal
   })
 
   // Add Favorite Button
@@ -396,6 +552,29 @@ function initLightbox() {
         }
       }
     })
+
+    // Add Notes Button
+    lightbox!.pswp!.ui!.registerElement({
+      name: 'notes-button',
+      order: 10,
+      isButton: true,
+      tagName: 'button',
+      html: '<span class="text-white"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>',
+      onClick: (event, el, pswp) => {
+        const currSlide = pswp.currSlide
+        if (currSlide && currSlide.data.element) {
+          const anchor = currSlide.data.element as HTMLAnchorElement
+          const image = images.value.find(img => img.url === anchor.href)
+          if (image) {
+             // Open a custom modal or prompt for notes
+             // Since we can't easily inject a full Vue component into Photoswipe's DOM, 
+             // we'll use a simple prompt or a hidden Vue modal that we trigger.
+             // Let's use a Vue state to show a modal over the lightbox.
+             openNoteModal(image, el)
+          }
+        }
+      }
+    })
   })
 
   lightbox.on('change', () => {
@@ -409,6 +588,64 @@ function initLightbox() {
   lightbox.init()
 }
 
+// Note Modal State
+const showNoteModal = ref(false)
+const noteInput = ref('')
+const noteTextarea = ref<HTMLTextAreaElement | null>(null)
+const currentNoteImage = ref<ImageData | null>(null)
+const popoverPosition = ref({ top: 0, left: 0, alignRight: false })
+
+const popoverStyle = computed(() => {
+  if (popoverPosition.value.alignRight) {
+    return {
+      top: `${popoverPosition.value.top}px`,
+      right: `${window.innerWidth - popoverPosition.value.left}px`
+    }
+  }
+  return {
+    top: `${popoverPosition.value.top}px`,
+    left: `${popoverPosition.value.left}px`
+  }
+})
+
+function openNoteModal(image: ImageData, targetElement?: HTMLElement) {
+  currentNoteImage.value = image
+  noteInput.value = image.userFavorite?.notes || ''
+  
+  if (targetElement) {
+    const rect = targetElement.getBoundingClientRect()
+    // Default to positioning below the button, aligned to the right if it's on the right side of the screen
+    const isRightSide = rect.left > window.innerWidth / 2
+    
+    popoverPosition.value = {
+      top: rect.bottom + 10,
+      left: isRightSide ? rect.right : rect.left,
+      alignRight: isRightSide
+    }
+  } else {
+    // Fallback to center if no target (e.g. from grid)
+    popoverPosition.value = {
+      top: window.innerHeight / 2 - 100,
+      left: window.innerWidth / 2 - 160,
+      alignRight: false
+    }
+  }
+  
+  showNoteModal.value = true
+  
+  // Focus textarea
+  nextTick(() => {
+    noteTextarea.value?.focus()
+  })
+}
+
+async function handleSaveNote() {
+  if (currentNoteImage.value) {
+    await saveNote(currentNoteImage.value, noteInput.value)
+    closeNoteModal()
+  }
+}
+
 // Load data on mount
 onMounted(async () => {
   // Check for client name
@@ -419,7 +656,7 @@ onMounted(async () => {
 
   // Fetch album
   const token = route.params.token as string
-  const albumResult = await api.getAlbum(token)
+  const albumResult = await api.getAlbum(token, 1, clientName.value)
   
   if (!albumResult.success || !albumResult.data) {
     error.value = true
@@ -430,14 +667,6 @@ onMounted(async () => {
   albumInfo.value = albumResult.data.album
   images.value = albumResult.data.images
   pagination.value = albumResult.data.pagination
-  
-  // Fetch favorites if we have a client name
-  if (clientName.value) {
-    const favResult = await api.getFavorites(token, clientName.value)
-    if (favResult.success && favResult.data) {
-      favorites.value = favResult.data
-    }
-  }
   
   loading.value = false
   
@@ -458,4 +687,6 @@ onUnmounted(() => {
   }
 })
 </script>
+
+
 
