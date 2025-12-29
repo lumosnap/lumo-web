@@ -147,13 +147,14 @@
 
             <!-- Note Indicator (Overlay) -->
             <button
-              @click.stop.prevent="openNoteModal(image, $event.target as HTMLElement)"
-              class="absolute top-3 right-14 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10 hover:bg-white/40 shadow-sm"
+              @click.stop.prevent="openCommentSidebar(image)"
+              class="absolute top-3 right-14 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10 px-2 gap-1.5"
               :class="image.userFavorite?.notes 
                 ? 'bg-indigo-500 text-white shadow-md opacity-100' 
-                : 'bg-white/20 backdrop-blur-md text-white opacity-0 group-hover:opacity-100 scale-90 hover:scale-100'"
+                : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40 hover:scale-100 w-8'"
             >
               <Icon name="lucide:message-square" size="14" fill="currentColor" />
+              <span v-if="image.notesCount && image.notesCount > 0" class="text-xs font-bold">{{ image.notesCount }}</span>
             </button>
             
             <!-- Filename (Overlay) -->
@@ -270,53 +271,15 @@
       </div>
     </Teleport>
 
-    <!-- Note Popover -->
-    <Teleport to="body">
-      <div 
-        v-if="showNoteModal" 
-        class="fixed inset-0 z-[200000] pointer-events-none"
-      >
-        <!-- Backdrop (Invisible but clickable to close) -->
-        <div class="absolute inset-0 pointer-events-auto" @click="closeNoteModal"></div>
-        
-        <!-- Popover Content -->
-        <div 
-          class="absolute bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-xs p-4 pointer-events-auto border border-white/20 z-50 origin-top transition-all duration-200 ease-out"
-          :class="showNoteModal ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'"
-          :style="popoverStyle"
-        >
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Icon name="lucide:message-square" size="16" class="text-indigo-600" />
-              Photo Note
-            </h3>
-            <button @click="closeNoteModal" class="text-slate-400 hover:text-slate-600 transition-colors">
-              <Icon name="lucide:x" size="16" />
-            </button>
-          </div>
-          
-          <textarea
-            ref="noteTextarea"
-            v-model="noteInput"
-            placeholder="Add your comments..."
-            class="w-full px-3 py-2 rounded-xl bg-white/50 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all mb-3 text-slate-900 placeholder:text-slate-400 min-h-[80px] text-sm resize-none"
-            autofocus
-            @keydown.ctrl.enter="handleSaveNote"
-            @keydown.meta.enter="handleSaveNote"
-          ></textarea>
-          
-          <div class="flex justify-between items-center">
-            <span class="text-xs text-slate-400">Press Enter to save</span>
-            <button 
-              @click="handleSaveNote"
-              class="px-4 py-1.5 rounded-lg bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20"
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <!-- Comment Sidebar -->
+    <CommentSidebar
+      :is-open="showCommentSidebar"
+      :image="currentCommentImage"
+      :client-name="clientName"
+      :loading="commentLoading"
+      @close="closeCommentSidebar"
+      @submit="handleSubmitComment"
+    />
   </div>
 </template>
 
@@ -324,6 +287,7 @@
 import { animals } from '~/utils/animalNames'
 import PhotoSwipeLightbox from 'photoswipe/lightbox'
 import 'photoswipe/style.css'
+import CommentSidebar from '~/components/CommentSidebar.vue'
 
 // Disable default layout for this page
 definePageMeta({
@@ -337,13 +301,13 @@ const api = useApi()
 
 // Types from API
 type AlbumData = NonNullable<Awaited<ReturnType<typeof api.getAlbum>>['data']>
-type ImageData = AlbumData['images'][number]
+type ImageData = AlbumData['images'][number] & { notesCount?: number }
 
 // State
 const loading = ref(true)
 const error = ref(false)
 const albumInfo = ref<AlbumData['album'] | null>(null)
-const images = ref<AlbumData['images']>([])
+const images = ref<ImageData[]>([])
 const pagination = ref<AlbumData['pagination'] | null>(null)
 const showFavoritesOnly = ref(false)
 const showNameModal = ref(false)
@@ -513,51 +477,97 @@ async function toggleFavorite(image: ImageData) {
     }
   }
   
+  
   // Update lightbox UI if open
-  updateLightboxFavoriteUI()
+  updateLightboxUI()
 }
 
-async function saveNote(image: ImageData, note: string) {
+async function handleSubmitComment(note: string) {
   if (!clientName.value) {
     showNameModal.value = true
     return
   }
 
+  if (!currentCommentImage.value) return
+
+  commentLoading.value = true
+  const image = currentCommentImage.value
   const token = route.params.token as string
+
+  // Create favorite with note (comment)
+  // API seems to treat comments as "favorites with notes" based on previous code?
+  // User request says "add the new comment or edit his comment along with others"
+  // The API response shows "comments" array and "userFavorite" object.
+  // If userFavorite exists, we might need to update it. If not, create it.
+  // BUT, "comments" array suggests multiple comments.
+  // Let's look at the data structure in user request:
+  // "comments": [ { "clientName": "...", "notes": "..." } ]
+  // "userFavorite": { "id": 16, "notes": null, ... }
+  // It seems "notes" on userFavorite IS the comment for this user?
+  // Or is there a separate comment API?
+  // The previous code used `api.createFavorite(..., note)` and `api.updateFavoriteNotes`.
+  // So it seems "Favorite with Note" = "Comment".
+  
   const isFavorited = !!image.userFavorite
 
+  let result
   if (isFavorited && image.userFavorite) {
     const recordId = image.userFavorite.id
-    const result = await api.updateFavoriteNotes(token, recordId, clientName.value, note)
-    if (result.success && result.data) {
-      // Update local state
-      const index = images.value.findIndex(img => img.id === image.id)
-      if (index !== -1 && images.value[index]) {
-          images.value[index].userFavorite = {
-              ...images.value[index].userFavorite!,
-              notes: note
-          }
-      }
-    }
+    // If we are "adding" a comment, we are essentially updating the note on the favorite?
+    // Or does the system support multiple comments per user?
+    // The UI shows a list of comments.
+    // If I update the note, does it add a new comment or replace the old one?
+    // Based on "edit his comment", it implies one comment per user per photo?
+    // Let's assume updateFavoriteNotes replaces the note.
+    result = await api.updateFavoriteNotes(token, recordId, clientName.value, note)
   } else {
-    // Create favorite with note
-    const result = await api.createFavorite(token, image.id, clientName.value, note)
-    if (result.success && result.data) {
-      const index = images.value.findIndex(img => img.id === image.id)
-      if (index !== -1 && images.value[index]) {
-        images.value[index].userFavorite = {
-            id: result.data.id,
-            notes: result.data.notes,
-            createdAt: result.data.createdAt
-        }
-        images.value[index].favoriteCount += 1
+    result = await api.createFavorite(token, image.id, clientName.value, note)
+  }
+
+  if (result.success && result.data) {
+    // Update local state
+    const index = images.value.findIndex(img => img.id === image.id)
+    if (index !== -1 && images.value[index]) {
+      const updatedImage = images.value[index]
+      
+      // Update userFavorite
+      updatedImage.userFavorite = {
+        id: result.data.id,
+        notes: result.data.notes,
+        createdAt: result.data.createdAt
       }
+      
+      // If it wasn't favorited before, increment count
+      if (!isFavorited) {
+        updatedImage.favoriteCount += 1
+      }
+      
+      // Update comments list
+      // We need to refresh the comments list. 
+      // Since we don't have the full comment object from response (maybe?), 
+      // let's construct it or refetch. 
+      // Optimistic update:
+      const newCommentObj = {
+        clientName: clientName.value,
+        notes: note,
+        createdAt: new Date().toISOString()
+      }
+      
+      // Remove old comment by this user if exists
+      updatedImage.comments = updatedImage.comments.filter(c => c.clientName !== clientName.value)
+      // Add new comment
+      updatedImage.comments.push(newCommentObj)
+      
+      // Update current image ref for sidebar
+      currentCommentImage.value = updatedImage
     }
   }
-  updateLightboxFavoriteUI()
+  
+  commentLoading.value = false
+  updateLightboxUI()
 }
 
-function updateLightboxFavoriteUI() {
+function updateLightboxUI() {
   if (!lightbox || !lightbox.pswp) return
   
   const currSlide = lightbox.pswp.currSlide
@@ -567,24 +577,44 @@ function updateLightboxFavoriteUI() {
   const image = images.value.find(img => img.url === anchor.href)
   
   if (image) {
-    const isFavorited = !!image.userFavorite
-
-    // Update Heart Icon
+    // Update Favorite Button
     const heartIcon = document.querySelector('.pswp-favorite-icon')
     if (heartIcon) {
+      const isFavorited = !!image.userFavorite
+      const count = image.favoriteCount
+      
+      let html = ''
       if (isFavorited) {
-        heartIcon.classList.add('text-rose-500')
-        heartIcon.classList.remove('text-white')
-        heartIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
-      } else if (image.favoriteCount > 0) {
-        heartIcon.classList.add('text-white')
-        heartIcon.classList.remove('text-rose-500')
-         heartIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
+        html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart text-rose-500"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
       } else {
-        heartIcon.classList.remove('text-rose-500')
-        heartIcon.classList.add('text-white')
-        heartIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
+        html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart text-white"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
       }
+      
+      if (count > 0) {
+        html += `<span class="text-xs font-bold text-white ml-1.5 shadow-sm">${count}</span>`
+      }
+      
+      heartIcon.innerHTML = html
+    }
+
+    // Update Comment Button
+    const commentIcon = document.querySelector('.pswp-comment-icon')
+    if (commentIcon) {
+      const hasUserNote = image.userFavorite && image.userFavorite.notes
+      const count = image.notesCount || 0
+      
+      let html = ''
+      if (hasUserNote) {
+         html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square text-indigo-400"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`
+      } else {
+         html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square text-white"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`
+      }
+      
+      if (count > 0) {
+        html += `<span class="text-xs font-bold text-white ml-1.5 shadow-sm">${count}</span>`
+      }
+      
+      commentIcon.innerHTML = html
     }
   }
 }
@@ -639,10 +669,9 @@ async function saveName() {
   await fetchAlbum(1)
 }
 
-function closeNoteModal() {
-  showNoteModal.value = false
-  currentNoteImage.value = null
-  noteInput.value = ''
+function closeCommentSidebar() {
+  showCommentSidebar.value = false
+  currentCommentImage.value = null
 }
 
 function initLightbox() {
@@ -667,7 +696,7 @@ function initLightbox() {
       order: 9,
       isButton: true,
       tagName: 'button',
-      html: '<div class="pswp-custom-icon pswp-favorite-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></div>',
+      html: '<div class="pswp-custom-icon pswp-favorite-icon flex items-center justify-center w-full h-full"></div>',
       onClick: (event, el, pswp) => {
         const currSlide = pswp.currSlide
         if (currSlide && currSlide.data.element) {
@@ -686,14 +715,14 @@ function initLightbox() {
       order: 10,
       isButton: true,
       tagName: 'button',
-      html: '<div class="pswp-custom-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>',
+      html: '<div class="pswp-custom-icon pswp-comment-icon flex items-center justify-center w-full h-full"></div>',
       onClick: (event, el, pswp) => {
         const currSlide = pswp.currSlide
         if (currSlide && currSlide.data.element) {
           const anchor = currSlide.data.element as HTMLAnchorElement
           const image = images.value.find(img => img.url === anchor.href)
           if (image) {
-             openNoteModal(image, el)
+             openCommentSidebar(image)
           }
         }
       }
@@ -701,73 +730,27 @@ function initLightbox() {
   })
 
   lightbox.on('change', () => {
-    updateLightboxFavoriteUI()
+    updateLightboxUI()
   })
   
   lightbox.on('openingAnimationStart', () => {
-    updateLightboxFavoriteUI()
+    updateLightboxUI()
   })
 
   lightbox.init()
 }
 
-// Note Modal State
-const showNoteModal = ref(false)
-const noteInput = ref('')
-const noteTextarea = ref<HTMLTextAreaElement | null>(null)
-const currentNoteImage = ref<ImageData | null>(null)
-const popoverPosition = ref({ top: 0, left: 0, alignRight: false })
+// Comment Sidebar State
+const showCommentSidebar = ref(false)
+const currentCommentImage = ref<ImageData | null>(null)
+const commentLoading = ref(false)
 
-const popoverStyle = computed(() => {
-  if (popoverPosition.value.alignRight) {
-    return {
-      top: `${popoverPosition.value.top}px`,
-      right: `${window.innerWidth - popoverPosition.value.left}px`
-    }
-  }
-  return {
-    top: `${popoverPosition.value.top}px`,
-    left: `${popoverPosition.value.left}px`
-  }
-})
-
-function openNoteModal(image: ImageData, targetElement?: HTMLElement) {
-  currentNoteImage.value = image
-  noteInput.value = image.userFavorite?.notes || ''
-  
-  if (targetElement) {
-    const rect = targetElement.getBoundingClientRect()
-    // Default to positioning below the button, aligned to the right if it's on the right side of the screen
-    const isRightSide = rect.left > window.innerWidth / 2
-    
-    popoverPosition.value = {
-      top: rect.bottom + 10,
-      left: isRightSide ? rect.right : rect.left,
-      alignRight: isRightSide
-    }
-  } else {
-    // Fallback to center if no target (e.g. from grid)
-    popoverPosition.value = {
-      top: window.innerHeight / 2 - 100,
-      left: window.innerWidth / 2 - 160,
-      alignRight: false
-    }
-  }
-  
-  showNoteModal.value = true
-  
-  // Focus textarea
-  nextTick(() => {
-    noteTextarea.value?.focus()
-  })
+function openCommentSidebar(image: ImageData) {
+  currentCommentImage.value = image
+  showCommentSidebar.value = true
 }
 
-async function handleSaveNote() {
-  if (currentNoteImage.value) {
-    await saveNote(currentNoteImage.value, noteInput.value)
-    closeNoteModal()
-  }
-}
+
 
 // Load data on mount
 onMounted(async () => {
