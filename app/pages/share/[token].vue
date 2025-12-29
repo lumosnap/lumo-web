@@ -134,26 +134,24 @@
             <!-- Favorite Button (Overlay) -->
             <button
               @click.stop.prevent="toggleFavorite(image)"
-              class="absolute top-3 right-3 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10 px-2 gap-1.5"
+              class="absolute top-3 right-3 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10 px-2 gap-1.5 min-w-8"
               :class="image.userFavorite 
-                ? 'bg-rose-500 text-white shadow-lg scale-100' 
-                : (image.favoriteCount > 0 
-                    ? 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40' 
-                    : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40 opacity-0 group-hover:opacity-100 scale-90 hover:scale-100 w-8')"
+                ? 'bg-rose-500 text-white shadow-lg' 
+                : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40'"
             >
-              <Icon name="lucide:heart" size="14" :fill="image.userFavorite || image.favoriteCount > 0 ? 'currentColor' : 'none'" />
+              <Icon name="lucide:heart" size="14" class="shrink-0" :fill="image.userFavorite || image.favoriteCount > 0 ? 'currentColor' : 'none'" />
               <span v-if="image.favoriteCount > 0" class="text-xs font-bold">{{ image.favoriteCount }}</span>
             </button>
 
             <!-- Note Indicator (Overlay) -->
             <button
               @click.stop.prevent="openCommentSidebar(image)"
-              class="absolute top-3 right-14 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10 px-2 gap-1.5"
+              class="absolute top-3 right-14 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10 px-2 gap-1.5 min-w-8"
               :class="image.userFavorite?.notes 
-                ? 'bg-indigo-500 text-white shadow-md opacity-100' 
-                : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40 hover:scale-100 w-8'"
+                ? 'bg-indigo-500 text-white shadow-md' 
+                : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40'"
             >
-              <Icon name="lucide:message-square" size="14" fill="currentColor" />
+              <Icon name="lucide:message-square" size="14" class="shrink-0" fill="currentColor" />
               <span v-if="image.notesCount && image.notesCount > 0" class="text-xs font-bold">{{ image.notesCount }}</span>
             </button>
             
