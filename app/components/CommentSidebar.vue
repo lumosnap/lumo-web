@@ -108,7 +108,8 @@
                 rows="1"
                 class="w-full pl-4 pr-12 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all resize-none text-sm text-slate-900 placeholder:text-slate-400 min-h-[48px] max-h-32"
                 @input="autoResize"
-                @keydown.enter.prevent="handleEnter"
+                @keydown="handleKeydown"
+                @focus.stop
               ></textarea>
               
               <button 
@@ -206,8 +207,12 @@ function autoResize(e: Event) {
   target.style.height = target.scrollHeight + 'px'
 }
 
-function handleEnter(e: KeyboardEvent) {
-  if (!e.shiftKey) {
+function handleKeydown(e: KeyboardEvent) {
+  // Stop propagation to prevent global shortcuts from triggering
+  e.stopPropagation()
+
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
     handleSubmit()
   }
 }
