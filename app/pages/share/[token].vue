@@ -445,11 +445,9 @@ async function loadMoreImages() {
     images.value = [...images.value, ...result.data.images]
     pagination.value = result.data.pagination
 
-    // Wait for Vue to update DOM, then update PhotoSwipe
+    // Wait for Vue to update DOM
+    // PhotoSwipe filters will automatically pick up the new images
     await nextTick()
-    if (lightbox?.pswp) {
-      updatePhotoSwipeContent()
-    }
   }
 
   loadingMore.value = false
@@ -611,53 +609,50 @@ async function handleSubmitComment(note: string) {
 
 function updateLightboxUI() {
   if (!lightbox || !lightbox.pswp) return
-  
-  const currSlide = lightbox.pswp.currSlide
-  if (!currSlide || !currSlide.data.element) return
-  
-  const anchor = currSlide.data.element as HTMLAnchorElement
-  const image = images.value.find(img => img.url === anchor.href)
-  
-  if (image) {
-    // Update Favorite Button
-    const heartIcon = document.querySelector('.pswp-favorite-icon')
-    if (heartIcon) {
-      const isFavorited = !!image.userFavorite
-      const count = image.favoriteCount
-      
-      let html = ''
-      if (isFavorited) {
-        html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart text-rose-500"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
-      } else {
-        html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart text-white"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
-      }
-      
-      if (count > 0) {
-        html += `<span class="text-xs font-bold text-white ml-1.5 shadow-sm">${count}</span>`
-      }
-      
-      heartIcon.innerHTML = html
+
+  const currIndex = lightbox.pswp.currIndex
+  const image = images.value[currIndex]
+
+  if (!image) return
+
+  // Update Favorite Button
+  const heartIcon = document.querySelector('.pswp-favorite-icon')
+  if (heartIcon) {
+    const isFavorited = !!image.userFavorite
+    const count = image.favoriteCount
+
+    let html = ''
+    if (isFavorited) {
+      html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart text-rose-500"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
+    } else {
+      html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart text-white"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
     }
 
-    // Update Comment Button
-    const commentIcon = document.querySelector('.pswp-comment-icon')
-    if (commentIcon) {
-      const hasUserNote = image.userFavorite && image.userFavorite.notes
-      const count = image.notesCount || 0
-      
-      let html = ''
-      if (hasUserNote) {
-         html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square text-indigo-400"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`
-      } else {
-         html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square text-white"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`
-      }
-      
-      if (count > 0) {
-        html += `<span class="text-xs font-bold text-white ml-1.5 shadow-sm">${count}</span>`
-      }
-      
-      commentIcon.innerHTML = html
+    if (count > 0) {
+      html += `<span class="text-xs font-bold text-white ml-1.5 shadow-sm">${count}</span>`
     }
+
+    heartIcon.innerHTML = html
+  }
+
+  // Update Comment Button
+  const commentIcon = document.querySelector('.pswp-comment-icon')
+  if (commentIcon) {
+    const hasUserNote = image.userFavorite && image.userFavorite.notes
+    const count = image.notesCount || 0
+
+    let html = ''
+    if (hasUserNote) {
+       html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square text-indigo-400"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`
+    } else {
+       html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square text-white"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`
+    }
+
+    if (count > 0) {
+      html += `<span class="text-xs font-bold text-white ml-1.5 shadow-sm">${count}</span>`
+    }
+
+    commentIcon.innerHTML = html
   }
 }
 
@@ -718,12 +713,10 @@ function closeCommentSidebar() {
 
 // Double-tap to favorite handler
 function handleDoubleTap(x: number, y: number) {
-  const currSlide = lightbox?.pswp?.currSlide
-  if (!currSlide?.data?.element) return
+  const currIndex = lightbox?.pswp?.currIndex
+  if (currIndex === undefined) return
 
-  const anchor = currSlide.data.element as HTMLAnchorElement
-  const image = images.value.find(img => img.url === anchor.href)
-
+  const image = images.value[currIndex]
   if (image) {
     // Toggle favorite
     toggleFavorite(image)
@@ -745,31 +738,12 @@ function showHeartAnimation(x: number, y: number) {
 }
 
 // Update PhotoSwipe with newly loaded images
-function updatePhotoSwipeContent() {
-  if (!lightbox?.pswp) return
-
-  const pswp = lightbox.pswp
-  const galleryElement = document.querySelector('#gallery') as HTMLElement
-  if (!galleryElement) return
-
-  // Find all anchor elements in the gallery (including newly added ones)
-  const anchors = Array.from(galleryElement.querySelectorAll('a'))
-
-  // Get current dataSource items
-  const dataSource = pswp.options.dataSource as any
-  const currentNumItems = dataSource.items?.length || 0
-
-  // Add new anchor elements to the dataSource.items array
-  for (let i = currentNumItems; i < anchors.length; i++) {
-    dataSource.items.push(anchors[i])
-  }
-
-  // Update numItems so PhotoSwipe knows there are more items to navigate to
-  pswp.numItems = anchors.length
-}
+// No longer needed - the numItems and itemData filters handle dynamic content automatically
+// PhotoSwipe will automatically see new images when images.value is updated
 
 function initLightbox() {
   lightbox = new PhotoSwipeLightbox({
+    // Keep gallery/children for DOM click interception
     gallery: '#gallery',
     children: 'a',
     pswpModule: () => import('photoswipe'),
@@ -785,6 +759,14 @@ function initLightbox() {
     zoomSVG: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-maximize-2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>',
   })
 
+  // Filter to tell PhotoSwipe how many items we have (dynamic)
+  // This allows newly loaded images to be recognized in the lightbox
+  lightbox.addFilter('numItems', (numItems) => {
+    // Return the actual number of images we have (including dynamically loaded ones)
+    // When images are loaded, the DOM anchors are added, and this filter tells PhotoSwipe about them
+    return images.value.length
+  })
+
   // Add Favorite Button
   lightbox.on('uiRegister', () => {
     lightbox!.pswp!.ui!.registerElement({
@@ -794,13 +776,10 @@ function initLightbox() {
       tagName: 'button',
       html: '<div class="pswp-custom-icon pswp-favorite-icon flex items-center justify-center w-full h-full"></div>',
       onClick: (event, el, pswp) => {
-        const currSlide = pswp.currSlide
-        if (currSlide && currSlide.data.element) {
-          const anchor = currSlide.data.element as HTMLAnchorElement
-          const image = images.value.find(img => img.url === anchor.href)
-          if (image) {
-            toggleFavorite(image)
-          }
+        const currentIndex = pswp.currIndex
+        const image = images.value[currentIndex]
+        if (image) {
+          toggleFavorite(image)
         }
       }
     })
@@ -813,13 +792,10 @@ function initLightbox() {
       tagName: 'button',
       html: '<div class="pswp-custom-icon pswp-comment-icon flex items-center justify-center w-full h-full"></div>',
       onClick: (event, el, pswp) => {
-        const currSlide = pswp.currSlide
-        if (currSlide && currSlide.data.element) {
-          const anchor = currSlide.data.element as HTMLAnchorElement
-          const image = images.value.find(img => img.url === anchor.href)
-          if (image) {
-             openCommentSidebar(image)
-          }
+        const currentIndex = pswp.currIndex
+        const image = images.value[currentIndex]
+        if (image) {
+           openCommentSidebar(image)
         }
       }
     })
@@ -835,7 +811,7 @@ function initLightbox() {
       loadMoreIfNeeded(currentIndex, totalItems)
     }
   })
-  
+
   lightbox.on('openingAnimationStart', () => {
     updateLightboxUI()
   })
