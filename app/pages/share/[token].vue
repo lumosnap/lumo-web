@@ -339,6 +339,9 @@ const DOUBLE_TAP_DELAY = 300 // ms between taps to count as double-tap
 const heartAnimations = ref<Array<{ id: number; x: number; y: number }>>([])
 let animationIdCounter = 0
 
+// Pagination threshold for loading next page (75%)
+const LOAD_THRESHOLD = 0.75
+
 // Carousel Logic
 const visibleAnimals = computed(() => {
   const total = animals.length
@@ -419,10 +422,12 @@ const formattedEventDate = computed(() => {
 // Infinite Scroll Handler
 const handleScroll = () => {
   if (!scrollContainer.value || loadingMore.value || !pagination.value?.hasNextPage) return
-  
+
   const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value
-  // Load more when user is 200px from bottom
-  if (scrollHeight - scrollTop - clientHeight < 200) {
+  const scrollPercentage = scrollTop / (scrollHeight - clientHeight)
+
+  // Trigger at 75% scroll
+  if (scrollPercentage >= LOAD_THRESHOLD) {
     loadMoreImages()
   }
 }
@@ -430,18 +435,34 @@ const handleScroll = () => {
 // Load more images (pagination)
 async function loadMoreImages() {
   if (!pagination.value?.hasNextPage || loadingMore.value) return
-  
+
   loadingMore.value = true
   const token = route.params.token as string
   const nextPage = pagination.value.currentPage + 1
-  
+
   const result = await api.getAlbum(token, nextPage, clientName.value, showFavoritesOnly.value)
   if (result.success && result.data) {
     images.value = [...images.value, ...result.data.images]
     pagination.value = result.data.pagination
+
+    // Wait for Vue to update DOM, then update PhotoSwipe
+    await nextTick()
+    if (lightbox?.pswp) {
+      updatePhotoSwipeContent()
+    }
   }
-  
+
   loadingMore.value = false
+}
+
+// Check if we should load more based on current position
+async function loadMoreIfNeeded(currentIndex: number, totalItems: number) {
+  if (!pagination.value?.hasNextPage || loadingMore.value) return
+
+  // Load more when we've viewed 75% of loaded items
+  if (currentIndex >= totalItems * LOAD_THRESHOLD) {
+    await loadMoreImages()
+  }
 }
 
 function onImageLoad(event: Event) {
@@ -723,6 +744,30 @@ function showHeartAnimation(x: number, y: number) {
   }, 1500)
 }
 
+// Update PhotoSwipe with newly loaded images
+function updatePhotoSwipeContent() {
+  if (!lightbox?.pswp) return
+
+  const pswp = lightbox.pswp
+  const galleryElement = document.querySelector('#gallery') as HTMLElement
+  if (!galleryElement) return
+
+  // Find all anchor elements in the gallery (including newly added ones)
+  const anchors = Array.from(galleryElement.querySelectorAll('a'))
+
+  // Get current dataSource items
+  const dataSource = pswp.options.dataSource as any
+  const currentNumItems = dataSource.items?.length || 0
+
+  // Add new anchor elements to the dataSource.items array
+  for (let i = currentNumItems; i < anchors.length; i++) {
+    dataSource.items.push(anchors[i])
+  }
+
+  // Update numItems so PhotoSwipe knows there are more items to navigate to
+  pswp.numItems = anchors.length
+}
+
 function initLightbox() {
   lightbox = new PhotoSwipeLightbox({
     gallery: '#gallery',
@@ -782,6 +827,13 @@ function initLightbox() {
 
   lightbox.on('change', () => {
     updateLightboxUI()
+
+    // Check if we need to load more images (silent pagination)
+    if (lightbox?.pswp) {
+      const currentIndex = lightbox.pswp.currIndex
+      const totalItems = images.value.length
+      loadMoreIfNeeded(currentIndex, totalItems)
+    }
   })
   
   lightbox.on('openingAnimationStart', () => {
