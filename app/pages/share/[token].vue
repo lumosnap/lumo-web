@@ -278,6 +278,20 @@
       @close="closeCommentSidebar"
       @submit="handleSubmitComment"
     />
+
+    <!-- Double Tap Heart Animation -->
+    <Teleport to="body">
+      <div
+        v-for="anim in heartAnimations"
+        :key="anim.id"
+        class="fixed pointer-events-none z-[200000]"
+        :style="{ left: anim.x + 'px', top: anim.y + 'px' }"
+      >
+        <div class="heart-burst">
+          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24"><!-- Icon from Lucide by Lucide Contributors - https://github.com/lucide-icons/lucide/blob/main/LICENSE --><path fill="#f43f5e" stroke="#f43f5e" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676a.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/></svg>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -315,6 +329,15 @@ const loadingMore = ref(false)
 const gridLoading = ref(false)
 const scrollContainer = ref<HTMLElement | null>(null)
 let lightbox: PhotoSwipeLightbox | null = null
+
+// Double-tap detection state
+const lastTapTime = ref(0)
+const lastTapPosition = ref({ x: 0, y: 0 })
+const DOUBLE_TAP_DELAY = 300 // ms between taps to count as double-tap
+
+// Heart animation state
+const heartAnimations = ref<Array<{ id: number; x: number; y: number }>>([])
+let animationIdCounter = 0
 
 // Carousel Logic
 const visibleAnimals = computed(() => {
@@ -672,6 +695,34 @@ function closeCommentSidebar() {
   currentCommentImage.value = null
 }
 
+// Double-tap to favorite handler
+function handleDoubleTap(x: number, y: number) {
+  const currSlide = lightbox?.pswp?.currSlide
+  if (!currSlide?.data?.element) return
+
+  const anchor = currSlide.data.element as HTMLAnchorElement
+  const image = images.value.find(img => img.url === anchor.href)
+
+  if (image) {
+    // Toggle favorite
+    toggleFavorite(image)
+
+    // Show heart animation at tap position
+    showHeartAnimation(x, y)
+  }
+}
+
+// Show heart burst animation at position
+function showHeartAnimation(x: number, y: number) {
+  const id = animationIdCounter++
+  heartAnimations.value.push({ id, x, y })
+
+  // Remove animation after it completes (1.5s)
+  setTimeout(() => {
+    heartAnimations.value = heartAnimations.value.filter(a => a.id !== id)
+  }, 1500)
+}
+
 function initLightbox() {
   lightbox = new PhotoSwipeLightbox({
     gallery: '#gallery',
@@ -681,9 +732,11 @@ function initLightbox() {
     bgOpacity: 0.95,
     showHideOpacity: true,
     trapFocus: false, // Allow focus on our custom modal
+    doubleTapAction: false, // Disable default double-tap zoom - we'll use custom double-tap to favorite
+    pinchToClose: true, // Keep pinch to close gesture
     arrowPrevSVG: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>',
     arrowNextSVG: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg>',
-    closeSVG: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 18 18"/></svg>',
+    closeSVG: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Lucide by Lucide Contributors - https://github.com/lucide-icons/lucide/blob/main/LICENSE --><path fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"/></svg>',
     zoomSVG: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-maximize-2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>',
   })
 
@@ -733,6 +786,34 @@ function initLightbox() {
   
   lightbox.on('openingAnimationStart', () => {
     updateLightboxUI()
+  })
+
+  // Add click event listener for double-tap detection after lightbox is ready
+  lightbox.on('afterInit', () => {
+    const pswpElement = lightbox?.pswp?.element
+    if (pswpElement) {
+      pswpElement.addEventListener('click', (e: any) => {
+        // Don't trigger if clicking on buttons
+        if ((e.target as HTMLElement).closest('button')) return
+
+        const now = Date.now()
+        const point = { x: e.clientX, y: e.clientY }
+
+        // Check if this is a double-tap (within time and distance threshold)
+        if (now - lastTapTime.value < DOUBLE_TAP_DELAY) {
+          const distance = Math.hypot(point.x - lastTapPosition.value.x, point.y - lastTapPosition.value.y)
+          if (distance < 50) { // Within 50px - same location
+            e.preventDefault()
+            e.stopPropagation()
+            handleDoubleTap(point.x, point.y)
+            return
+          }
+        }
+
+        lastTapTime.value = now
+        lastTapPosition.value = point
+      })
+    }
   })
 
   lightbox.init()
@@ -871,6 +952,33 @@ onUnmounted(() => {
   opacity: 0.8;
   margin-top: 15px;
   margin-left: 20px;
+}
+
+/* Instagram-style Heart Burst Animation */
+.heart-burst {
+  animation: heartBurst 1.5s ease-out forwards;
+  position: relative;
+}
+
+@keyframes heartBurst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0) rotate(-15deg);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.3) rotate(0deg);
+  }
+  30% {
+    transform: translate(-50%, -50%) scale(0.9) rotate(5deg);
+  }
+  45% {
+    transform: translate(-50%, -50%) scale(1.1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.5) rotate(0deg);
+  }
 }
 </style>
 
