@@ -135,11 +135,21 @@
             <button
               @click.stop.prevent="toggleFavorite(image)"
               class="absolute top-3 right-3 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10 px-2 gap-1.5 min-w-8"
-              :class="image.userFavorite 
-                ? 'bg-rose-500 text-white shadow-lg' 
-                : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40'"
+              :class="[
+                pendingFavorites.has(image.id) ? 'opacity-70 cursor-wait' : '',
+                image.userFavorite 
+                  ? 'bg-rose-500 text-white shadow-lg' 
+                  : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40'
+              ]"
+              :disabled="pendingFavorites.has(image.id)"
             >
-              <Icon name="lucide:heart" size="14" class="shrink-0" :fill="image.userFavorite || image.favoriteCount > 0 ? 'currentColor' : 'none'" />
+              <Icon 
+                name="lucide:heart" 
+                size="14" 
+                class="shrink-0" 
+                :class="{ 'animate-pulse': pendingFavorites.has(image.id) }"
+                :fill="image.userFavorite || image.favoriteCount > 0 ? 'currentColor' : 'none'" 
+              />
               <span v-if="image.favoriteCount > 0" class="text-xs font-bold">{{ image.favoriteCount }}</span>
             </button>
 
@@ -322,6 +332,7 @@ const albumInfo = ref<AlbumData['album'] | null>(null)
 const images = ref<ImageData[]>([])
 const pagination = ref<AlbumData['pagination'] | null>(null)
 const showFavoritesOnly = ref(false)
+const pendingFavorites = ref<Set<number>>(new Set())
 const showNameModal = ref(false)
 const nameInput = ref('')
 const selectedAnimalIndex = ref(0)
@@ -489,37 +500,71 @@ async function toggleFavorite(image: ImageData) {
 
   const token = route.params.token as string
   const isFavorited = !!image.userFavorite
+  const index = images.value.findIndex(img => img.id === image.id)
+  
+  if (index === -1) return
 
-  if (isFavorited && image.userFavorite) {
-    const recordId = image.userFavorite.id
-    const result = await api.deleteFavorite(token, recordId, clientName.value)
-    if (result.success) {
-      // Optimistic update
-      const index = images.value.findIndex(img => img.id === image.id)
-      if (index !== -1 && images.value[index]) {
-        images.value[index].userFavorite = null
-        images.value[index].favoriteCount = Math.max(0, images.value[index].favoriteCount - 1)
+  // Store previous state for rollback
+  const previousState = {
+    userFavorite: images.value[index]?.userFavorite ? { ...images.value[index].userFavorite } : null,
+    favoriteCount: images.value[index]?.favoriteCount || 0
+  }
+
+  // Track pending operation
+  pendingFavorites.value.add(image.id)
+
+  // Optimistic update - update UI immediately
+  if (images.value[index]) {
+    if (isFavorited) {
+      // Removing favorite
+      images.value[index].userFavorite = null
+      images.value[index].favoriteCount = Math.max(0, images.value[index].favoriteCount - 1)
+    } else {
+      // Adding favorite (temporary data, will be replaced with actual data from API)
+      images.value[index].userFavorite = {
+        id: 0, // Temporary ID, will be replaced
+        notes: '',
+        createdAt: new Date().toISOString()
       }
-    }
-  } else {
-    const result = await api.createFavorite(token, image.id, clientName.value)
-    if (result.success && result.data) {
-      // Optimistic update
-      const index = images.value.findIndex(img => img.id === image.id)
-      if (index !== -1 && images.value[index]) {
-        images.value[index].userFavorite = {
-            id: result.data.id,
-            notes: result.data.notes,
-            createdAt: result.data.createdAt
-        }
-        images.value[index].favoriteCount += 1
-      }
+      images.value[index].favoriteCount += 1
     }
   }
-  
-  
-  // Update lightbox UI if open
+
+  // Update lightbox UI immediately for instant feedback
   updateLightboxUI()
+
+  try {
+    if (isFavorited && previousState.userFavorite) {
+      const recordId = previousState.userFavorite.id
+      const result = await api.deleteFavorite(token, recordId, clientName.value)
+      if (!result.success) {
+        throw new Error('Failed to remove favorite')
+      }
+    } else {
+      const result = await api.createFavorite(token, image.id, clientName.value)
+      if (!result.success || !result.data) {
+        throw new Error('Failed to add favorite')
+      }
+      // Update with actual data from API
+      if (images.value[index]) {
+        images.value[index].userFavorite = {
+          id: result.data.id,
+          notes: result.data.notes,
+          createdAt: result.data.createdAt
+        }
+      }
+    }
+  } catch (error) {
+    // Rollback on error
+    if (images.value[index]) {
+      images.value[index].userFavorite = previousState.userFavorite
+      images.value[index].favoriteCount = previousState.favoriteCount
+    }
+    updateLightboxUI()
+  } finally {
+    // Remove from pending set
+    pendingFavorites.value.delete(image.id)
+  }
 }
 
 async function handleSubmitComment(note: string) {
@@ -612,20 +657,21 @@ function updateLightboxUI() {
 
   const currIndex = lightbox.pswp.currIndex
   const image = images.value[currIndex]
-
   if (!image) return
+
+  const isPending = pendingFavorites.value.has(image.id)
 
   // Update Favorite Button
   const heartIcon = document.querySelector('.pswp-favorite-icon')
   if (heartIcon) {
     const isFavorited = !!image.userFavorite
-    const count = image.favoriteCount
+    const count = image.favoriteCount || 0
 
     let html = ''
     if (isFavorited) {
-      html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart text-rose-500"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
+      html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart text-rose-500 ${isPending ? 'animate-pulse' : ''}"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
     } else {
-      html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart text-white"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
+      html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart text-white ${isPending ? 'animate-pulse' : ''}"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
     }
 
     if (count > 0) {
@@ -633,6 +679,16 @@ function updateLightboxUI() {
     }
 
     heartIcon.innerHTML = html
+    
+    // Add or remove pending state class to the button
+    const favButton = document.querySelector('.pswp__button--favorite-button')
+    if (favButton) {
+      if (isPending) {
+        favButton.classList.add('opacity-70', 'cursor-wait')
+      } else {
+        favButton.classList.remove('opacity-70', 'cursor-wait')
+      }
+    }
   }
 
   // Update Comment Button
