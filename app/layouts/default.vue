@@ -24,10 +24,12 @@
                     class="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">How It
                     Works</a>
 
-                <MagneticButton
-                    class="bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/20 px-5 py-2 rounded-full text-sm font-semibold">
-                    <span>Download App</span>
-                </MagneticButton>
+                <a href="https://github.com/lumosnap/lumo-desktop/releases" target="_blank" rel="noopener noreferrer">
+                    <MagneticButton
+                        class="bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/20 px-5 py-2 rounded-full text-sm font-semibold">
+                        <span>Download App</span>
+                    </MagneticButton>
+                </a>
             </div>
 
             <button class="md:hidden p-2 text-slate-900" @click="toggleMenu">
@@ -44,8 +46,10 @@
         <div class="flex flex-col items-center gap-8 text-2xl font-light text-slate-900">
             <a href="#features" class="mobile-link hover:text-indigo-600 transition-colors" @click="toggleMenu">Features</a>
             <a href="#how-it-works" class="mobile-link hover:text-indigo-600 transition-colors" @click="toggleMenu">How It Works</a>
-            <button class="mt-8 bg-slate-900 text-white px-8 py-3 rounded-full text-lg font-medium">Download
-                App</button>
+            <a href="https://github.com/lumosnap/lumo-desktop/releases" target="_blank" rel="noopener noreferrer"
+                class="mt-8 bg-slate-900 text-white px-8 py-3 rounded-full text-lg font-medium">
+                Download App
+            </a>
         </div>
     </div>
 
