@@ -123,10 +123,50 @@ export function useApi() {
         })
     }
 
+    // Get photographer public details
+    async function getPhotographer(photographerId: string) {
+        return fetchApi<{
+            id: string
+            businessName: string
+            phone: string
+        }>(`/api/v1/photographer/${photographerId}`)
+    }
+
+    // Create booking for a photographer
+    async function createBooking(
+        photographerId: string,
+        data: {
+            eventType: string
+            name: string
+            phone: string
+            eventDate: string
+            location: string
+            details?: string
+        }
+    ) {
+        return fetchApi<{
+            id: number
+            photographerId: string
+            eventType: string
+            name: string
+            phone: string
+            eventDate: string
+            location: string
+            details: string | null
+            createdAt: string
+            updatedAt: string
+        }>(`/api/v1/photographer/${photographerId}/booking`, {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
+    }
+
     return {
         getAlbum,
         createFavorite,
         deleteFavorite,
         updateFavoriteNotes,
+        getPhotographer,
+        createBooking,
     }
 }
