@@ -20,18 +20,15 @@
                 all from one beautiful link.
             </p>
 
-            <div class="flex flex-col sm:flex-row items-center gap-4 mb-20">
-                <a href="https://github.com/lumosnap/lumo-desktop/releases" target="_blank" rel="noopener noreferrer">
+            <div class="flex flex-col items-center gap-4 mb-20">
+                <a href="https://connect.lumosnap.com" target="_blank" rel="noopener noreferrer">
                     <MagneticButton
-                        class="bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/20 w-full sm:w-auto px-8 py-4 rounded-full font-semibold">
-                        <span>Download for Free</span>
+                        class="bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/20 w-full sm:w-auto px-8 py-4 rounded-full font-semibold flex items-center gap-2">
+                        <Icon name="lucide:download" size="20" />
+                        <span>Get Started with LumoSnap</span>
                     </MagneticButton>
                 </a>
-                <MagneticButton
-                    class="bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm hover:shadow-md w-full sm:w-auto px-8 py-4 rounded-full font-semibold">
-                    <span>See How It Works</span>
-                    <Icon name="lucide:play" size="16" fill="currentColor" />
-                </MagneticButton>
+                <p class="text-sm text-slate-400">Available for Windows, Mac, and Linux</p>
             </div>
 
             <!-- Hero Visual - Light Mode Browser Mockup -->
@@ -181,10 +178,10 @@
                     class="timeline-line hidden md:block">
                 </div>
                 <!-- Mobile Line -->
-                <div class="absolute left-8 top-0 bottom-0 w-px bg-slate-200 -z-10 md:hidden"></div>
+                <div class="absolute left-8 top-0 bottom-0 w-px bg-slate-200 -z-10 hidden"></div>
                 <!-- Marker Dot -->
                 <div
-                    class="timeline-marker text-rose-500">
+                    class="timeline-marker text-rose-500 hidden md:flex">
                     1</div>
 
                 <!-- Text Content -->
@@ -332,10 +329,10 @@
                     class="timeline-line hidden md:block">
                 </div>
                 <!-- Mobile Line -->
-                <div class="absolute left-8 top-0 bottom-0 w-px bg-slate-200 -z-10 md:hidden"></div>
+                <div class="absolute left-8 top-0 bottom-0 w-px bg-slate-200 -z-10 hidden"></div>
                 <!-- Marker Dot -->
                 <div
-                    class="timeline-marker text-orange-500">
+                    class="timeline-marker text-orange-500 hidden md:flex">
                     2</div>
 
                 <!-- Text Content -->
@@ -395,10 +392,10 @@
                     class="timeline-line hidden md:block">
                 </div>
                 <!-- Mobile Line -->
-                <div class="absolute left-8 top-0 bottom-0 w-px bg-slate-200 -z-10 md:hidden"></div>
+                <div class="absolute left-8 top-0 bottom-0 w-px bg-slate-200 -z-10 hidden"></div>
                 <!-- Marker Dot -->
                 <div
-                    class="timeline-marker text-amber-500">
+                    class="timeline-marker text-amber-500 hidden md:flex">
                     3</div>
 
                 <!-- Text Content -->
@@ -689,17 +686,12 @@
                     delivery
                     process.</p>
 
-                <div class="flex flex-col sm:flex-row justify-center gap-4">
-                    <a href="https://github.com/lumosnap/lumo-desktop/releases" target="_blank" rel="noopener noreferrer"
-                        class="px-8 py-4 bg-white text-slate-900 rounded-full font-bold hover:bg-slate-100 transition-colors flex items-center justify-center gap-2">
-                        <Icon name="lucide:monitor" size="20" /> Download for Windows
-                    </a>
-                    <a href="https://github.com/lumosnap/lumo-desktop/releases" target="_blank" rel="noopener noreferrer"
-                        class="px-8 py-4 bg-transparent border border-white/20 text-white rounded-full font-bold hover:bg-white/10 transition-colors flex items-center justify-center gap-2">
-                        <Icon name="lucide:monitor" size="20" /> Download for Mac
-                    </a>
-                </div>
-                <p class="mt-6 text-sm text-slate-400 opacity-80">Free to use • No sign-up required to start</p>
+                <a href="https://connect.lumosnap.com" target="_blank" rel="noopener noreferrer"
+                    class="inline-flex px-8 py-4 bg-white text-slate-900 rounded-full font-bold hover:bg-slate-100 transition-colors items-center justify-center gap-2">
+                    <Icon name="lucide:download" size="20" /> Get Started with LumoSnap
+                </a>
+                <p class="mt-4 text-sm text-slate-300">Available for Windows, Mac, and Linux</p>
+                <p class="mt-2 text-sm text-slate-400 opacity-80">Free to use • No sign-up required to start</p>
             </div>
         </div>
     </section>
