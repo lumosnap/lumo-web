@@ -8,42 +8,35 @@ export function useApi() {
         options: RequestInit = {}
     ): Promise<{ success: boolean; data?: T; message?: string; error?: string }> {
         try {
-            const response = await fetch(`${baseUrl}${endpoint}`, {
+            const response = await $fetch<any>(endpoint, {
+                baseURL: baseUrl,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...options.headers,
+                    ...options.headers as Record<string, string>,
                 },
-                ...options,
+                ...options as any,
             })
-
-            const json = await response.json()
-
-            if (!response.ok) {
-                return {
-                    success: false,
-                    error: json.message || `Error: ${response.status}`,
-                }
-            }
 
             return {
                 success: true,
-                data: json.data,
-                message: json.message,
+                data: response.data,
+                message: response.message,
             }
-        } catch (error) {
+        } catch (error: any) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Network error',
+                error: error.data?.message || error.message || 'Network error',
             }
         }
     }
 
     // Get album by share token
-    async function getAlbum(token: string, page: number = 1, clientName?: string, favoritesOnly?: boolean) {
+    async function getAlbum(token: string, page: number = 1, clientName?: string, favoritesOnly?: boolean, limit?: number) {
         const params = new URLSearchParams()
         params.append('page', page.toString())
         if (clientName) params.append('clientName', clientName)
         if (favoritesOnly) params.append('favorites', 'true')
+        if (limit) params.append('limit', limit.toString())
 
         return fetchApi<{
             album: {

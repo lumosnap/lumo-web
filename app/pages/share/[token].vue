@@ -4,7 +4,8 @@
     <!-- Loading State (Skeleton) -->
     <div v-if="loading" class="flex-1 flex flex-col md:flex-row overflow-hidden animate-fade-in">
       <!-- Left Sidebar Skeleton -->
-      <aside class="w-full md:w-80 lg:w-96 border-b md:border-b-0 md:border-r border-slate-200 bg-white p-6 flex flex-col gap-6 shrink-0 z-10">
+      <aside
+        class="w-full md:w-80 lg:w-96 border-b md:border-b-0 md:border-r border-slate-200 bg-white p-6 flex flex-col gap-6 shrink-0 z-10">
         <div>
           <div class="flex items-center justify-between mb-2">
             <div class="h-4 w-20 bg-slate-200 rounded animate-pulse"></div>
@@ -39,23 +40,27 @@
       <div class="text-6xl mb-6">😕</div>
       <h1 class="text-3xl font-bold mb-4 text-slate-900">Album Not Found</h1>
       <p class="text-slate-500 mb-8 leading-relaxed">
-        This album link may have expired or the album doesn't exist. Please check with the photographer for a valid link.
+        This album link may have expired or the album doesn't exist. Please check with the photographer for a valid
+        link.
       </p>
-      <NuxtLink to="/" class="inline-flex items-center justify-center px-6 py-3 bg-slate-900 text-white rounded-full font-semibold hover:bg-slate-800 transition-colors">
+      <NuxtLink to="/"
+        class="inline-flex items-center justify-center px-6 py-3 bg-slate-900 text-white rounded-full font-semibold hover:bg-slate-800 transition-colors">
         Go to Homepage
       </NuxtLink>
     </div>
 
     <!-- Main Content Area (Split View) -->
     <div v-else-if="albumInfo" class="flex-1 flex flex-col md:flex-row overflow-hidden animate-fade-in">
-      
+
       <!-- Left Sidebar -->
-      <aside class="w-full md:w-80 lg:w-96 border-b md:border-b-0 md:border-r border-slate-200 bg-white p-6 flex flex-col gap-6 shrink-0 overflow-y-auto z-10 shadow-sm md:shadow-none">
+      <aside
+        class="w-full md:w-80 lg:w-96 border-b md:border-b-0 md:border-r border-slate-200 bg-white p-6 flex flex-col gap-6 shrink-0 overflow-y-auto z-10 shadow-sm md:shadow-none">
         <!-- Album Info -->
         <div>
           <div class="flex items-center justify-between mb-2">
             <div class="text-xs font-bold text-indigo-600 uppercase tracking-wider">{{ albumInfo.ownerName }}</div>
-            <div class="flex items-center gap-1.5 text-emerald-600 text-[10px] font-medium bg-emerald-50 px-2 py-1 rounded-full">
+            <div
+              class="flex items-center gap-1.5 text-emerald-600 text-[10px] font-medium bg-emerald-50 px-2 py-1 rounded-full">
               <Icon name="lucide:check-circle-2" size="12" /> Synced
             </div>
           </div>
@@ -67,31 +72,31 @@
 
         <!-- Client Profile Card -->
         <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 shadow-inner">
-          
+
           <!-- Favorites Toggle -->
-          <button 
-            @click="toggleShowFavorites"
+          <button @click="toggleShowFavorites"
             class="w-full flex items-center justify-center gap-2 text-sm font-medium px-4 py-2 rounded-xl shadow-sm border transition-all duration-200"
-            :class="showFavoritesOnly 
-              ? 'bg-rose-50 text-rose-600 border-rose-100 ring-2 ring-rose-100' 
-              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'"
-          >
+            :class="showFavoritesOnly
+              ? 'bg-rose-50 text-rose-600 border-rose-100 ring-2 ring-rose-100'
+              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'">
             <Icon name="lucide:heart" size="16" :fill="showFavoritesOnly ? 'currentColor' : 'none'" />
-            <span>{{ showFavoritesOnly ? 'Show All Images' : `Show Favorites (${albumInfo?.favoritedPhotosCount || 0})` }}</span>
+            <span>{{ showFavoritesOnly ? 'Show All Images' : `Show Favorites (${albumInfo?.favoritedPhotosCount || 0})`
+              }}</span>
           </button>
         </div>
       </aside>
 
       <!-- Right Grid Area -->
       <main class="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 relative" ref="scrollContainer" @scroll="handleScroll">
-        
+
         <!-- Grid Loading State -->
         <div v-if="gridLoading" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           <div v-for="i in 10" :key="i" class="aspect-[4/5] rounded-xl bg-slate-200 animate-pulse"></div>
         </div>
 
         <!-- Empty State -->
-        <div v-else-if="images.length === 0" class="h-full flex flex-col items-center justify-center text-center p-8 opacity-60">
+        <div v-else-if="images.length === 0"
+          class="h-full flex flex-col items-center justify-center text-center p-8 opacity-60">
           <div class="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center mb-6 text-4xl">
             {{ showFavoritesOnly ? '💔' : '📷' }}
           </div>
@@ -99,74 +104,58 @@
             {{ showFavoritesOnly ? 'No favorites yet' : 'No photos found' }}
           </h2>
           <p class="text-slate-500 max-w-xs">
-            {{ showFavoritesOnly ? 'Tap the heart icon on photos you love to add them to your collection.' : 'This album seems to be empty.' }}
+            <span v-if="showFavoritesOnly">Tap the heart icon on photos you love to add them to your collection.</span>
+            <span v-else>This album seems to be empty.</span>
           </p>
-          <button 
-            v-if="showFavoritesOnly"
-            @click="toggleShowFavorites"
-            class="mt-6 px-6 py-2 bg-white border border-slate-200 rounded-full text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
-          >
+          <button v-if="showFavoritesOnly" @click="toggleShowFavorites"
+            class="mt-6 px-6 py-2 bg-white border border-slate-200 rounded-full text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm">
             View All Photos
           </button>
         </div>
 
         <!-- Image Grid (Photoswipe) -->
         <div v-else id="gallery" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          <a 
-            v-for="image in images" 
-            :key="image.id"
-            :href="image.url"
-            :data-pswp-width="image.width"
-            :data-pswp-height="image.height"
-            target="_blank"
-            class="group relative aspect-[4/5] rounded-xl overflow-hidden bg-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all duration-300 block"
-          >
-            <img 
-              :src="image.thumbnailUrl || image.url"
-              :alt="image.originalFilename"
-              loading="lazy"
-              class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-            />
-            
+          <a v-for="(image, index) in images" :key="image.id" :href="image.url" :data-pswp-width="image.width"
+            :data-pswp-height="image.height" target="_blank"
+            class="group relative aspect-[4/5] rounded-xl overflow-hidden bg-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all duration-300 block">
+            <img :src="image.thumbnailUrl || image.url" :alt="image.originalFilename"
+              :loading="index < 20 ? 'eager' : 'lazy'" :fetchpriority="index < 20 ? 'high' : 'auto'" decoding="async"
+              class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+
             <!-- Gradient Overlay -->
-            <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div
+              class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            </div>
 
             <!-- Favorite Button (Overlay) -->
-            <button
-              @click.stop.prevent="toggleFavorite(image)"
+            <button @click.stop.prevent="toggleFavorite(image)"
               class="absolute top-3 right-3 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10 px-2 gap-1.5 min-w-8"
               :class="[
                 pendingFavorites.has(image.id) ? 'opacity-70 cursor-wait' : '',
-                image.userFavorite 
-                  ? 'bg-rose-500 text-white shadow-lg' 
+                image.userFavorite
+                  ? 'bg-rose-500 text-white shadow-lg'
                   : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40'
-              ]"
-              :disabled="pendingFavorites.has(image.id)"
-            >
-              <Icon 
-                name="lucide:heart" 
-                size="14" 
-                class="shrink-0" 
+              ]" :disabled="pendingFavorites.has(image.id)">
+              <Icon name="lucide:heart" size="14" class="shrink-0"
                 :class="{ 'animate-pulse': pendingFavorites.has(image.id) }"
-                :fill="image.userFavorite || image.favoriteCount > 0 ? 'currentColor' : 'none'" 
-              />
+                :fill="image.userFavorite || image.favoriteCount > 0 ? 'currentColor' : 'none'" />
               <span v-if="image.favoriteCount > 0" class="text-xs font-bold">{{ image.favoriteCount }}</span>
             </button>
 
             <!-- Note Indicator (Overlay) -->
-            <button
-              @click.stop.prevent="openCommentSidebar(image)"
+            <button @click.stop.prevent="openCommentSidebar(image)"
               class="absolute top-3 right-14 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10 px-2 gap-1.5 min-w-8"
-              :class="image.userFavorite?.notes 
-                ? 'bg-indigo-500 text-white shadow-md' 
-                : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40'"
-            >
+              :class="image.userFavorite?.notes
+                ? 'bg-indigo-500 text-white shadow-md'
+                : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40'">
               <Icon name="lucide:message-square" size="14" class="shrink-0" fill="currentColor" />
-              <span v-if="image.notesCount && image.notesCount > 0" class="text-xs font-bold">{{ image.notesCount }}</span>
+              <span v-if="image.notesCount && image.notesCount > 0" class="text-xs font-bold">{{ image.notesCount
+                }}</span>
             </button>
-            
+
             <!-- Filename (Overlay) -->
-            <div class="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div
+              class="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <p class="text-white text-xs font-medium truncate">{{ image.originalFilename }}</p>
             </div>
           </a>
@@ -181,51 +170,47 @@
 
     <!-- Client Name Modal -->
     <Teleport to="body">
-      <div v-if="showNameModal" class="fixed inset-0 z-[200000] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+      <div v-if="showNameModal"
+        class="fixed inset-0 z-[200000] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 animate-fade-in relative overflow-hidden">
           <!-- Background Decoration -->
           <div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-50 to-white -z-10"></div>
-          
+
           <div class="text-center mb-8">
             <h2 class="text-3xl font-bold text-slate-900 mb-2 font-serif">Welcome!</h2>
             <p class="text-slate-500 text-sm font-medium">
               Let's get you set up to browse photos
             </p>
           </div>
-          
+
           <form @submit.prevent="saveName">
             <!-- Animal Carousel -->
             <div class="mb-8">
-              <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 text-center">Pick your spirit animal</label>
-              
+              <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 text-center">Pick your
+                spirit animal</label>
+
               <div class="relative flex items-center justify-center h-48">
                 <!-- Prev Button -->
-                <button 
-                  type="button"
-                  @click="prevAnimal"
-                  class="absolute left-0 z-10 w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-colors shadow-sm"
-                >
+                <button type="button" @click="prevAnimal"
+                  class="absolute left-0 z-10 w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-colors shadow-sm">
                   <Icon name="lucide:chevron-left" size="16" />
                 </button>
 
                 <!-- Carousel Window -->
                 <div class="overflow-hidden w-full px-10 py-8">
-                  <div 
-                    class="flex items-center justify-center transition-transform duration-300 ease-out"
-                    :style="{ transform: `translateX(0)` }"
-                  >
-                    <div 
-                      v-for="(animal, index) in visibleAnimals" 
-                      :key="animal?.name || index"
+                  <div class="flex items-center justify-center transition-transform duration-300 ease-out"
+                    :style="{ transform: `translateX(0)` }">
+                    <div v-for="(animal, index) in visibleAnimals" :key="animal?.name || index"
                       @click="selectAnimal(index)"
                       class="flex flex-col items-center justify-center cursor-pointer transition-all duration-300 transform px-2"
-                      :class="index === 1 ? 'scale-125 opacity-100 z-10' : 'scale-75 opacity-40 blur-[1px]'"
-                    >
+                      :class="index === 1 ? 'scale-125 opacity-100 z-10' : 'scale-75 opacity-40 blur-[1px]'">
                       <template v-if="animal">
-                        <div class="text-6xl mb-2 transition-transform duration-300" :class="{ 'animate-bounce-subtle': index === 1 }">
+                        <div class="text-6xl mb-2 transition-transform duration-300"
+                          :class="{ 'animate-bounce-subtle': index === 1 }">
                           {{ animal.emoji }}
                         </div>
-                        <div class="text-xs font-bold capitalize transition-colors duration-300" :class="index === 1 ? 'text-indigo-600' : 'text-transparent'">
+                        <div class="text-xs font-bold capitalize transition-colors duration-300"
+                          :class="index === 1 ? 'text-indigo-600' : 'text-transparent'">
                           {{ animal.name }}
                         </div>
                       </template>
@@ -234,11 +219,8 @@
                 </div>
 
                 <!-- Next Button -->
-                <button 
-                  type="button"
-                  @click="nextAnimal"
-                  class="absolute right-0 z-10 w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-colors shadow-sm"
-                >
+                <button type="button" @click="nextAnimal"
+                  class="absolute right-0 z-10 w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-colors shadow-sm">
                   <Icon name="lucide:chevron-right" size="16" />
                 </button>
               </div>
@@ -248,26 +230,18 @@
             <div class="mb-8">
               <div class="relative group">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Icon name="lucide:user" size="18" class="text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                  <Icon name="lucide:user" size="18"
+                    class="text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
                 </div>
-                <input
-                  v-model="nameInput"
-                  type="text"
-                  placeholder="Enter your name"
+                <input v-model="nameInput" type="text" placeholder="Enter your name"
                   class="w-full pl-11 pr-4 py-4 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-indigo-500 focus:bg-white outline-none transition-all text-slate-900 placeholder:text-slate-400 font-medium text-lg"
-                  autofocus
-                  required
-                  minlength="1"
-                  maxlength="50"
-                />
+                  autofocus required minlength="1" maxlength="50" />
               </div>
             </div>
-            
-            <button 
-              type="submit" 
+
+            <button type="submit"
               class="w-full py-4 rounded-2xl bg-slate-900 text-white font-bold text-lg hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98]"
-              :disabled="!nameInput.trim()"
-            >
+              :disabled="!nameInput.trim()">
               Start Browsing
             </button>
 
@@ -280,25 +254,19 @@
     </Teleport>
 
     <!-- Comment Sidebar -->
-    <CommentSidebar
-      :is-open="showCommentSidebar"
-      :image="currentCommentImage"
-      :client-name="clientName"
-      :loading="commentLoading"
-      @close="closeCommentSidebar"
-      @submit="handleSubmitComment"
-    />
+    <CommentSidebar :is-open="showCommentSidebar" :image="currentCommentImage" :client-name="clientName"
+      :loading="commentLoading" @close="closeCommentSidebar" @submit="handleSubmitComment" />
 
     <!-- Double Tap Heart Animation -->
     <Teleport to="body">
-      <div
-        v-for="anim in heartAnimations"
-        :key="anim.id"
-        class="fixed pointer-events-none z-[200000]"
-        :style="{ left: anim.x + 'px', top: anim.y + 'px' }"
-      >
+      <div v-for="anim in heartAnimations" :key="anim.id" class="fixed pointer-events-none z-[200000]"
+        :style="{ left: anim.x + 'px', top: anim.y + 'px' }">
         <div class="heart-burst">
-          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24"><!-- Icon from Lucide by Lucide Contributors - https://github.com/lucide-icons/lucide/blob/main/LICENSE --><path fill="#f43f5e" stroke="#f43f5e" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676a.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"
+            viewBox="0 0 24 24"><!-- Icon from Lucide by Lucide Contributors - https://github.com/lucide-icons/lucide/blob/main/LICENSE -->
+            <path fill="#f43f5e" stroke="#f43f5e" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676a.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5" />
+          </svg>
         </div>
       </div>
     </Teleport>
@@ -320,17 +288,58 @@ definePageMeta({
 
 const route = useRoute()
 const api = useApi()
+const token = route.params.token as string
 
 // Types from API
 type AlbumData = NonNullable<Awaited<ReturnType<typeof api.getAlbum>>['data']>
 type ImageData = AlbumData['images'][number] & { notesCount?: number }
 
-// State
-const loading = ref(true)
-const error = ref(false)
-const albumInfo = ref<AlbumData['album'] | null>(null)
-const images = ref<ImageData[]>([])
-const pagination = ref<AlbumData['pagination'] | null>(null)
+// Server-side data fetching
+// Use limit 40 to render only 40 images first
+const { data: albumData } = await useAsyncData(
+  `album-${token}`,
+  () => api.getAlbum(token, 1, undefined, false, 40),
+  {
+    // Don't watch route or other reactive refs automatically unless specified
+    // We handle client-side updates manually
+  }
+)
+
+// Initialize state from SSR data
+const loading = ref(!albumData.value?.success)
+const error = ref(!albumData.value?.success && !!albumData.value?.error)
+const albumInfo = ref<AlbumData['album'] | null>(albumData.value?.data?.album || null)
+const images = ref<ImageData[]>(albumData.value?.data?.images || [])
+const pagination = ref<AlbumData['pagination'] | null>(albumData.value?.data?.pagination || null)
+
+// Preload first 40 images for LCP and preconnect to CDN
+if (images.value.length > 0) {
+  const firstImage = images.value[0]
+  const imageUrl = firstImage?.thumbnailUrl || firstImage?.url
+  let imageDomain = ''
+  try {
+    if (imageUrl) {
+      const urlObj = new URL(imageUrl, useRuntimeConfig().public.apiBase)
+      imageDomain = urlObj.origin
+    }
+  } catch (e) { /* ignore */ }
+
+  useHead({
+    link: [
+      ...(imageDomain ? [{
+        rel: 'preconnect',
+        href: imageDomain,
+        crossorigin: 'anonymous' as const
+      }] : []),
+      ...images.value.slice(0, 40).map(img => ({
+        rel: 'preload',
+        as: 'image' as const,
+        href: img.thumbnailUrl || img.url
+      }))
+    ]
+  })
+}
+
 const showFavoritesOnly = ref(false)
 const pendingFavorites = ref<Set<number>>(new Set())
 const showNameModal = ref(false)
@@ -380,27 +389,27 @@ function selectAnimal(viewIndex: number) {
 async function toggleShowFavorites() {
   showFavoritesOnly.value = !showFavoritesOnly.value
   gridLoading.value = true
-  
+
   // Destroy lightbox as the gallery element will be removed
   if (lightbox) {
     lightbox.destroy()
     lightbox = null
   }
-  
+
   // Reset pagination and images
   pagination.value = null
   images.value = []
-  
+
   const token = route.params.token as string
   const result = await api.getAlbum(token, 1, clientName.value, showFavoritesOnly.value)
-  
+
   if (result.success && result.data) {
     images.value = result.data.images
     pagination.value = result.data.pagination
   }
-  
+
   gridLoading.value = false
-  
+
   // Re-initialize lightbox after DOM update
   await nextTick()
   initLightbox()
@@ -482,7 +491,7 @@ function onImageLoad(event: Event) {
 // Methods
 function openLightbox(image: ImageData) {
   if (!lightbox) return
-  
+
   const index = images.value.findIndex(img => img.id === image.id)
   if (index !== -1) {
     const galleryElement = document.querySelector('#gallery') as HTMLElement
@@ -501,7 +510,7 @@ async function toggleFavorite(image: ImageData) {
   const token = route.params.token as string
   const isFavorited = !!image.userFavorite
   const index = images.value.findIndex(img => img.id === image.id)
-  
+
   if (index === -1) return
 
   // Store previous state for rollback
@@ -592,7 +601,7 @@ async function handleSubmitComment(note: string) {
   // Or is there a separate comment API?
   // The previous code used `api.createFavorite(..., note)` and `api.updateFavoriteNotes`.
   // So it seems "Favorite with Note" = "Comment".
-  
+
   const isFavorited = !!image.userFavorite
 
   let result
@@ -614,19 +623,19 @@ async function handleSubmitComment(note: string) {
     const index = images.value.findIndex(img => img.id === image.id)
     if (index !== -1 && images.value[index]) {
       const updatedImage = images.value[index]
-      
+
       // Update userFavorite
       updatedImage.userFavorite = {
         id: result.data.id,
         notes: result.data.notes,
         createdAt: result.data.createdAt
       }
-      
+
       // If it wasn't favorited before, increment count
       if (!isFavorited) {
         updatedImage.favoriteCount += 1
       }
-      
+
       // Update comments list
       // We need to refresh the comments list. 
       // Since we don't have the full comment object from response (maybe?), 
@@ -637,17 +646,17 @@ async function handleSubmitComment(note: string) {
         notes: note,
         createdAt: new Date().toISOString()
       }
-      
+
       // Remove old comment by this user if exists
       updatedImage.comments = updatedImage.comments.filter(c => c.clientName !== clientName.value)
       // Add new comment
       updatedImage.comments.push(newCommentObj)
-      
+
       // Update current image ref for sidebar
       currentCommentImage.value = updatedImage
     }
   }
-  
+
   commentLoading.value = false
   updateLightboxUI()
 }
@@ -679,7 +688,7 @@ function updateLightboxUI() {
     }
 
     heartIcon.innerHTML = html
-    
+
     // Add or remove pending state class to the button
     const favButton = document.querySelector('.pswp__button--favorite-button')
     if (favButton) {
@@ -699,9 +708,9 @@ function updateLightboxUI() {
 
     let html = ''
     if (hasUserNote) {
-       html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square text-indigo-400"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`
+      html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square text-indigo-400"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`
     } else {
-       html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square text-white"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`
+      html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square text-white"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`
     }
 
     if (count > 0) {
@@ -715,7 +724,7 @@ function updateLightboxUI() {
 async function fetchAlbum(page = 1) {
   const token = route.params.token as string
   const result = await api.getAlbum(token, page, clientName.value, showFavoritesOnly.value)
-  
+
   if (!result.success || !result.data) {
     if (page === 1) {
       error.value = true
@@ -723,13 +732,13 @@ async function fetchAlbum(page = 1) {
     }
     return
   }
-  
+
   if (page === 1) {
     albumInfo.value = result.data.album
     images.value = result.data.images
     pagination.value = result.data.pagination
     loading.value = false
-    
+
     // Re-initialize lightbox
     await nextTick()
     if (lightbox) {
@@ -745,18 +754,18 @@ async function fetchAlbum(page = 1) {
 
 async function saveName() {
   if (!nameInput.value.trim()) return
-  
+
   const animal = animals[selectedAnimalIndex.value]
   if (!animal) return
 
   const cleanName = nameInput.value.trim().toLowerCase().replace(/\s+/g, '')
   const fullName = `${animal.emoji} ${cleanName}-${animal.name}`
-  
+
   clientName.value = fullName
   localStorage.setItem(CLIENT_NAME_KEY, fullName)
   showNameModal.value = false
   nameInput.value = ''
-  
+
   // Refetch data with new name to sync favorites
   loading.value = true
   await fetchAlbum(1)
@@ -851,7 +860,7 @@ function initLightbox() {
         const currentIndex = pswp.currIndex
         const image = images.value[currentIndex]
         if (image) {
-           openCommentSidebar(image)
+          openCommentSidebar(image)
         }
       }
     })
@@ -917,15 +926,28 @@ function openCommentSidebar(image: ImageData) {
 
 // Load data on mount
 onMounted(async () => {
-  // Check for client name
+  // Client-side hydration and updates
   const savedName = localStorage.getItem(CLIENT_NAME_KEY)
   if (savedName) {
     clientName.value = savedName
+
+    // If we have a client name, we need to re-fetch/update to get favorite status
+    // But we don't want to flash loading if we already have images
+    const result = await api.getAlbum(token, 1, savedName, showFavoritesOnly.value)
+    if (result.success && result.data) {
+      // Merge data to keep preloaded images visible but update favorites
+      images.value = result.data.images
+      albumInfo.value = result.data.album
+      pagination.value = result.data.pagination
+    }
   }
 
-  // Fetch album
-  await fetchAlbum(1)
-  
+  // If no SSR data and we failed to load on server or client, show error
+  if (!albumInfo.value && !loading.value) {
+    // If we are here, it might be that useAsyncData failed or returned error
+    // Error state is already set by the specific check above
+  }
+
   // Show name modal if no client name
   if (!clientName.value) {
     showNameModal.value = true
@@ -963,7 +985,8 @@ onUnmounted(() => {
 
 /* Specific fix for heart icon fill state */
 .pswp-favorite-icon svg.text-rose-500 {
-  stroke: #f43f5e !important; /* rose-500 */
+  stroke: #f43f5e !important;
+  /* rose-500 */
   fill: #f43f5e !important;
 }
 
@@ -1049,22 +1072,23 @@ onUnmounted(() => {
     opacity: 0;
     transform: translate(-50%, -50%) scale(0) rotate(-15deg);
   }
+
   15% {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1.3) rotate(0deg);
   }
+
   30% {
     transform: translate(-50%, -50%) scale(0.9) rotate(5deg);
   }
+
   45% {
     transform: translate(-50%, -50%) scale(1.1) rotate(0deg);
   }
+
   100% {
     opacity: 0;
     transform: translate(-50%, -50%) scale(1.5) rotate(0deg);
   }
 }
 </style>
-
-
-

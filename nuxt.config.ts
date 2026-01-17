@@ -17,8 +17,8 @@ export default defineNuxtConfig({
   ],
   runtimeConfig: {
     public: {
-      apiBase: 'http://localhost:8787',
+      apiBase: 'https://backend.lumosnap.com',
     },
   },
-  ssr: false,
+  ssr: true
 })
