@@ -119,7 +119,7 @@
             :data-pswp-height="image.height" target="_blank"
             class="group relative aspect-[4/5] rounded-xl overflow-hidden bg-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all duration-300 block">
             <img :src="image.thumbnailUrl || image.url" :alt="image.originalFilename"
-              :loading="index < 4 ? 'eager' : 'lazy'" :fetchpriority="index < 4 ? 'high' : 'auto'" decoding="async"
+              :loading="index < 20 ? 'eager' : 'lazy'" :fetchpriority="index < 20 ? 'high' : 'auto'" decoding="async"
               class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
 
             <!-- Gradient Overlay -->
