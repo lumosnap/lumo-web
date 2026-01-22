@@ -960,6 +960,15 @@ onMounted(async () => {
   if (!clientName.value) {
     showNameModal.value = true
   }
+
+  // Initialize lightbox on mount (ensure DOM is ready)
+  await nextTick()
+  if (images.value.length > 0) {
+    // Small delay to ensure ClientOnly has fully rendered the gallery div
+    setTimeout(() => {
+      initLightbox()
+    }, 50)
+  }
 })
 
 onUnmounted(() => {
