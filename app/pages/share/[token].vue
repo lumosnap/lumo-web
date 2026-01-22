@@ -114,60 +114,52 @@
         </div>
 
         <!-- Image Grid (Photoswipe) -->
-        <ClientOnly v-else>
-          <div id="gallery" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            <a v-for="(image, index) in images" :key="image.id" :href="image.url" :data-pswp-width="image.width"
-              :data-pswp-height="image.height" target="_blank"
-              class="group relative aspect-[4/5] rounded-xl overflow-hidden bg-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all duration-300 block">
-              <img :src="image.thumbnailUrl || image.url" :alt="image.originalFilename"
-                :loading="index < 20 ? 'eager' : 'lazy'" :fetchpriority="index < 20 ? 'high' : 'auto'" decoding="async"
-                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+        <div v-else id="gallery" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <a v-for="(image, index) in images" :key="image.id" :href="image.url" :data-pswp-width="image.width"
+            :data-pswp-height="image.height" target="_blank"
+            class="group relative aspect-[4/5] rounded-xl overflow-hidden bg-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all duration-300 block">
+            <img :src="image.thumbnailUrl || image.url" :alt="image.originalFilename"
+              :loading="index < 20 ? 'eager' : 'lazy'" :fetchpriority="index < 20 ? 'high' : 'auto'" decoding="async"
+              class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
 
-              <!-- Gradient Overlay -->
-              <div
-                class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              </div>
+            <!-- Gradient Overlay -->
+            <div
+              class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            </div>
 
-              <!-- Favorite Button (Overlay) -->
-              <button @click.stop.prevent="toggleFavorite(image)"
-                class="absolute top-3 right-3 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10 px-2 gap-1.5 min-w-8"
-                :class="[
+            <!-- Favorite Button (Overlay) -->
+            <button @click.stop.prevent="toggleFavorite(image)"
+              class="absolute top-3 right-3 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10 px-2 gap-1.5 min-w-8"
+              :class="[
                 pendingFavorites.has(image.id) ? 'opacity-70 cursor-wait' : '',
                 image.userFavorite
                   ? 'bg-rose-500 text-white shadow-lg'
                   : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40'
               ]" :disabled="pendingFavorites.has(image.id)">
-                <Icon name="lucide:heart" size="14" class="shrink-0"
-                  :class="{ 'animate-pulse': pendingFavorites.has(image.id) }"
-                  :fill="image.userFavorite || image.favoriteCount > 0 ? 'currentColor' : 'none'" />
-                <span v-if="image.favoriteCount > 0" class="text-xs font-bold">{{ image.favoriteCount }}</span>
-              </button>
+              <Icon name="lucide:heart" size="14" class="shrink-0"
+                :class="{ 'animate-pulse': pendingFavorites.has(image.id) }"
+                :fill="image.userFavorite || image.favoriteCount > 0 ? 'currentColor' : 'none'" />
+              <span v-if="image.favoriteCount > 0" class="text-xs font-bold">{{ image.favoriteCount }}</span>
+            </button>
 
-              <!-- Note Indicator (Overlay) -->
-              <button @click.stop.prevent="openCommentSidebar(image)"
-                class="absolute top-3 right-14 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10 px-2 gap-1.5 min-w-8"
-                :class="image.userFavorite?.notes
+            <!-- Note Indicator (Overlay) -->
+            <button @click.stop.prevent="openCommentSidebar(image)"
+              class="absolute top-3 right-14 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10 px-2 gap-1.5 min-w-8"
+              :class="image.userFavorite?.notes
                 ? 'bg-indigo-500 text-white shadow-md'
                 : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40'">
-                <Icon name="lucide:message-square" size="14" class="shrink-0" fill="currentColor" />
-                <span v-if="image.notesCount && image.notesCount > 0" class="text-xs font-bold">{{ image.notesCount
+              <Icon name="lucide:message-square" size="14" class="shrink-0" fill="currentColor" />
+              <span v-if="image.notesCount && image.notesCount > 0" class="text-xs font-bold">{{ image.notesCount
                 }}</span>
-              </button>
+            </button>
 
-              <!-- Filename (Overlay) -->
-              <div
-                class="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <p class="text-white text-xs font-medium truncate">{{ image.originalFilename }}</p>
-              </div>
-            </a>
-          </div>
-
-          <template #fallback>
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              <div v-for="i in 10" :key="i" class="aspect-[4/5] rounded-xl bg-slate-200 animate-pulse"></div>
+            <!-- Filename (Overlay) -->
+            <div
+              class="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <p class="text-white text-xs font-medium truncate">{{ image.originalFilename }}</p>
             </div>
-          </template>
-        </ClientOnly>
+          </a>
+        </div>
 
         <!-- Loading More Indicator -->
         <div v-if="loadingMore" class="py-8 flex justify-center">
