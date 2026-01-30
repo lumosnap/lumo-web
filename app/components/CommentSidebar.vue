@@ -114,7 +114,7 @@
               
               <button 
                 type="submit"
-                class="absolute right-2 bottom-2 p-2 rounded-lg transition-all duration-200 flex items-center justify-center"
+                class="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-all duration-200 flex items-center justify-center"
                 :class="isValid ? 'bg-indigo-600 text-white shadow-md hover:bg-indigo-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'"
                 :disabled="!isValid || loading"
               >
