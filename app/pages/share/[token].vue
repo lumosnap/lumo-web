@@ -278,6 +278,7 @@ import { animals } from '~/utils/animalNames'
 import PhotoSwipeLightbox from 'photoswipe/lightbox'
 import 'photoswipe/style.css'
 import CommentSidebar from '~/components/CommentSidebar.vue'
+import { useShareStore } from '~/stores/share'
 
 // Disable default layout for this page
 definePageMeta({
@@ -288,7 +289,29 @@ definePageMeta({
 
 const route = useRoute()
 const api = useApi()
+const shareStore = useShareStore()
 const token = route.params.token as string
+
+// Start periodic flush
+// Start periodic flush
+// Moved to main onMounted to ensure clientName is loaded first
+
+// Flush changes on leave/close
+onBeforeUnmount(() => {
+  shareStore.stopPeriodicFlush()
+  if (clientName.value) {
+    shareStore.flushChanges(token, clientName.value)
+  }
+})
+
+// Also handle browser close/refresh
+if (import.meta.client) {
+  window.addEventListener('beforeunload', () => {
+    if (clientName.value) {
+      shareStore.flushChanges(token, clientName.value)
+    }
+  })
+}
 
 // Types from API
 type AlbumData = NonNullable<Awaited<ReturnType<typeof api.getAlbum>>['data']>
@@ -306,8 +329,9 @@ const { data: albumData } = await useAsyncData(
 )
 
 // Initialize state from SSR data
-const loading = ref(!albumData.value?.success)
-const error = ref(!albumData.value?.success && !!albumData.value?.error)
+// Initialize state from SSR data
+const loading = ref(false)
+const error = ref(!albumData.value?.success)
 const albumInfo = ref<AlbumData['album'] | null>(albumData.value?.data?.album || null)
 const images = ref<ImageData[]>(albumData.value?.data?.images || [])
 const pagination = ref<AlbumData['pagination'] | null>(albumData.value?.data?.pagination || null)
@@ -507,20 +531,10 @@ async function toggleFavorite(image: ImageData) {
     return
   }
 
-  const token = route.params.token as string
   const isFavorited = !!image.userFavorite
   const index = images.value.findIndex(img => img.id === image.id)
 
   if (index === -1) return
-
-  // Store previous state for rollback
-  const previousState = {
-    userFavorite: images.value[index]?.userFavorite ? { ...images.value[index].userFavorite } : null,
-    favoriteCount: images.value[index]?.favoriteCount || 0
-  }
-
-  // Track pending operation
-  pendingFavorites.value.add(image.id)
 
   // Optimistic update - update UI immediately
   if (images.value[index]) {
@@ -528,52 +542,21 @@ async function toggleFavorite(image: ImageData) {
       // Removing favorite
       images.value[index].userFavorite = null
       images.value[index].favoriteCount = Math.max(0, images.value[index].favoriteCount - 1)
+      shareStore.addChange(image.id, 'unfavorite')
     } else {
-      // Adding favorite (temporary data, will be replaced with actual data from API)
+      // Adding favorite
       images.value[index].userFavorite = {
-        id: 0, // Temporary ID, will be replaced
+        id: 0, // Temp ID
         notes: '',
         createdAt: new Date().toISOString()
       }
       images.value[index].favoriteCount += 1
+      shareStore.addChange(image.id, 'favorite')
     }
   }
 
   // Update lightbox UI immediately for instant feedback
   updateLightboxUI()
-
-  try {
-    if (isFavorited && previousState.userFavorite) {
-      const recordId = previousState.userFavorite.id
-      const result = await api.deleteFavorite(token, recordId, clientName.value)
-      if (!result.success) {
-        throw new Error('Failed to remove favorite')
-      }
-    } else {
-      const result = await api.createFavorite(token, image.id, clientName.value)
-      if (!result.success || !result.data) {
-        throw new Error('Failed to add favorite')
-      }
-      // Update with actual data from API
-      if (images.value[index]) {
-        images.value[index].userFavorite = {
-          id: result.data.id,
-          notes: result.data.notes,
-          createdAt: result.data.createdAt
-        }
-      }
-    }
-  } catch (error) {
-    // Rollback on error
-    if (images.value[index]) {
-      images.value[index].userFavorite = previousState.userFavorite
-      images.value[index].favoriteCount = previousState.favoriteCount
-    }
-    updateLightboxUI()
-  } finally {
-    // Remove from pending set
-    pendingFavorites.value.delete(image.id)
-  }
 }
 
 async function handleSubmitComment(note: string) {
@@ -586,76 +569,49 @@ async function handleSubmitComment(note: string) {
 
   commentLoading.value = true
   const image = currentCommentImage.value
-  const token = route.params.token as string
 
-  // Create favorite with note (comment)
-  // API seems to treat comments as "favorites with notes" based on previous code?
-  // User request says "add the new comment or edit his comment along with others"
-  // The API response shows "comments" array and "userFavorite" object.
-  // If userFavorite exists, we might need to update it. If not, create it.
-  // BUT, "comments" array suggests multiple comments.
-  // Let's look at the data structure in user request:
-  // "comments": [ { "clientName": "...", "notes": "..." } ]
-  // "userFavorite": { "id": 16, "notes": null, ... }
-  // It seems "notes" on userFavorite IS the comment for this user?
-  // Or is there a separate comment API?
-  // The previous code used `api.createFavorite(..., note)` and `api.updateFavoriteNotes`.
-  // So it seems "Favorite with Note" = "Comment".
+  // Queue the change
+  shareStore.addChange(image.id, 'comment', note)
 
-  const isFavorited = !!image.userFavorite
-
-  let result
-  if (isFavorited && image.userFavorite) {
-    const recordId = image.userFavorite.id
-    // If we are "adding" a comment, we are essentially updating the note on the favorite?
-    // Or does the system support multiple comments per user?
-    // The UI shows a list of comments.
-    // If I update the note, does it add a new comment or replace the old one?
-    // Based on "edit his comment", it implies one comment per user per photo?
-    // Let's assume updateFavoriteNotes replaces the note.
-    result = await api.updateFavoriteNotes(token, recordId, clientName.value, note)
-  } else {
-    result = await api.createFavorite(token, image.id, clientName.value, note)
-  }
-
-  if (result.success && result.data) {
     // Update local state
     const index = images.value.findIndex(img => img.id === image.id)
     if (index !== -1 && images.value[index]) {
       const updatedImage = images.value[index]
+      const isFavorited = !!updatedImage.userFavorite
 
-      // Update userFavorite
-      updatedImage.userFavorite = {
-        id: result.data.id,
-        notes: result.data.notes,
-        createdAt: result.data.createdAt
+      // Update userFavorite if it doesn't exist or just update the notes
+      if (!updatedImage.userFavorite) {
+         updatedImage.userFavorite = {
+          id: 0, 
+          notes: note,
+          createdAt: new Date().toISOString()
+        }
+        updatedImage.favoriteCount += 1 // Implicit favorite
+        shareStore.addChange(image.id, 'favorite') // Ensure it's favorited if not already
+      } else {
+        updatedImage.userFavorite.notes = note
       }
 
-      // If it wasn't favorited before, increment count
-      if (!isFavorited) {
-        updatedImage.favoriteCount += 1
-      }
 
-      // Update comments list
-      // We need to refresh the comments list. 
-      // Since we don't have the full comment object from response (maybe?), 
-      // let's construct it or refetch. 
-      // Optimistic update:
+      // Optimistic update for comments list
       const newCommentObj = {
         clientName: clientName.value,
         notes: note,
         createdAt: new Date().toISOString()
       }
 
-      // Remove old comment by this user if exists
-      updatedImage.comments = updatedImage.comments.filter(c => c.clientName !== clientName.value)
-      // Add new comment
-      updatedImage.comments.push(newCommentObj)
+      // Remove old comment by this user if exists (assuming one comment per user/image for simplicity or just append)
+      // The requirement says "change his comment", so likely replace.
+      if (updatedImage.comments) {
+          updatedImage.comments = updatedImage.comments.filter(c => c.clientName !== clientName.value)
+          updatedImage.comments.push(newCommentObj)
+      } else {
+        updatedImage.comments = [newCommentObj]
+      }
 
       // Update current image ref for sidebar
       currentCommentImage.value = updatedImage
     }
-  }
 
   commentLoading.value = false
   updateLightboxUI()
@@ -765,6 +721,9 @@ async function saveName() {
   localStorage.setItem(CLIENT_NAME_KEY, fullName)
   showNameModal.value = false
   nameInput.value = ''
+
+  // Start periodic flush with new name
+  shareStore.startPeriodicFlush(token, clientName.value)
 
   // Refetch data with new name to sync favorites
   loading.value = true
@@ -930,6 +889,9 @@ onMounted(async () => {
   const savedName = localStorage.getItem(CLIENT_NAME_KEY)
   if (savedName) {
     clientName.value = savedName
+    
+    // Start periodic flush
+    shareStore.startPeriodicFlush(token, savedName)
 
     // If we have a client name, we need to re-fetch/update to get favorite status
     // But we don't want to flash loading if we already have images

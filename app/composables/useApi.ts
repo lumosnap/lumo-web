@@ -108,6 +108,22 @@ export function useApi() {
         })
     }
 
+    // Batch update favorites/comments
+    async function batchFavorites(token: string, clientName: string, changes: Array<{ imageId: number; action: 'favorite' | 'unfavorite' | 'comment'; notes?: string }>) {
+        return fetchApi<{
+            success: boolean
+            message: string
+            results: Array<{
+                imageId: number
+                success: boolean
+                message?: string
+            }>
+        }>(`/api/v1/share/${token}/favorites/batch`, {
+            method: 'PATCH',
+            body: JSON.stringify({ clientName, changes }),
+        })
+    }
+
     // Delete favorite
     async function deleteFavorite(token: string, favoriteId: number, clientName: string) {
         return fetchApi<void>(`/api/v1/share/${token}/favorites/${favoriteId}`, {
@@ -159,6 +175,7 @@ export function useApi() {
         createFavorite,
         deleteFavorite,
         updateFavoriteNotes,
+        batchFavorites,
         getPhotographer,
         createBooking,
     }
