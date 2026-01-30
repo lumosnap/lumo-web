@@ -677,12 +677,12 @@ function updateLightboxUI() {
   }
 }
 
-async function fetchAlbum(page = 1) {
+async function fetchAlbum(page = 1, isBackground = false) {
   const token = route.params.token as string
   const result = await api.getAlbum(token, page, clientName.value, showFavoritesOnly.value)
 
   if (!result.success || !result.data) {
-    if (page === 1) {
+    if (page === 1 && !isBackground) {
       error.value = true
       loading.value = false
     }
@@ -693,15 +693,24 @@ async function fetchAlbum(page = 1) {
     albumInfo.value = result.data.album
     images.value = result.data.images
     pagination.value = result.data.pagination
-    loading.value = false
-
-    // Re-initialize lightbox
-    await nextTick()
-    if (lightbox) {
-      lightbox.destroy()
-      lightbox = null
+    if (!isBackground) {
+      loading.value = false
     }
-    initLightbox()
+
+    // Re-initialize lightbox only if not background (or if strictly needed?)
+    // If background, we just updated images.value, assume lightbox handles it via reactivity or updateUI
+    await nextTick()
+    
+    if (!isBackground) {
+      if (lightbox) {
+        lightbox.destroy()
+        lightbox = null
+      }
+      initLightbox()
+    } else {
+        // If background refresh, update UI elements (icons)
+        updateLightboxUI()
+    }
   } else {
     images.value = [...images.value, ...result.data.images]
     pagination.value = result.data.pagination
@@ -726,8 +735,8 @@ async function saveName() {
   shareStore.startPeriodicFlush(token, clientName.value)
 
   // Refetch data with new name to sync favorites
-  loading.value = true
-  await fetchAlbum(1)
+  // loading.value = true // Don't show full page loading
+  await fetchAlbum(1, true)
 }
 
 function closeCommentSidebar() {
