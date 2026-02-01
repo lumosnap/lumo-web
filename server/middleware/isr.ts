@@ -35,8 +35,8 @@ export default defineEventHandler(async (event) => {
             }
         })
 
-        // Cache for 1 hour (ISR)
-        response.headers.append('Cache-Control', 's-maxage=3600')
+        // Cache for 1 hour (ISR) + allow stale for 1 day
+        response.headers.set('Cache-Control', 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400')
 
         // Use waitUntil to not block the response
         event.context.cloudflare.waitUntil(
