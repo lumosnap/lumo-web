@@ -127,6 +127,11 @@
               class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             </div>
 
+            <!-- Scrim Overlay for Buttons -->
+            <div
+              class="absolute top-0 right-0 w-80 h-20 bg-gradient-to-b from-black/30 via-black/15 to-transparent pointer-events-none">
+            </div>
+
             <!-- Favorite Button (Overlay) -->
             <button @click.stop.prevent="toggleFavorite(image)"
               class="absolute top-3 right-3 h-8 rounded-full flex items-center justify-center transition-all duration-200 z-10 px-2 gap-1.5 min-w-8"
@@ -582,7 +587,7 @@ async function handleSubmitComment(note: string) {
       // Update userFavorite if it doesn't exist or just update the notes
       if (!updatedImage.userFavorite) {
          updatedImage.userFavorite = {
-          id: 0, 
+          id: 0,
           notes: note,
           createdAt: new Date().toISOString()
         }
@@ -700,7 +705,7 @@ async function fetchAlbum(page = 1, isBackground = false) {
     // Re-initialize lightbox only if not background (or if strictly needed?)
     // If background, we just updated images.value, assume lightbox handles it via reactivity or updateUI
     await nextTick()
-    
+
     if (!isBackground) {
       if (lightbox) {
         lightbox.destroy()
@@ -899,7 +904,7 @@ onMounted(async () => {
   const savedName = localStorage.getItem(CLIENT_NAME_KEY)
   if (savedName) {
     clientName.value = savedName
-    
+
     // Start periodic flush
     shareStore.startPeriodicFlush(token, savedName)
 
