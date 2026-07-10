@@ -859,7 +859,7 @@ function initLightbox() {
   lightbox.on('afterInit', () => {
     const pswpElement = lightbox?.pswp?.element
     if (pswpElement) {
-      pswpElement.addEventListener('click', (e: any) => {
+      pswpElement.addEventListener('click', (e: MouseEvent) => {
         // Don't trigger if clicking on buttons
         if ((e.target as HTMLElement).closest('button')) return
 

@@ -74,7 +74,7 @@ export const useShareStore = defineStore('share', () => {
         }
     }
 
-    let flushInterval: any = null
+    let flushInterval: ReturnType<typeof setInterval> | null = null
 
     function startPeriodicFlush(token: string, clientName: string) {
         if (flushInterval) return

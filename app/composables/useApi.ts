@@ -1,3 +1,4 @@
+import type { NitroFetchOptions } from 'nitropack'
 import type { ChangeAction } from '~/stores/share'
 
 // API composable for public routes
@@ -7,16 +8,16 @@ export function useApi() {
 
     async function fetchApi<T>(
         endpoint: string,
-        options: RequestInit = {}
+        options: NitroFetchOptions<string> = {}
     ): Promise<{ success: boolean; data?: T; message?: string; error?: string }> {
         try {
-            const response = await $fetch<any>(endpoint, {
+            const response = await $fetch<{ data?: T; message?: string }>(endpoint, {
                 baseURL: baseUrl,
                 headers: {
                     'Content-Type': 'application/json',
                     ...options.headers as Record<string, string>,
                 },
-                ...options as any,
+                ...options,
             })
 
             return {

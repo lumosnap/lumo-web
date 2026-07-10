@@ -130,9 +130,28 @@
 </template>
 
 <script setup lang="ts">
+interface ShareComment {
+  clientName: string
+  notes: string | null
+  createdAt: string
+}
+
+interface ShareImage {
+  id: number
+  originalFilename: string
+  width: number
+  height: number
+  createdAt: string
+  url: string
+  thumbnailUrl: string
+  favoriteCount: number
+  comments: ShareComment[]
+  userFavorite: { id: number; notes: string | null; createdAt: string } | null
+}
+
 const props = defineProps<{
   isOpen: boolean
-  image: any | null
+  image: ShareImage | null
   clientName: string
   loading?: boolean
 }>()
@@ -148,13 +167,13 @@ const isValid = computed(() => newComment.value.trim().length > 0)
 // Filter comments to only show non-empty notes
 const visibleComments = computed(() => {
   if (!props.image?.comments) return []
-  return props.image.comments.filter((c: any) => c.notes && c.notes.trim().length > 0)
+  return props.image.comments.filter((c: ShareComment) => c.notes && c.notes.trim().length > 0)
 })
 
 // Check if the user has already commented (with a non-empty note)
 const userHasComment = computed(() => {
   if (!props.image?.comments) return false
-  return props.image.comments.some((c: any) => c.clientName === props.clientName && c.notes && c.notes.trim().length > 0)
+  return props.image.comments.some((c: ShareComment) => c.clientName === props.clientName && c.notes && c.notes.trim().length > 0)
 })
 
 // Show input if user hasn't commented OR if they are currently editing
@@ -162,12 +181,12 @@ const shouldShowInput = computed(() => {
   return !userHasComment.value || isEditing.value
 })
 
-function isOwnComment(comment: any) {
+function isOwnComment(comment: ShareComment) {
   return comment.clientName === props.clientName
 }
 
-function startEditing(comment: any) {
-  newComment.value = comment.notes
+function startEditing(comment: ShareComment) {
+  newComment.value = comment.notes ?? ''
   isEditing.value = true
   nextTick(() => {
     if (textareaRef.value) {
