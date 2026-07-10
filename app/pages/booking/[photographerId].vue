@@ -80,7 +80,7 @@ async function handleSubmit() {
 
 // Countdown state
 const countdown = ref(10)
-let timer: NodeJS.Timeout | null = null
+let timer: ReturnType<typeof setInterval> | null = null
 
 // Start redirect timer
 function startRedirectTimer() {

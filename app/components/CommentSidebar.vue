@@ -145,6 +145,7 @@ interface ShareImage {
   url: string
   thumbnailUrl: string
   favoriteCount: number
+  notesCount?: number
   comments: ShareComment[]
   userFavorite: { id: number; notes: string | null; createdAt: string } | null
 }
