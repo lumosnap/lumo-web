@@ -48,12 +48,9 @@ export const useShareStore = defineStore('share', () => {
         if (isFlushing.value) return
 
         isFlushing.value = true
+        // Snapshot the changes we are about to send and clear the queue optimistically
+        // so new user actions can accumulate independently while the request is in flight.
         const changesToSend = [...pendingChanges.value]
-
-        // Clear queue immediately (optimistic). If functionality fails, we might need a way to restore or notify.
-        // However, for batching user actions like favorites, usually we just retry or ignore on fail for now to keep UI snappy.
-        // Better strategy: Keep them in a temporary variable, remove from main queue, and if fail put them back?
-        // For simplicity as per request "send all at once", we'll just send.
         pendingChanges.value = []
 
         try {
@@ -66,9 +63,12 @@ export const useShareStore = defineStore('share', () => {
 
             await api.batchFavorites(token, clientName, apiChanges)
         } catch (e) {
-            console.error('Failed to flush changes', e)
-            // Optionally put changes back? 
-            // pendingChanges.value = [...changesToSend, ...pendingChanges.value]
+            // Re-queue the changes that failed to send so favorite/notes edits are not
+            // lost on a flaky network. Prepend them ahead of anything queued while the
+            // request was in flight so they are applied in the original order on retry.
+            pendingChanges.value = [...changesToSend, ...pendingChanges.value]
+            const message = e instanceof Error ? e.message : String(e)
+            console.error('Failed to flush changes, re-queued for retry:', message)
         } finally {
             isFlushing.value = false
         }
