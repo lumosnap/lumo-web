@@ -1,6 +1,5 @@
 <template>
   <div class="h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden flex flex-col">
-    <!-- Loading State -->
     <!-- Loading State (Skeleton) -->
     <div v-if="loading" class="flex-1 flex flex-col md:flex-row overflow-hidden animate-fade-in">
       <!-- Left Sidebar Skeleton -->
@@ -297,9 +296,7 @@ const api = useApi()
 const shareStore = useShareStore()
 const token = route.params.token as string
 
-// Start periodic flush
-// Start periodic flush
-// Moved to main onMounted to ensure clientName is loaded first
+// Periodic flush starts in onMounted, after clientName loads.
 
 // Flush changes on leave/close
 onBeforeUnmount(() => {
@@ -333,7 +330,6 @@ const { data: albumData } = await useAsyncData(
   }
 )
 
-// Initialize state from SSR data
 // Initialize state from SSR data
 const loading = ref(false)
 const error = ref(!albumData.value?.success)
@@ -605,8 +601,7 @@ async function handleSubmitComment(note: string) {
         createdAt: new Date().toISOString()
       }
 
-      // Remove old comment by this user if exists (assuming one comment per user/image for simplicity or just append)
-      // The requirement says "change his comment", so likely replace.
+      // One comment per user per image — replace existing.
       if (updatedImage.comments) {
           updatedImage.comments = updatedImage.comments.filter(c => c.clientName !== clientName.value)
           updatedImage.comments.push(newCommentObj)
@@ -702,8 +697,8 @@ async function fetchAlbum(page = 1, isBackground = false) {
       loading.value = false
     }
 
-    // Re-initialize lightbox only if not background (or if strictly needed?)
-    // If background, we just updated images.value, assume lightbox handles it via reactivity or updateUI
+    // Only rebuild the lightbox on a foreground refresh; background updates
+    // rely on images.value reactivity.
     await nextTick()
 
     if (!isBackground) {
@@ -740,7 +735,6 @@ async function saveName() {
   shareStore.startPeriodicFlush(token, clientName.value)
 
   // Refetch data with new name to sync favorites
-  // loading.value = true // Don't show full page loading
   await fetchAlbum(1, true)
 }
 
@@ -775,9 +769,7 @@ function showHeartAnimation(x: number, y: number) {
   }, 1500)
 }
 
-// Update PhotoSwipe with newly loaded images
-// No longer needed - the numItems and itemData filters handle dynamic content automatically
-// PhotoSwipe will automatically see new images when images.value is updated
+// PhotoSwipe picks up new images automatically via the numItems/itemData filters.
 
 function initLightbox() {
   lightbox = new PhotoSwipeLightbox({

@@ -15,17 +15,13 @@ export const useShareStore = defineStore('share', () => {
     const api = useApi()
 
     function addChange(imageId: number, action: ChangeAction, notes?: string) {
-        // Remove any existing changes for this image that might be contradictory or redundant
-        // For 'favorite' and 'unfavorite', we only keep the latest status
-        // For 'comment', it might be cumulative, but based on previous logic it's an overwrite of notes
-
-        // Remove previous pending actions for this image if they are superseded
+        // Dedup pending changes per image: keep only the latest favorite/unfavorite;
+        // comments overwrite prior notes.
         const existingIndex = pendingChanges.value.findIndex(c => c.imageId === imageId && c.action !== 'comment')
 
         if (action === 'favorite' || action === 'unfavorite') {
             if (existingIndex !== -1) {
-                // Check if we are toggling back to original state (e.g. favorite -> unfavorite -> favorite)
-                // Actually, simpler to just remove previous favorite/unfavorite and append new one
+                // Collapse prior favorite toggles for this image into one change.
                 pendingChanges.value.splice(existingIndex, 1)
             }
         } else if (action === 'comment') {
