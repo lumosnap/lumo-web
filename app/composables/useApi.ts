@@ -1,3 +1,5 @@
+import type { ChangeAction } from '~/stores/share'
+
 // API composable for public routes
 export function useApi() {
     const config = useRuntimeConfig()
@@ -109,7 +111,7 @@ export function useApi() {
     }
 
     // Batch update favorites/comments
-    async function batchFavorites(token: string, clientName: string, changes: Array<{ imageId: number; action: 'favorite' | 'unfavorite' | 'comment'; notes?: string }>) {
+    async function batchFavorites(token: string, clientName: string, changes: Array<{ imageId: number; action: ChangeAction; notes?: string }>) {
         return fetchApi<{
             success: boolean
             message: string

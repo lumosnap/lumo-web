@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-type ChangeAction = 'favorite' | 'unfavorite' | 'comment'
+export type ChangeAction = 'favorite' | 'unfavorite' | 'comment'
 
 interface Change {
     imageId: number
