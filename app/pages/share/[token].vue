@@ -65,6 +65,26 @@
           </button>
         </div>
 
+        <!-- md+: who and what as cards in the column, as in the photographer's app. They stay in view while the
+             photos scroll, so a filter is one click from anywhere. Phones keep faces in the sheet (below). -->
+        <section v-if="isV2 && manifest && stripPeople.length" aria-labelledby="people-card-h" class="hidden md:block p-4 bg-card rounded-card">
+          <h2 id="people-card-h" class="px-1 mb-2 text-[13px] text-ink-3">People</h2>
+          <div role="group" aria-labelledby="people-card-h" class="grid grid-cols-4 gap-y-1">
+            <PersonFace v-for="p in stripPeople" :key="p.id" class="w-full" :person="p" :base="manifest.base"
+              :picked="activePeople.includes(p.id)" :lifted="lifted.ids.includes(p.id)" @click="togglePerson(p.id)" />
+          </div>
+        </section>
+        <section v-if="isV2 && manifest && hasTags && chips.length" aria-labelledby="tags-card-h" class="hidden md:block p-4 bg-card rounded-card">
+          <h2 id="tags-card-h" class="px-1 mb-2.5 text-[13px] text-ink-3">Tags</h2>
+          <div role="group" aria-labelledby="tags-card-h" class="flex flex-wrap gap-1.5">
+            <button v-for="c in chips" :key="c.slug" type="button" :aria-pressed="activeTags.includes(c.slug)"
+              class="btn btn-ghost h-8 px-3 gap-1.5 text-[13px] font-normal" @click="toggleTag(c.slug)">
+              <Icon v-if="activeTags.includes(c.slug)" name="lucide:check" size="14" class="text-brand" />
+              {{ c.label }}<span class="n">{{ c.count.toLocaleString('en-US') }}</span>
+            </button>
+          </div>
+        </section>
+
         <a href="/" class="hidden md:block mt-auto px-2 py-1 text-[13px] text-ink-3 hover:text-ink-2 w-fit">Shared with LumoSnap</a>
       </aside>
 
@@ -84,38 +104,35 @@
           class="sticky top-0 z-30 -mx-3 md:-mx-4 mb-1 px-3 md:px-4 bg-card flex items-center gap-2">
           <SetTabs v-model="selectedSet" :sets="sets" :total="allCount"
             panel="set-panel" class="flex-1 min-w-0" />
-          <!-- Search lives behind this button, at the row's trailing edge: reachable from anywhere in the album.
-               Open with an active search, it focuses the field instead of hiding a filter that is on. -->
-          <button v-if="hasTags" type="button" aria-controls="search-panel" :aria-expanded="searchShown"
-            :aria-label="searchShown && !searchActive ? 'Close search' : 'Search photos'"
-            class="icon-btn" :class="{ on: searchActive, 'bg-ink text-card hover:bg-ink hover:text-card': searchShown && !searchActive }"
-            @click="toggleSearch">
-            <Icon :name="searchShown && !searchActive ? 'lucide:x' : 'lucide:search'" size="18" />
-          </button>
+          <!-- Search and tags live behind this button, at the row's trailing edge: reachable from anywhere in the album.
+               Open with an active search, it focuses the field instead of hiding a filter that is on.
+               Phones: a labelled "Filter" pill, because a magnifier did not say "tags are here". md+: the tags are a
+               card in the column, so the button is search only. -->
+          <template v-if="hasTags">
+            <button type="button" aria-controls="search-panel" :aria-expanded="searchShown"
+              class="btn btn-ghost px-3 gap-1.5 md:hidden"
+              :class="searchShown && !searchActive ? 'bg-ink text-card border-ink hover:bg-ink' : activeTags.length || searchActive ? 'bg-brand-wash border-brand-soft text-brand' : ''"
+              @click="toggleSearch">
+              <Icon :name="searchShown && !searchActive ? 'lucide:x' : 'lucide:list-filter'" size="16" />Filter
+            </button>
+            <button type="button" aria-controls="search-panel" :aria-expanded="searchShown"
+              :aria-label="searchShown && !searchActive ? 'Close search' : 'Search photos'"
+              class="icon-btn hidden md:inline-grid" :class="{ on: searchActive, 'bg-ink text-card hover:bg-ink hover:text-card': searchShown && !searchActive }"
+              @click="toggleSearch">
+              <Icon :name="searchShown && !searchActive ? 'lucide:x' : 'lucide:search'" size="18" />
+            </button>
+          </template>
         </div>
 
         <!-- Browse v2 filters, inside the selected set. Who (faces) sits apart from what (search + tag chips):
-             different questions, different shapes. -->
-        <div v-if="isV2 && manifest && (hasTags || people.length)" class="mb-2 flex flex-col gap-3">
+             different questions, different shapes. md+: faces and tags are cards in the column instead.
+             What is on shows in the filter bar at the bottom of the sheet. -->
+        <div v-if="isV2 && manifest && (stripPeople.length || (hasTags && searchShown))" class="mb-2 flex flex-col gap-3"
+          :class="hasTags && searchShown ? '' : 'md:hidden'">
           <div v-if="stripPeople.length" id="people-strip" role="group" aria-label="People"
-            class="-mx-3 px-3 md:mx-0 md:px-0 flex gap-1 overflow-x-auto [scrollbar-width:none] pt-1">
-            <button v-for="p in stripPeople" :key="p.id" type="button" :aria-pressed="activePeople.includes(p.id)" :aria-label="p.name"
-              :title="p.name" class="group shrink-0 w-[4.5rem] flex flex-col items-center gap-1.5 rounded-ctl pt-1 pb-1.5"
-              @click="togglePerson(p.id)">
-              <span aria-hidden="true" class="relative w-14 h-14 rounded-full ring-offset-2 ring-offset-card transition-shadow"
-                :class="activePeople.includes(p.id) ? 'ring-2 ring-brand' : lifted.ids.includes(p.id) ? 'outline-2 outline-dashed outline-offset-2 outline-brand' : 'group-hover:ring-2 group-hover:ring-line-2'">
-                <!-- Initial under the face: shows while the thumbnail loads or if it fails -->
-                <span class="absolute inset-0 rounded-full bg-inset-2 text-ink-3 text-lg font-medium flex items-center justify-center">{{ p.name.slice(0, 1).toUpperCase() }}</span>
-                <span class="absolute inset-0 rounded-full bg-no-repeat"
-                  :style="{ backgroundImage: `url(${thumbUrl(manifest.base, p.cover)})`, ...avatarCrop(p.box, p.cover.w, p.cover.h) }"></span>
-                <span v-if="activePeople.includes(p.id)" class="absolute -right-0.5 -bottom-0.5 w-5 h-5 rounded-full bg-brand text-white ring-2 ring-card flex items-center justify-center">
-                  <Icon name="lucide:check" size="12" />
-                </span>
-              </span>
-              <!-- Full name over two lines: photographers name roles ("bride father"), so first words collide -->
-              <span class="max-w-full line-clamp-2 break-words text-center px-0.5 text-[13px] leading-4"
-                :class="activePeople.includes(p.id) || lifted.ids.includes(p.id) ? 'font-medium text-brand' : 'text-ink-2'">{{ p.name }}</span>
-            </button>
+            class="-mx-3 px-3 flex gap-1 overflow-x-auto [scrollbar-width:none] pt-1 md:hidden">
+            <PersonFace v-for="p in stripPeople" :key="p.id" class="w-[4.5rem]" :person="p" :base="manifest.base"
+              :picked="activePeople.includes(p.id)" :lifted="lifted.ids.includes(p.id)" @click="togglePerson(p.id)" />
           </div>
           <div v-if="hasTags && searchShown" id="search-panel" role="search" class="flex flex-col gap-3">
             <div class="relative max-w-xl">
@@ -131,25 +148,13 @@
                 <Icon name="lucide:x" size="16" />
               </button>
             </div>
-            <div v-if="chips.length" role="group" aria-label="Filter by tag" class="-mx-3 px-3 md:mx-0 md:px-0 flex gap-2 overflow-x-auto [scrollbar-width:none]">
+            <div v-if="chips.length" role="group" aria-label="Filter by tag" class="-mx-3 px-3 flex gap-2 overflow-x-auto [scrollbar-width:none] md:hidden">
               <button v-for="c in chips" :key="c.slug" type="button" :aria-pressed="activeTags.includes(c.slug)"
                 class="btn btn-ghost h-8 px-3 gap-1.5 text-[13px] font-normal"
                 @click="toggleTag(c.slug)">
                 <Icon v-if="activeTags.includes(c.slug)" name="lucide:check" size="14" class="text-brand" />
                 {{ c.label }}
               </button>
-            </div>
-          </div>
-          <!-- What the filter is showing; only while one is on. Two or more people: together or either. -->
-          <div v-if="filterKey" class="flex flex-wrap items-center gap-x-3 gap-y-2 min-h-8">
-            <p aria-live="polite" class="text-sm text-ink-2 tabular-nums">
-              <template v-if="whoNames.length"><span class="font-medium text-ink">{{ joinNames(whoNames, mode === 'any' ? 'or' : 'and') }}</span><template v-if="resultCount"> · </template></template>
-              <template v-if="resultCount || (resultCount === 0 && !whoNames.length)">{{ resultCount?.toLocaleString('en-US') }} photo{{ resultCount === 1 ? '' : 's' }}</template>
-            </p>
-            <div v-if="who.length > 1" role="group" aria-label="Photos with" class="seg p-0.5">
-              <button v-for="[m, label] in ([['all', 'Together'], ['any', 'Either']] as const)" :key="m" type="button" :aria-pressed="mode === m"
-                class="h-7 px-3 text-[13px]"
-                @click="either = m === 'any'">{{ label }}</button>
             </div>
           </div>
         </div>
@@ -263,6 +268,48 @@
         <div v-if="loadingMore" class="py-8 flex justify-center">
           <div class="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin"></div>
         </div>
+
+        <!-- Browse v2: what is filtered, kept in view while the photos scroll. Sticky to the bottom of the window,
+             at the end of the sheet: it adds nothing above the grid (no shift when a face is tapped), sits under
+             the thumb on a phone, and never stacks under the set bar. One line; the items scroll inside it. -->
+        <div v-if="isV2 && barOn" class="sticky z-30 bottom-[max(0.75rem,env(safe-area-inset-bottom))] mt-4 flex justify-center pointer-events-none">
+          <div role="region" aria-label="Filters on"
+            class="pointer-events-auto max-w-full min-w-0 h-12 flex items-center gap-1 pl-1.5 pr-1.5 rounded-full bg-card ring-1 ring-line-2 shadow-[0_10px_28px_-10px_oklch(20%_0.01_255/0.3)]">
+            <!-- Items scroll sideways; the fade says there is more. The end padding lets the last item clear the fade. -->
+            <div class="min-w-0 flex items-center gap-1 overflow-x-auto [scrollbar-width:none] pr-4 [mask-image:linear-gradient(to_left,transparent,black_1rem)]">
+              <template v-for="(p, i) in barPeople" :key="p.id">
+                <!-- The join word says the mode. Phones: it is also the switch (no room for the two-part toggle). -->
+                <span v-if="i" class="hidden md:inline shrink-0 px-0.5 text-[13px] text-ink-3">{{ mode === 'any' ? 'or' : 'and' }}</span>
+                <button v-if="i" type="button" class="md:hidden shrink-0 h-9 px-1.5 text-[13px] font-medium text-brand underline decoration-dotted underline-offset-4"
+                  :aria-label="mode === 'any' ? 'or: photos with any of them. Switch to together' : 'and: photos with all of them together. Switch to either'"
+                  @click="either = mode !== 'any'">{{ mode === 'any' ? 'or' : 'and' }}</button>
+                <button type="button" class="fchip pl-1" :aria-label="`Remove ${p.name}`" @click="removePerson(p.id)">
+                  <span aria-hidden="true" class="relative w-7 h-7 rounded-full overflow-hidden bg-inset-2 shrink-0">
+                    <span class="absolute inset-0 bg-no-repeat"
+                      :style="{ backgroundImage: `url(${thumbUrl(manifest!.base, p.cover)})`, ...avatarCrop(p.box, p.cover.w, p.cover.h) }"></span>
+                  </span>
+                  <span class="max-w-[6rem] md:max-w-[9rem] truncate">{{ p.name }}</span><Icon name="lucide:x" size="14" class="text-ink-3" />
+                </button>
+              </template>
+              <button v-if="barQuery" type="button" class="fchip" :aria-label="`Remove search ${barQuery}`" @click="removeQuery">
+                <Icon name="lucide:search" size="14" class="text-ink-3" /><span class="max-w-[9rem] truncate">{{ barQuery }}</span><Icon name="lucide:x" size="14" class="text-ink-3" />
+              </button>
+              <button v-for="t in activeTags" :key="t" type="button" class="fchip" :aria-label="`Remove tag ${tagLabel(t, TAG_VOCAB)}`" @click="toggleTag(t)">
+                {{ tagLabel(t, TAG_VOCAB) }}<Icon name="lucide:x" size="14" class="text-ink-3" />
+              </button>
+              <button v-if="showFavoritesOnly" type="button" class="fchip" aria-label="Remove favorites" @click="toggleShowFavorites">
+                <Icon name="lucide:heart" size="14" class="text-heart" />Favorites<Icon name="lucide:x" size="14" class="text-ink-3" />
+              </button>
+            </div>
+            <span aria-live="polite" class="shrink-0 px-1.5 text-sm text-ink-2 tabular-nums"><template v-if="barCount">{{ barCount.toLocaleString('en-US') }}<span class="max-md:sr-only">&nbsp;photo{{ barCount === 1 ? '' : 's' }}</span></template></span>
+            <div v-if="who.length > 1" role="group" aria-label="Photos with" class="seg p-0.5 shrink-0 max-md:hidden">
+              <button v-for="[m, label] in ([['all', 'Together'], ['any', 'Either']] as const)" :key="m" type="button" :aria-pressed="mode === m"
+                class="h-8 px-2.5 text-[13px]"
+                @click="either = m === 'any'">{{ label }}</button>
+            </div>
+            <button type="button" class="shrink-0 h-9 px-3 rounded-full text-[13px] font-medium text-ink-2 hover:bg-inset hover:text-ink" @click="clearAll">Clear</button>
+          </div>
+        </div>
       </main>
     </div>
 
@@ -365,6 +412,7 @@ import 'photoswipe/style.css'
 import CommentSidebar from '~/components/CommentSidebar.vue'
 import BrowseGrid from '~/components/BrowseGrid.vue'
 import SetTabs from '~/components/SetTabs.vue'
+import PersonFace from '~/components/PersonFace.vue'
 import type { ShareManifest } from '~/composables/useApi'
 import { useShareStore } from '~/stores/share'
 import { andIds, avatarCrop, browseHead, filterIds, joinNames, peopleIds, queryPeople, resolvePeople, mergeFeedback, parseTags, resolveSets, setImages, tagEntries, tagIndex, tagLabel, topTags, type BrowsePerson, type BrowseSet, PSWP_BASE_OPTIONS, renderLightboxButtons, thumbUrl, toShareImage, type ShareComment } from '~/utils/browse'
@@ -606,9 +654,11 @@ const zeroTitle = computed(() => {
     + (searching ? ' match this search' : set ? ` in ${set}` : '')
 })
 // Search panel (field + tag chips): behind the set row's search button when the album has sets, else always
-// shown (no row to hold the button). Open from SSR when ?q= or ?tags= is on, so it never pops in.
-const searchOpen = ref(!!(typeof route.query.q === 'string' && route.query.q.trim()) || parseTags(route.query.tags).length > 0)
-const searchActive = computed(() => !!qInput.value.trim() || activeTags.value.length > 0)
+// shown (no row to hold the button). Open from SSR when ?q= is on, so it never pops in.
+// Only typed text holds the panel open: tags and people show (and come off) in the filter bar, so a tag
+// no longer needs the panel to stay visible.
+const searchOpen = ref(!!(typeof route.query.q === 'string' && route.query.q.trim()))
+const searchActive = computed(() => !!qInput.value.trim())
 const searchShown = computed(() => !sets.value.length || searchOpen.value || searchActive.value)
 const focusSearch = () => nextTick(() => {
   const el = document.getElementById('photo-search') as HTMLInputElement | null
@@ -627,12 +677,34 @@ function onSearchEsc() {
   if (qInput.value) return setQuery('')
   if (!sets.value.length || searchActive.value) return
   searchOpen.value = false
-  nextTick(() => document.querySelector<HTMLElement>('[aria-controls="search-panel"]')?.focus())
+  nextTick(() => [...document.querySelectorAll<HTMLElement>('[aria-controls="search-panel"]')].find(b => b.offsetParent)?.focus())
 }
 function clearFilters() {
   setQuery('')
   activeTags.value = []
   activePeople.value = []
+}
+// Filter bar: everything that narrows the grid, each removable on its own. People in `who` order (picked, then
+// typed); the typed part of the search that is not a name shows as its own item.
+const barOn = computed(() => !!filterKey.value || showFavoritesOnly.value)
+const barPeople = computed(() => who.value.map(id => people.value.find(p => p.id === id)).filter(p => !!p))
+const barQuery = computed(() => (hasTags.value ? lifted.value.rest : ''))
+const queryWords = () => qInput.value.split(/\s+/).filter(Boolean)
+function removePerson(id: string) {
+  if (activePeople.value.includes(id)) togglePerson(id)
+  const p = people.value.find(p => p.id === id)
+  if (p && lifted.value.ids.includes(id)) setQuery(queryWords().filter(w => !queryPeople(w, [p]).ids.length).join(' '))
+}
+// Keep only the words that name someone: the people stay, the tag search goes.
+const removeQuery = () => setQuery(queryWords().filter(w => queryPeople(w, people.value).ids.length).join(' '))
+const barCount = computed(() => {
+  const g = gridImages.value
+  if (!g) return null
+  return showFavoritesOnly.value ? g.filter(i => v2Favs.has(i.id)).length : resultCount.value
+})
+function clearAll() {
+  clearFilters()
+  if (showFavoritesOnly.value) toggleShowFavorites()
 }
 // Lightbox face tapped: that person's photos (in the selected set), from the top of the filters.
 function showPerson(id: string) {
@@ -640,7 +712,7 @@ function showPerson(id: string) {
   activePeople.value = [id]
   nextTick(() => {
     const el = document.getElementById('people-strip')
-    if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - (sets.value.length ? 64 : 8), behavior: 'instant' })
+    if (el?.offsetParent) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - (sets.value.length ? 64 : 8), behavior: 'instant' })
   })
 }
 // Scroll position is saved per view (set + filter); a new view starts at the top.

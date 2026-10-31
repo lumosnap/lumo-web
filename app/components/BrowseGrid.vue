@@ -1,7 +1,7 @@
 <template>
-  <!-- Mobile: main's px-3 is narrower than the scrubber (w-8), so reserve the rest whenever the grid has
-       moments (known from the SSR rows too, so no shift on mount). measure() subtracts it. -->
-  <div ref="root" :class="{ 'pr-5 md:pr-0': layout.moments.length > 0 }">
+  <!-- Full sheet width at every size: the scrubber shows only at md+ (it sits in the sheet's outer margin there),
+       so SSR rows and the measured grid use the same width. -->
+  <div ref="root">
     <!-- SSR + first client render: plain grid of the first rows (LCP, no hydration mismatch) -->
     <template v-if="!mounted">
       <template v-for="row in ssrRows" :key="row.key">
@@ -18,9 +18,9 @@
     <!-- After mount: window-virtualized rows (moment headers + image rows, mixed heights) -->
     <template v-else>
       <!-- Sticky label of the moment at the top of the viewport; sits exactly over the inline header.
-           Solid card, bled to the sheet's edges (main's padding, plus the scrubber room on phones). -->
+           Solid card, bled to the sheet's edges (main's padding). -->
       <div v-if="activeLabel" class="sticky z-20 h-0" :style="{ top: `${stickyTop}px` }" aria-hidden="true">
-        <div class="h-12 -ml-3 pl-3 -mr-8 md:-mx-4 md:px-4 flex items-end pb-2.5 text-sm text-ink-2 tabular-nums bg-card">{{ activeLabel }}</div>
+        <div class="h-12 -mx-3 px-3 md:-mx-4 md:px-4 flex items-end pb-2.5 text-sm text-ink-2 tabular-nums bg-card">{{ activeLabel }}</div>
       </div>
       <div class="relative w-full" :style="{ height: `${virt.getTotalSize()}px` }">
         <div v-for="{ v, row } in virtualRows" :key="String(v.key)" :ref="measureEl" :data-index="v.index"
@@ -35,7 +35,7 @@
       </div>
       <!-- Teleported: the page's fade-in transform would otherwise trap position:fixed -->
       <Teleport to="body">
-        <MomentScrubber v-if="momentLabels.length > 1 && scrubberRoom" :labels="momentLabels" :active="activeMoment" @jump="jumpToMoment" />
+        <MomentScrubber v-if="momentLabels.length > 1" :labels="momentLabels" :active="activeMoment" @jump="jumpToMoment" />
       </Teleport>
     </template>
   </div>
@@ -78,7 +78,10 @@ const stickyTop = computed(() => props.stickyTop ?? 0)
 const scrollKey = () => `lumosnap_scroll_${props.token}${props.setId ? `:${props.setId}` : ''}`
 
 const root = ref<HTMLElement | null>(null)
-const mounted = ref(false)
+// The plain SSR grid is for hydration only: it renders every tile it is given, unvirtualized. A grid that mounts
+// later on the client (favorites off again, a filter that had no results) goes straight to virtual rows; before,
+// that path rendered and eagerly loaded the whole set (a 3 s freeze on 1,250 photos).
+const mounted = ref(import.meta.client && !useNuxtApp().isHydrating)
 
 // Favorites-only is a snapshot taken when the filter flips (like v1's refetch),
 // so un-hearting inside the filtered view doesn't reshuffle the grid.
@@ -129,7 +132,7 @@ function jumpToMoment(i: number) {
 function measure() {
   if (!root.value) return
   cols.value = columnsFor(window.innerWidth)
-  width.value = root.value.clientWidth - parseFloat(getComputedStyle(root.value).paddingRight)
+  width.value = root.value.clientWidth
   margin.value = root.value.getBoundingClientRect().top + window.scrollY
 }
 
@@ -342,18 +345,9 @@ function initLightbox() {
   lightbox.init()
 }
 
-// On mobile the album card sits above the grid; keep the fixed scrubber off it until the grid reaches the top.
-const scrubberRoom = ref(false)
-const checkScrubberRoom = () => {
-  if (root.value) scrubberRoom.value = window.innerWidth >= 768 || root.value.getBoundingClientRect().top <= 80
-}
-
 let resizeObserver: ResizeObserver | null = null
 onMounted(() => {
   measure()
-  checkScrubberRoom()
-  window.addEventListener('scroll', checkScrubberRoom, { passive: true })
-  window.addEventListener('resize', checkScrubberRoom)
   mounted.value = true
   resizeObserver = new ResizeObserver(measure)
   resizeObserver.observe(root.value!)
@@ -367,8 +361,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  window.removeEventListener('scroll', checkScrubberRoom)
-  window.removeEventListener('resize', checkScrubberRoom)
   resizeObserver?.disconnect()
   window.removeEventListener('resize', measure)
   window.removeEventListener('scroll', saveScroll)

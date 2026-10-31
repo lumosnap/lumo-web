@@ -402,7 +402,7 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 <!-- The bar: chapter links by their key word, the count that needs the owner, the Dark switch. Keep the links in step with the chapters below; drop ones you deleted. -->
 <div class="bar"><div>
 <span class="name">LumoSnap gallery <span class="note">· design decisions</span></span>
-<nav aria-label="Chapters"><a href="#brief">Brief</a><a href="#flows">Flows</a><a href="#direction">Direction</a><a href="#language">Design language</a><a href="#captures">In the product</a><a href="#session-2026-10-31-look">New look</a><a href="#session-2026-10-31">People</a><a href="#assumed">Assumed</a></nav>
+<nav aria-label="Chapters"><a href="#brief">Brief</a><a href="#flows">Flows</a><a href="#direction">Direction</a><a href="#language">Design language</a><a href="#captures">In the product</a><a href="#session-2026-10-31-filters">Filters</a><a href="#session-2026-10-31-look">New look</a><a href="#session-2026-10-31">People</a><a href="#assumed">Assumed</a></nav>
 <a class="needs" href="#decide">6 need you</a>
 <label class="theme"><input type="checkbox" id="dark"> Dark</label>
 </div></div>
@@ -420,7 +420,7 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 <div class="i-search"><dt>critique findings, 5 closed</dt><dd>5</dd></div>
 <div class="open"><dt>choices waiting for you</dt><dd>3</dd></div>
 </dl>
-<p class="note">Latest session <time datetime="2026-10-31">2026-10-31</time>. Coverage: <a href="design-coverage.html">design-coverage.html</a></p>
+<p class="note">Latest session <time datetime="2026-10-31">2026-10-31</time> (filters). Coverage: <a href="design-coverage.html">design-coverage.html</a></p>
 <nav class="short" aria-labelledby="short-h">
 <h2 id="short-h">The short version</h2>
 <ol>
@@ -429,6 +429,7 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 <li><a href="#direction"><span>Direction: a row of faces apart from the tags, not people as a tab, because who and what are different questions</span></a></li>
 <li><a href="#language"><span>Design language: the existing slate and indigo look, kept; faces add one new shape, the 56 px circle</span></a></li>
 <li><a href="#captures"><span>Captures: at 390 px the rest state has 2 rows above the grid, not 4</span></a></li>
+<li><a href="#session-2026-10-31-filters"><span>Session 2026-10-31 (filters): the filter bar, People and Tags cards, the Filter pill</span></a></li>
 <li><a href="#session-2026-10-31"><span>Session 2026-10-31: people moved out of the tag row; search moved behind a button</span></a>
 <ol><li><a href="#c-1">Close calls: faces row picked over a People tab</a></li><li><a href="#critique-2026-10-31">Critique caught: 5 fixed, 0 kept, 0 open</a></li><li><a href="#measured-2026-10-31">Measured: rows above the grid at rest, 4 to 2</a></li><li><a href="#decisions-2026-10-31">Decisions: 16, most in structure and states</a></li></ol></li>
 <li><a href="#decide"><span>For you to decide: 3 choices, 2 things owed</span></a></li>
@@ -605,6 +606,139 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 </section>
 
 <section id="sessions">
+<article class="session" id="session-2026-10-31-filters">
+<h2><span class="key">Session 2026-10-31 (filters)<span class="vh">:</span></span> what is filtered stays in view; people and tags get a place of their own on wide screens</h2>
+<p class="kicker">Revamp · the owner said the tag filter is missing, and asked for people in the column and a filter bar</p>
+<p class="lede">The tags were in the real album all the time (all 15 photos have tags in the manifest). They were behind a search icon, and nothing said "tags". Now wide screens show a Tags card and a People card in the column. Phones get a "Filter" pill. A bar at the bottom of the window shows each filter, and you can remove each one.</p>
+
+<figure class="shot-hero" style="max-width:640px"><img src="captures/filters-real-1280-people.jpg" alt="Wide view of the real album: People card with bride father picked, Tags card with Family picked, and the filter bar under the photos" width="1280" height="860"><figcaption>1280 px, the real album, ?people=bride father&amp;tags=family.</figcaption></figure>
+
+<h3 class="i-search"><span class="key">Root cause</span> the tags were there; the way to them was not</h3>
+<ul class="fields">
+<li><strong>Manifest:</strong> <code>/api/v1/share/q3zgnsq3vptqmnrr5frs79d3/manifest</code> gives 15 images, 15 with <code>g</code>, 1 set, 5 people. <code>hasTags</code> is true.</li>
+<li><strong>Render:</strong> on the user's dev server, the search button opens 8 tag chips (Bride, Couple, Family, Groom, Jewellery, Group photo, Stage, Bridal outfit).</li>
+<li><strong>Fault:</strong> the album has a set, so the chips hide behind a 36 px magnifier. A magnifier says "type", not "choose a tag". On wide screens nothing showed tags at rest.</li>
+</ul>
+
+<h3 class="i-list"><span class="key">Chunks</span> 4, each compared with the baseline</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Chunk</th><th scope="col">Files</th><th scope="col">By</th><th scope="col">Contract</th><th scope="col">Parity</th></tr></thead>
+<tbody>
+<tr><td>Column cards</td><td>[token].vue, PersonFace.vue (new)</td><td>coordinator</td><td>?people= and ?tags= work the same; faces offered = people in the selected set</td><td>same logic (stripPeople, chips); one face component for both places</td></tr>
+<tr><td>Scrubber</td><td>BrowseGrid.vue, MomentScrubber.vue</td><td>coordinator</td><td>SSR rows = mounted rows; scroll restore; jump to moment at md+</td><td>CLS 0.0000 at 390 and 1280 (mock and real); no hydration warnings; scroll listener removed</td></tr>
+<tr><td>Filter bar</td><td>[token].vue, main.css (.fchip)</td><td>coordinator</td><td>Together / Either, ?either=1, the zero state, the counts</td><td>same values; the inline summary line is gone, so a face tap moves the grid 0 px (it was about 40 px)</td></tr>
+<tr><td>Tag entry</td><td>[token].vue</td><td>coordinator</td><td>search, ?q=, lazy minisearch, Esc</td><td>same; only typed text holds the panel open now (difference on purpose: the bar shows tags)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-scale"><span class="key">Close calls</span> 2</h3>
+<div class="call" id="c-3">
+<p class="judge"><b>Where does the filter bar go?</b> Judge at 390 px, scrolled deep.</p>
+<div class="options">
+<figure class="opt picked"><div class="stage"><img src="captures/filters-mock-390-three-scrolled.jpg" alt="Filter bar at the bottom of a phone screen" width="195" height="422"></div><figcaption><span class="badge">3A</span> Bottom of the window<span class="pick">picked</span><br>Under the thumb. Adds 0 px above the grid. The set row and the moment line stay 104 px.</figcaption></figure>
+<figure class="opt"><div class="stage">Under the set tabs</div><figcaption><span class="badge">3B</span> Under the set tabs<br>Three sticky rows (sets, filters, moment) take about 150 px of an 844 px phone.</figcaption></figure>
+</div>
+</div>
+<div class="call" id="c-4">
+<p class="judge"><b>How do phones find tags?</b> Judge at 390 px, rest state.</p>
+<div class="options">
+<figure class="opt picked"><div class="stage"><img src="captures/filters-mock-390-filter-open.jpg" alt="Filter pill open: search field and tag chips" width="195" height="422"></div><figcaption><span class="badge">4A</span> A "Filter" pill<span class="pick">picked</span><br>A word says there is something to choose. One tap shows the tags.</figcaption></figure>
+<figure class="opt"><div class="stage">Tag chips that show when scrolling stops</div><figcaption><span class="badge">4B</span> Chips after scroll stops<br>A row that comes and goes moves the grid or covers photos.</figcaption></figure>
+</div>
+</div>
+
+<h3 class="i-search" id="critique-2026-10-31-filters"><span class="key">Critique caught</span> 7 found, 5 fixed, 2 kept, 0 open</h3>
+<dl class="counts">
+<div class="i-fix"><dt>fixed</dt><dd>5</dd></div>
+<div class="i-keep"><dt>kept, with the evidence</dt><dd>2</dd></div>
+<div class="open"><dt>open</dt><dd>0</dd></div>
+</dl>
+<p class="sowhat">At 390 px the bar hid the second name behind a two-part toggle. Now the join word ("and" / "or") is the switch on phones, and both names show.</p>
+<details>
+<summary>Every finding and its outcome</summary>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Found</th><th scope="col">By</th><th scope="col">Outcome</th></tr></thead>
+<tbody>
+<tr><td>At 390 px with 2 people the second name is cut; "All / Any" makes a third "All"</td><td>fresh reviewer</td><td>fixed: on phones the "and" / "or" word is the switch, dotted underline, 36 px tall; the toggle shows at md+ only (<a href="#d-f5">d-f5</a>)</td></tr>
+<tr><td>Phone toggle aria-label "Together" did not match the visible "All" (WCAG 2.5.3)</td><td>fresh reviewer</td><td>fixed: the toggle is gone on phones; the word button's label starts with its visible text</td></tr>
+<tr><td>"Family × 4" reads like a tag count</td><td>fresh reviewer</td><td>fixed: "4 photos" at every width</td></tr>
+<tr><td>Names 9 rem wide push the next item out</td><td>fresh reviewer</td><td>fixed: 6 rem on phones, 9 rem at md+</td></tr>
+<tr><td>Heavy shadow under the bar on a short album</td><td>fresh reviewer</td><td>fixed: a shorter, lighter shadow</td></tr>
+<tr><td>The open Filter pill is black, a second "on" colour</td><td>fresh reviewer</td><td>kept: black is the existing "tap to close" state of the search button (earlier session); blue wash means a filter is on, and the pill shows that too</td></tr>
+<tr><td>"Clear filters" in the empty state repeats the bar</td><td>fresh reviewer</td><td>kept: the empty state is where the eye is; the way out sits under the reason</td></tr>
+<tr><td>A grid that mounts after load rendered every photo of the view, unvirtualized (3 s freeze: favorites off with a tag on)</td><td>look step (test)</td><td>fixed at the root: the plain SSR grid renders only during hydration; was in the baseline too (<a href="#d-f8">d-f8</a>)</td></tr>
+<tr><td>Utilities (h-8, text-[13px]) win over .seg button</td><td>render_check ASK</td><td>kept: the Mechanics row says a utility on the element wins on purpose</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+
+<h3 class="i-ruler" id="measured-2026-10-31-filters"><span class="key">Measured</span> no shift, a wider grid on phones</h3>
+<dl class="deltas">
+<div><dt>grid moves when a face is tapped</dt><dd><s>about 40 px</s> → 0 px</dd></div>
+<div><dt>photo width at 390 px (2 columns)</dt><dd><s>169 px</s> → 179 px</dd></div>
+<div><dt>tags visible at rest, 1280 px</dt><dd><s>0</s> → 8 with counts</dd></div>
+<div><dt>favorites off, a tag on, 1,250 photos</dt><dd><s>3,260 ms</s> → 58 ms</dd></div>
+<div><dt>CLS, 390 and 1280, mock and real, 8 URLs</dt><dd><s>0.000</s> → 0.000</dd></div>
+</dl>
+
+<h3 class="i-list" id="decisions-2026-10-31-filters"><span class="key">Decisions</span> 8</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Element</th><th scope="col">Decision</th><th scope="col">Because</th><th scope="col">Rejected default or kept convention</th><th scope="col">Layer</th></tr></thead>
+<tbody>
+<tr id="d-f1"><td><span class="id">d-f1</span> People card</td><td>md+: faces in a 4-column card in the sticky column; one PersonFace component for the card and the phone row</td><td>owner request; the column stays in view, so a face is one click from any depth</td><td class="rejected">faces under the set bar at every width</td><td>1 Bare structure</td></tr>
+<tr id="d-f2"><td><span class="id">d-f2</span> Tags card</td><td>md+: "Tags", top 8 of the selected set, each with its count; the panel then holds the search field only</td><td>the tags were present but hidden; counts say what the album is about, like the set counts</td><td class="rejected">tags only behind a magnifier</td><td>1 Bare structure</td></tr>
+<tr id="d-f3"><td><span class="id">d-f3</span> Phone entry</td><td>A "Filter" pill with a word, in place of the magnifier</td><td>a word promises choices; one tap shows the chips</td><td class="rejected">chips that show when scrolling stops</td><td>1 Bare structure</td></tr>
+<tr id="d-f4"><td><span class="id">d-f4</span> Filter bar</td><td>Sticky to the window bottom at the end of the sheet; one line; each item removable; "Clear"</td><td>thumb reach; 0 px added above the grid; never a tall header</td><td class="rejected">a sticky row under the set tabs</td><td>3 Type and space</td></tr>
+<tr id="d-f5"><td><span class="id">d-f5</span> Together / Either</td><td>md+: the two-part toggle in the bar. Phones: the join word is the switch</td><td>at 390 px the toggle hid the second name</td><td class="rejected">"All / Any" labels</td><td>6 Motion and detail</td></tr>
+<tr id="d-f6"><td><span class="id">d-f6</span> Bar items</td><td>Blue wash with a border, as every "selected" thing; people carry their face</td><td>the bar lists what is selected, so it looks selected</td><td class="rejected">grey chips</td><td>4 Colour and surface</td></tr>
+<tr id="d-f7"><td><span class="id">d-f7</span> Scrubber</td><td>md+ only; the 20 px phone gutter is gone</td><td>owner request; the moment line already says where you are</td><td class="rejected">a gutter on phones</td><td>3 Type and space</td></tr>
+<tr id="d-f8"><td><span class="id">d-f8</span> Search panel</td><td>Only typed text holds it open; ?tags= alone no longer opens it</td><td>the bar now shows tags, so an empty field would only take room</td><td class="rejected">open for ?q= or ?tags=</td><td>5 Use over time</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-alert"><span class="key">App-wide states</span> 5 for the filters, the rest unchanged</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">State</th><th scope="col">What the person sees</th></tr></thead>
+<tbody>
+<tr><td>Manifest still loading</td><td>cards and bar from the SSR payload; the count shows when the grid can count</td></tr>
+<tr><td>No people / no tags</td><td>no card, no Filter pill; the bar still shows Favorites</td></tr>
+<tr><td>Zero results</td><td>the empty state names the filter; the bar stays, so one item can come off</td></tr>
+<tr><td>Face image fails</td><td>the initial letter (card), a grey circle (bar)</td></tr>
+<tr><td>Error (album gone)</td><td>unchanged: the error card; no bar</td></tr>
+<tr><td>Not found, no access, signed out, crash, offline, first launch</td><td>not changed by this session: the share link has no sign-in; first visit still gets the name prompt; offline keeps the shown rows</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-motion"><span class="key">Motion map</span> still: filters change at once</h3>
+<div class="scroll">
+<table class="motion">
+<thead><tr><th scope="col">Moment</th><th scope="col">Tier (none, micro, transition, moment)</th><th scope="col">How often</th><th scope="col">Trigger, feedback, loops</th><th scope="col">Reduced-motion version</th><th scope="col">How much it matters</th><th scope="col">Why</th></tr></thead>
+<tbody>
+<tr><td>Filter bar shows or hides</td><td>none</td><td>often</td><td>first filter on, last filter off</td><td>same</td><td>high</td><td>a slide would move the thumb target</td></tr>
+<tr><td>Item removed from the bar</td><td>none</td><td>often</td><td>tap x; the grid and count change</td><td>same</td><td>high</td><td>the answer is the new grid</td></tr>
+<tr><td>"and" / "or" switch</td><td>micro</td><td>sometimes</td><td>tap; the word and the count change</td><td>same</td><td>medium</td><td>colour swap only</td></tr>
+<tr><td>Face or tag picked in a card</td><td>micro</td><td>often</td><td>ring or wash at once (150 ms shadow)</td><td>same</td><td>high</td><td>as the phone row</td></tr>
+</tbody>
+</table>
+</div>
+
+<details>
+<summary>Look notes and what was removed</summary>
+<h3>Look notes</h3>
+<p class="note">Headless Chromium, 390 px (touch) and 768 / 1280 px, mock (10,000 photos) and the real album read-only on its dev API. 0 hydration warnings. Captures: captures/filters-*.jpg. The bar reads in one line at 390 with 2 people and a tag; at 768 the cards and bar fit.</p>
+<h3>Removed</h3>
+<p class="note">The inline summary line under the faces. The 20 px scrubber gutter on phones. The scroll listener that placed the phone scrubber.</p>
+</details>
+</article>
+
 <article class="session" id="session-2026-10-31-look">
 <h2><span class="key">Session 2026-10-31 (look)<span class="vh">:</span></span> the client gallery takes the desktop app's look</h2>
 <p class="kicker">Existing work · look given by the desktop redesign · the owner said the web album looks old</p>
@@ -938,9 +1072,9 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 <p class="lede">You can reverse each one.</p>
 <ol class="cards">
 <li><b>Set covers are gone from the chips</b><span>A folder says "set"; a 24 px cover did not. <a href="#d-22">d-22</a></span><span class="alt">Or: show the cover as a wide photo at the top of the selected set, if your photographers choose covers with care.</span></li>
-<li><b>People stay above the photos on wide screens</b><span>The faces filter the selected set, so they sit under the set bar. <a href="#critique-2026-10-31-look">critique</a></span><span class="alt">Or: a People card in the left column at 768 px and up, like the desktop app.</span></li>
-<li><b>The scrubber keeps a 20 px gutter on phones</b><span>Without it, the scrubber covers the heart on the right column of tiles.</span><span class="alt">Or: hide the scrubber on phones and give the photos the width.</span></li>
-<li><b>Search stays closed with only ?people=</b><span>The faces row and summary already show a people filter. <a href="#d-14">d-14</a></span><span class="alt">Or: open it for ?people= too.</span></li>
+<li><b>Done: People are a card in the column at 768 px and up</b><span>You chose it. <a href="#d-f1">d-f1</a></span></li>
+<li><b>Done: no scrubber on phones</b><span>You chose it. <a href="#d-f7">d-f7</a></span></li>
+<li><b>Search opens only for ?q=</b><span>?tags= and ?people= show in the filter bar. <a href="#d-f8">d-f8</a></span><span class="alt">Or: open it for ?tags= too.</span></li>
 <li><b>Albums with no sets keep search open</b><span>There is no sticky row to hold the button. <a href="#d-14">d-14</a></span><span class="alt">Or: put the button at the end of the faces row.</span></li>
 <li><b>Typed names win over tags</b><span>"can" goes to a person named Candace, not to "candid". <a href="#d-5">d-5</a></span><span class="alt">Or: lift a name only on a whole-word match.</span></li>
 </ol>

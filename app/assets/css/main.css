@@ -112,6 +112,9 @@
   .gallery .field:focus-visible { outline: none; }
   /* Tile actions: note and heart, 32 px each, in one dark strip on the photo */
   .tile-act { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 32px; height: 32px; padding: 0 8px; border-radius: 999px; transition: background-color 0.12s; }
+  /* An item in the filter bar: what is on, in the selected look (blue wash), with its own x */
+  .fchip { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px 0 12px; border-radius: 999px; background: var(--color-brand-wash); border: 1px solid var(--color-brand-soft); color: var(--color-ink); font-size: 13px; white-space: nowrap; transition: background-color 0.12s; }
+  .fchip:hover { background: oklch(93% 0.035 255); }
   .skel { background: var(--color-inset-2); border-radius: var(--radius-tile); animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 }
 
