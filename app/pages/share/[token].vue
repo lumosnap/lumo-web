@@ -1,118 +1,94 @@
 <template>
-  <div class="bg-slate-50 font-sans text-slate-900 flex flex-col" :class="isV2 ? 'min-h-screen' : 'h-screen overflow-hidden'">
+  <!-- Grey paper, white prints: the album card and the photo sheet sit on the canvas, as in the photographer's app. -->
+  <!-- inert under the name prompt and the notes panel: keyboard focus stays in the dialog -->
+  <div class="gallery bg-canvas flex flex-col" :class="isV2 ? 'min-h-screen' : 'h-screen overflow-hidden'"
+    :inert="showNameModal || showCommentSidebar || undefined">
     <!-- Loading State (Skeleton) -->
-    <div v-if="loading" class="flex-1 flex flex-col md:flex-row overflow-hidden animate-fade-in">
-      <!-- Left Sidebar Skeleton -->
-      <aside
-        class="w-full md:w-80 lg:w-96 border-b md:border-b-0 md:border-r border-slate-200 bg-white p-6 flex flex-col gap-6 shrink-0 z-10">
-        <div>
-          <div class="flex items-center justify-between mb-2">
-            <div class="h-4 w-20 bg-slate-200 rounded animate-pulse"></div>
-            <div class="h-6 w-16 bg-emerald-50 rounded-full animate-pulse"></div>
-          </div>
-          <div class="h-10 w-3/4 bg-slate-200 rounded mb-2 animate-pulse"></div>
-          <div class="h-4 w-1/2 bg-slate-200 rounded animate-pulse"></div>
-        </div>
-
-        <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 shadow-inner">
-          <div class="flex items-center gap-3 mb-4">
-            <div class="w-10 h-10 rounded-full bg-slate-200 animate-pulse"></div>
-            <div class="flex-1">
-              <div class="h-4 w-24 bg-slate-200 rounded mb-1 animate-pulse"></div>
-              <div class="h-3 w-16 bg-slate-200 rounded animate-pulse"></div>
-            </div>
-          </div>
-          <div class="h-10 w-full bg-white rounded-xl border border-slate-200 animate-pulse"></div>
-        </div>
+    <div v-if="loading" class="flex-1 flex flex-col md:flex-row md:p-4 md:gap-4 overflow-hidden">
+      <aside class="w-full md:w-80 shrink-0 bg-card rounded-b-card md:rounded-card p-5 md:p-6 flex flex-col gap-3">
+        <div class="skel h-4 w-24"></div>
+        <div class="skel h-8 w-3/4"></div>
+        <div class="skel h-4 w-1/2"></div>
+        <div class="skel h-10 w-full mt-3 rounded-ctl"></div>
       </aside>
-
-      <!-- Right Grid Skeleton -->
-      <main class="flex-1 overflow-hidden bg-slate-50 p-4 md:p-8">
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          <div v-for="i in 10" :key="i" class="aspect-[4/5] rounded-xl bg-slate-200 animate-pulse"></div>
+      <main class="flex-1 mt-2 md:mt-0 bg-card rounded-t-card md:rounded-card p-3 md:p-4 overflow-hidden">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+          <div v-for="i in 10" :key="i" class="skel aspect-[4/5]"></div>
         </div>
       </main>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="flex-1 flex flex-col items-center justify-center text-center max-w-md mx-auto px-4">
-      <div class="text-6xl mb-6">😕</div>
-      <h1 class="text-3xl font-bold mb-4 text-slate-900">Album Not Found</h1>
-      <p class="text-slate-500 mb-8 leading-relaxed">
-        This album link may have expired or the album doesn't exist. Please check with the photographer for a valid
-        link.
-      </p>
-      <NuxtLink to="/"
-        class="inline-flex items-center justify-center px-6 py-3 bg-slate-900 text-white rounded-full font-semibold hover:bg-slate-800 transition-colors">
-        Go to Homepage
-      </NuxtLink>
+    <div v-else-if="error" class="flex-1 flex items-center justify-center p-4">
+      <div class="bg-card rounded-card p-8 max-w-sm w-full text-center">
+        <span class="mx-auto mb-5 w-14 h-14 rounded-full bg-inset text-ink-3 flex items-center justify-center">
+          <Icon name="lucide:image-off" size="24" />
+        </span>
+        <h1 class="text-2xl text-ink tracking-tight mb-2">This album isn't here</h1>
+        <p class="text-ink-2 leading-relaxed mb-6">
+          The link may have expired, or the album was taken down. Ask your photographer for a new link.
+        </p>
+        <NuxtLink to="/" class="btn btn-ghost">Go to LumoSnap</NuxtLink>
+      </div>
     </div>
 
     <!-- Main Content Area (Split View) -->
     <div v-else-if="albumInfo" class="flex-1 flex flex-col md:flex-row animate-fade-in"
       :class="isV2 ? '' : 'overflow-hidden'">
 
-      <!-- Left Sidebar (v2: page scrolls on window, so the sidebar sticks) -->
+      <!-- Album card. Phones: one white card above the sheet. md+: a column of cards beside it, sticky in v2
+           (the page scrolls on the window). -->
       <aside
-        class="w-full md:w-80 lg:w-96 border-b md:border-b-0 md:border-r border-slate-200 bg-white p-6 flex flex-col gap-6 shrink-0 overflow-y-auto z-10 shadow-sm md:shadow-none"
-        :class="isV2 ? 'md:sticky md:top-0 md:h-screen md:self-start' : ''">
-        <!-- Album Info -->
-        <div>
-          <div class="flex items-center justify-between mb-2">
-            <div class="text-xs font-bold text-indigo-600 uppercase tracking-wider">{{ albumInfo.ownerName }}</div>
-            <div
-              class="flex items-center gap-1.5 text-emerald-600 text-[10px] font-medium bg-emerald-50 px-2 py-1 rounded-full">
-              <Icon name="lucide:check-circle-2" size="12" /> Synced
-            </div>
-          </div>
-          <h1 class="text-3xl font-serif italic text-slate-900 mb-2">{{ albumInfo.title }}</h1>
-          <p class="text-sm text-slate-400 font-medium">
-            {{ formattedEventDate }} • {{ albumInfo.totalImages }} Photos
+        class="w-full md:w-80 shrink-0 flex flex-col md:gap-4 md:p-4 md:pr-0 bg-card rounded-b-card md:bg-transparent md:rounded-none z-10"
+        :class="isV2 ? 'md:sticky md:top-0 md:h-screen md:self-start md:overflow-y-auto' : 'md:overflow-y-auto'">
+        <div class="px-5 pt-6 pb-4 md:p-6 md:bg-card md:rounded-card">
+          <p v-if="albumInfo.ownerName" class="text-[13px] text-ink-3 mb-1 truncate">{{ albumInfo.ownerName }}</p>
+          <h1 class="text-[28px] leading-[1.15] tracking-[-0.015em] text-ink text-balance break-words">{{ albumInfo.title }}</h1>
+          <p class="mt-1.5 text-sm text-ink-2 tabular-nums">
+            <template v-if="formattedEventDate">{{ formattedEventDate }} · </template>{{ (albumInfo.totalImages ?? 0).toLocaleString('en-US') }} photos
           </p>
         </div>
 
-        <!-- Client Profile Card -->
-        <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 shadow-inner">
-
-          <!-- Favorites Toggle -->
-          <button @click="toggleShowFavorites"
-            class="w-full flex items-center justify-center gap-2 text-sm font-medium px-4 py-2 rounded-xl shadow-sm border transition-all duration-200"
-            :class="showFavoritesOnly
-              ? 'bg-rose-50 text-rose-600 border-rose-100 ring-2 ring-rose-100'
-              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'">
-            <Icon name="lucide:heart" size="16" :fill="showFavoritesOnly ? 'currentColor' : 'none'" />
-            <span>{{ showFavoritesOnly ? 'Show All Images' : `Show Favorites (${(isV2 ? v2Favs.size : albumInfo?.favoritedPhotosCount) || 0})`
-              }}</span>
-          </button>
-
+        <!-- Your picks: all or favorites; bursts stacked or not -->
+        <div class="px-5 pb-5 md:p-4 md:bg-card md:rounded-card flex flex-wrap items-center gap-2">
+          <div class="seg md:w-full" role="group" aria-label="Show">
+            <button type="button" class="md:flex-1 md:justify-center" :aria-pressed="!showFavoritesOnly" @click="showFavoritesOnly && toggleShowFavorites()">All</button>
+            <button type="button" class="md:flex-1 md:justify-center" :aria-pressed="showFavoritesOnly" @click="!showFavoritesOnly && toggleShowFavorites()">
+              <Icon name="lucide:heart" size="16" :class="showFavoritesOnly ? 'text-heart' : ''" />Favorites
+              <span class="n">{{ (isV2 ? v2Favs.size : albumInfo?.favoritedPhotosCount) || 0 }}</span>
+            </button>
+          </div>
           <!-- v2: stack burst frames into one tile (only for albums with bursts) -->
-          <label v-if="hasBursts" class="mt-3 flex items-center justify-between gap-3 text-sm font-medium text-slate-600 px-1 cursor-pointer">
-            <span class="flex items-center gap-2"><Icon name="lucide:layers" size="16" />Stack bursts</span>
-            <input v-model="stackBursts" type="checkbox" role="switch" class="w-5 h-5 accent-indigo-600 cursor-pointer" />
-          </label>
+          <button v-if="hasBursts" type="button" class="btn btn-ghost px-3.5 gap-1.5" :aria-pressed="stackBursts"
+            title="Show each burst as one photo" @click="stackBursts = !stackBursts">
+            <Icon name="lucide:layers" size="16" :class="stackBursts ? 'text-brand' : 'text-ink-3'" />Stack bursts
+          </button>
         </div>
+
+        <a href="/" class="hidden md:block mt-auto px-2 py-1 text-[13px] text-ink-3 hover:text-ink-2 w-fit">Shared with LumoSnap</a>
       </aside>
 
-      <!-- Right Grid Area -->
-      <main class="flex-1 bg-slate-50 p-4 md:p-8 relative" :class="isV2 ? 'min-w-0' : 'overflow-y-auto'"
+      <!-- The photo sheet. v2: overflow clip (not hidden) rounds its corners without becoming a scroll
+           container, so the set bar still sticks to the window. -->
+      <main class="flex-1 bg-card mt-2 md:m-4 rounded-t-card md:rounded-card px-3 md:px-4 pb-4 relative"
+        :class="[isV2 ? 'min-w-0 overflow-clip' : 'overflow-y-auto', isV2 && manifest && sets.length ? '' : 'pt-3 md:pt-4']"
         ref="scrollContainer" @scroll="handleScroll">
 
         <!-- Grid Loading State -->
-        <div v-if="gridLoading" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          <div v-for="i in 10" :key="i" class="aspect-[4/5] rounded-xl bg-slate-200 animate-pulse"></div>
+        <div v-if="gridLoading" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+          <div v-for="i in 10" :key="i" class="skel aspect-[4/5]"></div>
         </div>
 
-        <!-- Browse v2: set tabs (only when the album has sets), sticky over the grid -->
+        <!-- Browse v2: set tabs (only when the album has sets), sticky over the grid; solid, no blur over scrolling photos -->
         <div v-if="isV2 && manifest && sets.length"
-          class="sticky top-0 z-30 -mx-4 md:-mx-8 -mt-4 md:-mt-8 mb-4 px-4 md:px-8 bg-slate-50/95 backdrop-blur-sm flex items-center gap-2">
-          <SetTabs v-model="selectedSet" :sets="sets" :total="allCount" :base="manifest.base"
+          class="sticky top-0 z-30 -mx-3 md:-mx-4 mb-1 px-3 md:px-4 bg-card flex items-center gap-2">
+          <SetTabs v-model="selectedSet" :sets="sets" :total="allCount"
             panel="set-panel" class="flex-1 min-w-0" />
           <!-- Search lives behind this button, at the row's trailing edge: reachable from anywhere in the album.
                Open with an active search, it focuses the field instead of hiding a filter that is on. -->
           <button v-if="hasTags" type="button" aria-controls="search-panel" :aria-expanded="searchShown"
             :aria-label="searchShown && !searchActive ? 'Close search' : 'Search photos'"
-            class="shrink-0 w-9 h-9 rounded-full border flex items-center justify-center transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-            :class="searchActive ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : searchShown ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'"
+            class="icon-btn" :class="{ on: searchActive, 'bg-ink text-card hover:bg-ink hover:text-card': searchShown && !searchActive }"
             @click="toggleSearch">
             <Icon :name="searchShown && !searchActive ? 'lucide:x' : 'lucide:search'" size="18" />
           </button>
@@ -120,82 +96,83 @@
 
         <!-- Browse v2 filters, inside the selected set. Who (faces) sits apart from what (search + tag chips):
              different questions, different shapes. -->
-        <div v-if="isV2 && manifest && (hasTags || people.length)" class="mb-4 flex flex-col gap-3">
+        <div v-if="isV2 && manifest && (hasTags || people.length)" class="mb-2 flex flex-col gap-3">
           <div v-if="stripPeople.length" id="people-strip" role="group" aria-label="People"
-            class="-mx-4 px-4 md:mx-0 md:px-0 flex gap-1 overflow-x-auto [scrollbar-width:none] pt-1">
+            class="-mx-3 px-3 md:mx-0 md:px-0 flex gap-1 overflow-x-auto [scrollbar-width:none] pt-1">
             <button v-for="p in stripPeople" :key="p.id" type="button" :aria-pressed="activePeople.includes(p.id)" :aria-label="p.name"
-              :title="p.name" class="group shrink-0 w-[4.5rem] flex flex-col items-center gap-1.5 rounded-xl pt-1 pb-1.5 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              :title="p.name" class="group shrink-0 w-[4.5rem] flex flex-col items-center gap-1.5 rounded-ctl pt-1 pb-1.5"
               @click="togglePerson(p.id)">
-              <span aria-hidden="true" class="relative w-14 h-14 rounded-full ring-offset-2 ring-offset-slate-50 transition-shadow"
-                :class="activePeople.includes(p.id) ? 'ring-2 ring-indigo-600' : lifted.ids.includes(p.id) ? 'outline-2 outline-dashed outline-offset-2 outline-indigo-500' : 'group-hover:ring-2 group-hover:ring-slate-300'">
+              <span aria-hidden="true" class="relative w-14 h-14 rounded-full ring-offset-2 ring-offset-card transition-shadow"
+                :class="activePeople.includes(p.id) ? 'ring-2 ring-brand' : lifted.ids.includes(p.id) ? 'outline-2 outline-dashed outline-offset-2 outline-brand' : 'group-hover:ring-2 group-hover:ring-line-2'">
                 <!-- Initial under the face: shows while the thumbnail loads or if it fails -->
-                <span class="absolute inset-0 rounded-full bg-slate-200 text-slate-500 text-lg font-semibold flex items-center justify-center">{{ p.name.slice(0, 1).toUpperCase() }}</span>
+                <span class="absolute inset-0 rounded-full bg-inset-2 text-ink-3 text-lg font-medium flex items-center justify-center">{{ p.name.slice(0, 1).toUpperCase() }}</span>
                 <span class="absolute inset-0 rounded-full bg-no-repeat"
                   :style="{ backgroundImage: `url(${thumbUrl(manifest.base, p.cover)})`, ...avatarCrop(p.box, p.cover.w, p.cover.h) }"></span>
-                <span v-if="activePeople.includes(p.id)" class="absolute -right-0.5 -bottom-0.5 w-5 h-5 rounded-full bg-indigo-600 text-white ring-2 ring-slate-50 flex items-center justify-center">
+                <span v-if="activePeople.includes(p.id)" class="absolute -right-0.5 -bottom-0.5 w-5 h-5 rounded-full bg-brand text-white ring-2 ring-card flex items-center justify-center">
                   <Icon name="lucide:check" size="12" />
                 </span>
               </span>
-              <!-- First name only: full names truncate at this width; the full name is the label and tooltip -->
-              <span class="max-w-full truncate px-0.5 text-[13px] leading-4"
-                :class="activePeople.includes(p.id) || lifted.ids.includes(p.id) ? 'font-semibold text-indigo-700' : 'font-medium text-slate-600'">{{ p.name.split(' ')[0] }}</span>
+              <!-- Full name over two lines: photographers name roles ("bride father"), so first words collide -->
+              <span class="max-w-full line-clamp-2 break-words text-center px-0.5 text-[13px] leading-4"
+                :class="activePeople.includes(p.id) || lifted.ids.includes(p.id) ? 'font-medium text-brand' : 'text-ink-2'">{{ p.name }}</span>
             </button>
           </div>
           <div v-if="hasTags && searchShown" id="search-panel" role="search" class="flex flex-col gap-3">
             <div class="relative max-w-xl">
               <label for="photo-search" class="sr-only">Search photos</label>
-              <Icon name="lucide:search" size="18" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <Icon name="lucide:search" size="18" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
               <input id="photo-search" v-model="qInput" type="search" autocomplete="off" enterkeyhint="search"
-                :placeholder="`Search: ${people[0] ? `${people[0].name.split(' ')[0]}, ` : ''}haldi, cake…`"
-                class="w-full h-11 rounded-full border border-slate-200 bg-white pl-10 pr-11 text-base text-slate-900 placeholder:text-slate-400 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 [&::-webkit-search-cancel-button]:appearance-none"
+                :placeholder="`Search: ${people[0] ? `${people[0].name}, ` : ''}haldi, cake…`"
+                class="field h-11 pl-10 pr-11 text-base [&::-webkit-search-cancel-button]:appearance-none"
                 @focus="loadSearch" @keydown.esc="onSearchEsc" />
               <button v-if="qInput" type="button" aria-label="Clear search"
-                class="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                class="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-ink-3 hover:bg-inset-2 hover:text-ink"
                 @click="setQuery('')">
                 <Icon name="lucide:x" size="16" />
               </button>
             </div>
-            <div v-if="chips.length" role="group" aria-label="Filter by tag" class="-mx-4 px-4 md:mx-0 md:px-0 flex gap-2 overflow-x-auto [scrollbar-width:none]">
+            <div v-if="chips.length" role="group" aria-label="Filter by tag" class="-mx-3 px-3 md:mx-0 md:px-0 flex gap-2 overflow-x-auto [scrollbar-width:none]">
               <button v-for="c in chips" :key="c.slug" type="button" :aria-pressed="activeTags.includes(c.slug)"
-                class="shrink-0 h-8 px-3 rounded-full text-sm font-medium border flex items-center gap-1.5 whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                :class="activeTags.includes(c.slug) ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'"
+                class="btn btn-ghost h-8 px-3 gap-1.5 text-[13px] font-normal"
                 @click="toggleTag(c.slug)">
-                <Icon v-if="activeTags.includes(c.slug)" name="lucide:check" size="14" />
+                <Icon v-if="activeTags.includes(c.slug)" name="lucide:check" size="14" class="text-brand" />
                 {{ c.label }}
               </button>
             </div>
           </div>
           <!-- What the filter is showing; only while one is on. Two or more people: together or either. -->
           <div v-if="filterKey" class="flex flex-wrap items-center gap-x-3 gap-y-2 min-h-8">
-            <p aria-live="polite" class="text-sm text-slate-500 tabular-nums">
-              <template v-if="whoNames.length"><span class="font-semibold text-slate-900">{{ joinNames(whoNames, mode === 'any' ? 'or' : 'and') }}</span><template v-if="resultCount"> · </template></template>
-              <template v-if="resultCount || (resultCount === 0 && !whoNames.length)">{{ resultCount }} photo{{ resultCount === 1 ? '' : 's' }}</template>
+            <p aria-live="polite" class="text-sm text-ink-2 tabular-nums">
+              <template v-if="whoNames.length"><span class="font-medium text-ink">{{ joinNames(whoNames, mode === 'any' ? 'or' : 'and') }}</span><template v-if="resultCount"> · </template></template>
+              <template v-if="resultCount || (resultCount === 0 && !whoNames.length)">{{ resultCount?.toLocaleString('en-US') }} photo{{ resultCount === 1 ? '' : 's' }}</template>
             </p>
-            <div v-if="who.length > 1" role="group" aria-label="Photos with" class="flex rounded-full bg-slate-200/70 p-0.5">
+            <div v-if="who.length > 1" role="group" aria-label="Photos with" class="seg p-0.5">
               <button v-for="[m, label] in ([['all', 'Together'], ['any', 'Either']] as const)" :key="m" type="button" :aria-pressed="mode === m"
-                class="h-7 px-3 rounded-full text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                :class="mode === m ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'"
+                class="h-7 px-3 text-[13px]"
                 @click="either = m === 'any'">{{ label }}</button>
             </div>
           </div>
         </div>
 
         <!-- Browse v2: set/filter picked before the full manifest arrived (SSR only shipped the URL's view) -->
-        <div v-if="isV2 && manifest && !gridImages" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          <div v-for="i in 10" :key="i" class="aspect-[4/5] rounded-xl bg-slate-200 animate-pulse"></div>
+        <div v-if="isV2 && manifest && !gridImages" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+          <div v-for="i in 10" :key="i" class="skel aspect-[4/5]"></div>
         </div>
 
         <!-- Browse v2: search/chips matched nothing in this set -->
-        <div v-else-if="isV2 && manifest && filterKey && gridImages?.length === 0" class="py-16 text-center">
-          <p class="text-lg font-semibold text-slate-900 text-balance">{{ zeroTitle }}</p>
-          <p v-if="suggestion" class="mt-2 text-sm text-slate-600">
-            Did you mean <button type="button" class="min-h-6 font-semibold text-indigo-600 underline underline-offset-2"
+        <div v-else-if="isV2 && manifest && filterKey && gridImages?.length === 0" class="py-16 px-4 text-center">
+          <span class="mx-auto mb-4 w-12 h-12 rounded-full bg-inset text-ink-3 flex items-center justify-center" aria-hidden="true">
+            <Icon :name="whoNames.length ? 'lucide:users' : 'lucide:search'" size="20" />
+          </span>
+          <p class="text-lg text-ink text-balance">{{ zeroTitle }}</p>
+          <p v-if="suggestion" class="mt-2 text-sm text-ink-2">
+            Did you mean <button type="button" class="min-h-6 font-medium text-brand underline underline-offset-2"
               @click="setQuery(suggestion)">{{ suggestion }}</button>?
           </p>
           <div class="mt-5 flex flex-wrap justify-center gap-2">
-            <button v-if="eitherCount" type="button" class="h-9 px-4 rounded-full bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 tabular-nums"
-              @click="either = true">Show {{ joinNames(whoNames, 'or') }} · {{ eitherCount }}</button>
-            <button type="button" class="h-9 px-4 rounded-full border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            <button v-if="eitherCount" type="button" class="btn btn-primary tabular-nums"
+              @click="either = true">Show {{ joinNames(whoNames, 'or') }} · {{ eitherCount.toLocaleString('en-US') }}</button>
+            <button type="button" class="btn btn-ghost"
               @click="clearFilters">{{ activeTags.length || activePeople.length ? 'Clear filters' : 'Clear search' }}</button>
           </div>
         </div>
@@ -212,20 +189,20 @@
 
         <!-- Empty State -->
         <div v-else-if="images.length === 0"
-          class="h-full flex flex-col items-center justify-center text-center p-8 opacity-60">
-          <div class="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center mb-6 text-4xl">
-            {{ showFavoritesOnly ? '💔' : '📷' }}
-          </div>
-          <h2 class="text-xl font-bold text-slate-900 mb-2">
-            {{ showFavoritesOnly ? 'No favorites yet' : 'No photos found' }}
+          class="min-h-[50vh] flex flex-col items-center justify-center text-center p-8">
+          <span class="mb-5 w-14 h-14 rounded-full bg-inset flex items-center justify-center" aria-hidden="true"
+            :class="showFavoritesOnly ? 'text-heart' : 'text-ink-3'">
+            <Icon :name="showFavoritesOnly ? 'lucide:heart' : 'lucide:image'" size="24" />
+          </span>
+          <h2 class="text-xl text-ink mb-2">
+            {{ showFavoritesOnly ? 'No favorites yet' : 'No photos yet' }}
           </h2>
-          <p class="text-slate-500 max-w-xs">
-            <span v-if="showFavoritesOnly">Tap the heart icon on photos you love to add them to your collection.</span>
-            <span v-else>This album seems to be empty.</span>
+          <p class="text-ink-2 max-w-xs">
+            <span v-if="showFavoritesOnly">Tap the heart on a photo you love. It will wait for you here.</span>
+            <span v-else>Your photographer has not added photos to this album yet.</span>
           </p>
-          <button v-if="showFavoritesOnly" @click="toggleShowFavorites"
-            class="mt-6 px-6 py-2 bg-white border border-slate-200 rounded-full text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm">
-            View All Photos
+          <button v-if="showFavoritesOnly" @click="toggleShowFavorites" type="button" class="btn btn-ghost mt-6">
+            See all photos
           </button>
         </div>
 
@@ -284,54 +261,48 @@
 
         <!-- Loading More Indicator -->
         <div v-if="loadingMore" class="py-8 flex justify-center">
-          <div class="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <div class="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin"></div>
         </div>
       </main>
     </div>
 
-    <!-- Client Name Modal -->
+    <!-- Client Name Modal: who is choosing, so the photographer can tell whose hearts are whose.
+         Plain dim, no blur: it opens over the first photos on a phone, while they still load. -->
     <Teleport to="body">
       <div v-if="showNameModal"
-        class="fixed inset-0 z-[200000] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 animate-fade-in relative overflow-hidden">
-          <!-- Background Decoration -->
-          <div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-50 to-white -z-10"></div>
-
-          <div class="text-center mb-8">
-            <h2 class="text-3xl font-bold text-slate-900 mb-2 font-serif">Welcome!</h2>
-            <p class="text-slate-500 text-sm font-medium">
-              Let's get you set up to browse photos
+        class="gallery fixed inset-0 z-[200000] bg-ink/55 flex items-end sm:items-center justify-center sm:p-4">
+        <div role="dialog" aria-modal="true" aria-labelledby="name-title"
+          class="bg-card rounded-t-card sm:rounded-card shadow-float max-w-md w-full px-6 pt-8 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:p-8 animate-fade-in">
+          <div class="text-center mb-6">
+            <h2 id="name-title" class="text-[26px] leading-tight tracking-[-0.015em] text-ink mb-2">Who's choosing?</h2>
+            <p class="text-ink-2 text-[15px] text-balance">
+              {{ albumInfo?.ownerName || 'Your photographer' }} sees your hearts and notes under this name.
             </p>
           </div>
 
           <form @submit.prevent="saveName">
             <!-- Animal Carousel -->
-            <div class="mb-8">
-              <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 text-center">Pick your
-                spirit animal</label>
+            <div class="mb-6">
+              <p id="animal-label" class="text-[13px] text-ink-3 text-center">Pick an animal</p>
 
-              <div class="relative flex items-center justify-center h-48">
-                <!-- Prev Button -->
-                <button type="button" @click="prevAnimal"
-                  class="absolute left-0 z-10 w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-colors shadow-sm">
-                  <Icon name="lucide:chevron-left" size="16" />
+              <div class="relative flex items-center justify-center h-40" role="group" aria-labelledby="animal-label">
+                <button type="button" @click="prevAnimal" aria-label="Previous animal" class="icon-btn absolute left-0 z-10">
+                  <Icon name="lucide:chevron-left" size="18" />
                 </button>
 
                 <!-- Carousel Window -->
-                <div class="overflow-hidden w-full px-10 py-8">
-                  <div class="flex items-center justify-center transition-transform duration-300 ease-out"
-                    :style="{ transform: `translateX(0)` }">
+                <div class="overflow-hidden w-full px-10 py-6">
+                  <div class="flex items-center justify-center">
                     <div v-for="(animal, index) in visibleAnimals" :key="animal?.name || index"
-                      @click="selectAnimal(index)"
-                      class="flex flex-col items-center justify-center cursor-pointer transition-all duration-300 transform px-2"
-                      :class="index === 1 ? 'scale-125 opacity-100 z-10' : 'scale-75 opacity-40 blur-[1px]'">
+                      @click="selectAnimal(index)" :aria-hidden="index !== 1 || undefined"
+                      class="flex flex-col items-center justify-center cursor-pointer transition-[transform,opacity] duration-300 px-2"
+                      :class="index === 1 ? 'scale-125 opacity-100 z-10' : 'scale-75 opacity-50'">
                       <template v-if="animal">
-                        <div class="text-6xl mb-2 transition-transform duration-300"
-                          :class="{ 'animate-bounce-subtle': index === 1 }">
+                        <div class="text-6xl mb-2" :class="{ 'animate-bounce-subtle': index === 1 }">
                           {{ animal.emoji }}
                         </div>
-                        <div class="text-xs font-bold capitalize transition-colors duration-300"
-                          :class="index === 1 ? 'text-indigo-600' : 'text-transparent'">
+                        <div class="text-xs font-medium capitalize text-ink" :class="{ invisible: index !== 1 }"
+                          :aria-live="index === 1 ? 'polite' : undefined">
                           {{ animal.name }}
                         </div>
                       </template>
@@ -339,35 +310,28 @@
                   </div>
                 </div>
 
-                <!-- Next Button -->
-                <button type="button" @click="nextAnimal"
-                  class="absolute right-0 z-10 w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-colors shadow-sm">
-                  <Icon name="lucide:chevron-right" size="16" />
+                <button type="button" @click="nextAnimal" aria-label="Next animal" class="icon-btn absolute right-0 z-10">
+                  <Icon name="lucide:chevron-right" size="18" />
                 </button>
               </div>
             </div>
 
             <!-- Name Input -->
-            <div class="mb-8">
-              <div class="relative group">
-                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Icon name="lucide:user" size="18"
-                    class="text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-                </div>
-                <input v-model="nameInput" type="text" placeholder="Enter your name"
-                  class="w-full pl-11 pr-4 py-4 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-indigo-500 focus:bg-white outline-none transition-all text-slate-900 placeholder:text-slate-400 font-medium text-lg"
-                  autofocus required minlength="1" maxlength="50" />
-              </div>
+            <label for="client-name" class="block text-[13px] text-ink-3 mb-1.5">Your name</label>
+            <div class="relative mb-4">
+              <Icon name="lucide:user" size="18" class="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
+              <input id="client-name" v-model="nameInput" type="text" placeholder="Asha" autocomplete="given-name"
+                class="field h-13 pl-11 pr-4 text-[17px]"
+                autofocus required minlength="1" maxlength="50" />
             </div>
 
-            <button type="submit"
-              class="w-full py-4 rounded-2xl bg-slate-900 text-white font-bold text-lg hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98]"
-              :disabled="!nameInput.trim()">
-              Start Browsing
+            <!-- Never disabled: an empty submit lands on the required field, which says what is missing -->
+            <button type="submit" class="btn btn-primary w-full h-12 text-base">
+              Start browsing
             </button>
 
-            <p class="mt-6 text-center text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
-              Keep the name and animal consistent across devices to keep the data synced.
+            <p class="mt-5 text-center text-[13px] text-ink-3 leading-relaxed max-w-xs mx-auto text-balance">
+              Use the same name and animal on your other devices to see your hearts there too.
             </p>
           </form>
         </div>
@@ -383,9 +347,9 @@
       <div v-for="anim in heartAnimations" :key="anim.id" class="fixed pointer-events-none z-[200000]"
         :style="{ left: anim.x + 'px', top: anim.y + 'px' }">
         <div class="heart-burst">
-          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"
+          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" class="text-heart"
             viewBox="0 0 24 24"><!-- Icon from Lucide by Lucide Contributors - https://github.com/lucide-icons/lucide/blob/main/LICENSE -->
-            <path fill="#f43f5e" stroke="#f43f5e" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            <path fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676a.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5" />
           </svg>
         </div>
@@ -651,7 +615,7 @@ const focusSearch = () => nextTick(() => {
   if (!el) return
   // Opened from deep in the grid: bring the panel under the sticky row first.
   const top = el.getBoundingClientRect().top
-  if (top < 64 || top > window.innerHeight - 80) window.scrollTo({ top: top + window.scrollY - 76, behavior: 'instant' })
+  if (top < 64 || top > window.innerHeight - 80) window.scrollTo({ top: top + window.scrollY - 64, behavior: 'instant' })
   el.focus({ preventScroll: true })
 })
 function toggleSearch() {
@@ -1152,6 +1116,7 @@ function initLightbox() {
   lightbox.on('uiRegister', () => {
     lightbox!.pswp!.ui!.registerElement({
       name: 'favorite-button',
+      title: 'Favorite',
       order: 9,
       isButton: true,
       tagName: 'button',
@@ -1168,6 +1133,7 @@ function initLightbox() {
     // Add Notes Button
     lightbox!.pswp!.ui!.registerElement({
       name: 'notes-button',
+      title: 'Notes',
       order: 10,
       isButton: true,
       tagName: 'button',
@@ -1341,69 +1307,60 @@ onUnmounted(() => {
 </script>
 
 <style>
-/* Photoswipe UI Overrides */
+/* The scrubber is teleported outside the inert page root: hide it (and its focus) under a dialog */
+body:has([aria-modal="true"]) .moment-scrubber { visibility: hidden; }
+
+/* PhotoSwipe chrome, in the desktop lightbox's look: near-black stage, solid round buttons (no blur over a
+   moving photo), white when on. Shared by v1 and v2. */
+.pswp { font-family: var(--font-ui); }
+.pswp__bg { background: var(--color-night) !important; }
+.pswp__top-bar { padding: 0 8px; align-items: center; height: 64px; gap: 8px; }
+
 .pswp__button {
   background: none !important;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  opacity: 0.8;
+  transition: opacity 0.15s ease;
+  opacity: 0.9;
 }
-
-.pswp__button:hover {
-  opacity: 1;
-  transform: scale(1.1);
-}
+.pswp__button:hover { opacity: 1; }
+.pswp__button:focus-visible { outline: 2px solid var(--color-brand-soft); outline-offset: 2px; }
 
 /* Force all icons to be white */
 .pswp__button svg {
-  stroke: white !important;
+  stroke: oklch(92% 0 0) !important;
   fill: none !important;
-  width: 24px !important;
-  height: 24px !important;
+  width: 20px !important;
+  height: 20px !important;
 }
-
-/* Specific fix for heart icon fill state */
+/* Your heart: filled, red, on the white "on" button */
 .pswp-favorite-icon svg.text-rose-500 {
-  stroke: #f43f5e !important;
-  /* rose-500 */
-  fill: #f43f5e !important;
+  stroke: var(--color-heart) !important;
+  fill: var(--color-heart) !important;
 }
-
-.pswp__button--arrow--left,
-.pswp__button--arrow--right {
-  background: rgba(255, 255, 255, 0.1) !important;
-  backdrop-filter: blur(10px);
-  border-radius: 50%;
-  width: 48px !important;
-  height: 48px !important;
-  margin-top: -24px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-.pswp__button--arrow--left:hover,
-.pswp__button--arrow--right:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
-}
-
 .pswp__button--close,
-.pswp__button--zoom {
-  background: rgba(255, 255, 255, 0.1) !important;
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  width: 44px !important;
-  height: 44px !important;
-  margin: 10px 10px 0 0 !important;
+.pswp__button--zoom,
+.pswp__button--favorite-button,
+.pswp__button--notes-button {
+  background: var(--color-night-2) !important;
+  border-radius: 999px;
+  min-width: 40px !important;
+  width: auto !important;
+  height: 40px !important;
+  margin: 0 !important;
+  padding: 0 10px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  padding: 0 !important;
+  transition: background-color 0.12s, opacity 0.15s;
 }
-
 .pswp__button--close:hover,
-.pswp__button--zoom:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
+.pswp__button--zoom:hover,
+.pswp__button--favorite-button:hover,
+.pswp__button--notes-button:hover {
+  background: oklch(32% 0.005 255) !important;
 }
+.pswp__button--favorite-button:has(svg.text-rose-500) { background: var(--color-card) !important; }
+.pswp__button--favorite-button:has(svg.text-rose-500) span { color: var(--color-ink) !important; }
+.pswp__button--notes-button:has(svg.text-indigo-400) svg { stroke: var(--color-brand-soft) !important; fill: var(--color-brand-soft) !important; }
 
 .pswp-custom-icon {
   display: flex;
@@ -1412,37 +1369,29 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
 }
-
-.pswp__button--favorite-button,
-.pswp__button--notes-button {
-  background: rgba(255, 255, 255, 0.1) !important;
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  width: 44px !important;
-  height: 44px !important;
-  margin: 10px 10px 0 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-.pswp__button--favorite-button:hover,
-.pswp__button--notes-button:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
-}
+.pswp-custom-icon span { box-shadow: none !important; font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; margin-left: 6px; color: oklch(92% 0 0); }
 
 .pswp__counter {
-  font-family: var(--font-sans);
-  font-weight: 500;
-  opacity: 0.8;
-  margin-top: 15px;
-  margin-left: 20px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: oklch(75% 0 0);
+  opacity: 1;
+  margin: 0 auto 0 8px;
+  height: auto;
+  line-height: 1;
 }
 
 /* Instagram-style Heart Burst Animation */
 .heart-burst {
   animation: heartBurst 1.5s ease-out forwards;
   position: relative;
+}
+@media (prefers-reduced-motion: reduce) {
+  .heart-burst { animation: heartFade 0.9s ease-out forwards; }
+}
+@keyframes heartFade {
+  0%, 60% { opacity: 1; transform: translate(-50%, -50%); }
+  100% { opacity: 0; transform: translate(-50%, -50%); }
 }
 
 @keyframes heartBurst {

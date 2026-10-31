@@ -382,7 +382,7 @@ export function toShareImage(
 
 export const PSWP_BASE_OPTIONS = {
     padding: { top: 0, bottom: 0, left: 0, right: 0 }, // Edge to edge
-    bgOpacity: 0.95,
+    bgOpacity: 1, // solid stage, as in the desktop lightbox: the grid never shows through a photo
     showHideOpacity: true,
     trapFocus: false, // Allow focus on our custom modal
     doubleTapAction: false as const, // Disable default double-tap zoom - we'll use custom double-tap to favorite

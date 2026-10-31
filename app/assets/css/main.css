@@ -1,6 +1,126 @@
 /* CSS Variables matching Tailwind Palette - Kept for custom class usage */
 @import 'tailwindcss';
 
+/* ---------- Client gallery (share page) ----------
+   The photographer's desktop app and the client's gallery are one studio: grey paper, white prints, one blue.
+   Values are the desktop's (lumo-desktop/src/renderer/src/assets/main.css); each is a Tailwind token, so
+   bg-card, text-ink-3, rounded-card, font-ui and friends work as utilities. Change a value here, nowhere else. */
+@theme {
+  --color-canvas: oklch(94.6% 0.003 255);
+  --color-card: oklch(99.5% 0.001 255);
+  --color-inset: oklch(96.4% 0.003 255);
+  --color-inset-2: oklch(93% 0.004 255);
+  --color-line: oklch(91.8% 0.004 255);
+  --color-line-2: oklch(86% 0.005 255);
+  --color-ink: oklch(21% 0.01 255);
+  --color-ink-2: oklch(42% 0.01 255);
+  --color-ink-3: oklch(50% 0.008 255); /* desktop is 52%; 50% keeps 4.5:1 on the grey canvas too */
+  --color-brand: oklch(52% 0.16 255);
+  --color-brand-soft: oklch(85% 0.06 255);
+  --color-brand-wash: oklch(96% 0.025 255);
+  --color-heart: oklch(60% 0.21 20); /* the client's own heart: the one warm colour, kept for "I love this" */
+  --color-night: oklch(15% 0.005 255); /* lightbox */
+  --color-night-2: oklch(25% 0.005 255);
+  --radius-card: 22px;
+  --radius-inset: 14px;
+  --radius-ctl: 12px;
+  --radius-tile: 10px;
+  --shadow-lift: 0 1px 2px oklch(20% 0.01 255 / 0.05), 0 8px 24px -12px oklch(20% 0.01 255 / 0.12);
+  --shadow-float: 0 30px 60px -20px oklch(0% 0 0 / 0.35);
+  --font-ui: Outfit, system-ui, sans-serif;
+  --ease-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Controls shared by the gallery's bars, cards and dialogs. In @layer components, so a utility on the
+   same element still wins (Tailwind v4 layer order: theme, base, components, utilities). */
+@layer components {
+  .gallery {
+    font-family: var(--font-ui);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  .gallery :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+  /* Pill button. Ghost: white with a line; primary: the black pill, one per view. */
+  .btn {
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    flex: none;
+    transition: background-color 0.12s, border-color 0.12s, transform 0.12s var(--ease-soft);
+  }
+  .btn:active:not(:disabled) { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-primary { background: var(--color-ink); color: var(--color-card); }
+  .btn-primary:hover:not(:disabled) { background: oklch(30% 0.01 255); }
+  .btn-ghost { background: var(--color-card); border-color: var(--color-line-2); color: var(--color-ink); }
+  .btn-ghost:hover:not(:disabled) { background: var(--color-inset); }
+  /* Selected looks the same everywhere: a blue wash, never a fill */
+  .btn-ghost[aria-pressed='true'], .btn-ghost[aria-selected='true'] { background: var(--color-brand-wash); border-color: var(--color-brand-soft); }
+  .btn .n { color: var(--color-ink-3); font-size: 12px; font-weight: 400; font-variant-numeric: tabular-nums; }
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border-radius: 50%;
+    border: 0;
+    display: inline-grid;
+    place-items: center;
+    background: var(--color-inset);
+    color: var(--color-ink-2);
+    transition: background-color 0.12s, color 0.12s;
+  }
+  .icon-btn:hover { background: var(--color-inset-2); color: var(--color-ink); }
+  .icon-btn[aria-pressed='true'], .icon-btn.on { background: var(--color-brand-wash); color: var(--color-brand); }
+  /* Two-part switch: the desktop's All / Picks */
+  .seg { display: inline-flex; background: var(--color-inset); padding: 4px; border-radius: var(--radius-ctl); gap: 2px; }
+  .seg button {
+    height: 32px;
+    padding: 0 14px;
+    border-radius: 8px;
+    color: var(--color-ink-2);
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .seg button:hover { color: var(--color-ink); }
+  .seg button[aria-pressed='true'] { background: var(--color-card); color: var(--color-ink); box-shadow: var(--shadow-lift); }
+  .seg .n { color: var(--color-ink-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .field {
+    width: 100%;
+    background: var(--color-inset);
+    border: 1px solid transparent;
+    border-radius: var(--radius-inset);
+    color: var(--color-ink);
+    outline: none;
+    transition: background-color 0.12s, border-color 0.12s;
+  }
+  .field::placeholder { color: var(--color-ink-3); }
+  .field:focus { background: var(--color-card); border-color: var(--color-brand); box-shadow: 0 0 0 1px var(--color-brand); }
+  .gallery .field:focus-visible { outline: none; }
+  /* Tile actions: note and heart, 32 px each, in one dark strip on the photo */
+  .tile-act { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 32px; height: 32px; padding: 0 8px; border-radius: 999px; transition: background-color 0.12s; }
+  .skel { background: var(--color-inset-2); border-radius: var(--radius-tile); animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  .animate-bounce-subtle { animation: none !important; } /* skeleton pulse stays: it is opacity only and says "loading" */
+  .animate-fade-in { animation-duration: 1ms !important; }
+}
+
 :root {
     /* Slate */
     --slate-50: #f8fafc;

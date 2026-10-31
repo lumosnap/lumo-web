@@ -32,7 +32,7 @@
    --r-s / --r-m: the product's small and large radius. --tint: how far the greys lean toward the brand's hue (0 = pure grey, about .08 = clearly toward the brand, cool or warm).
    --hl: the verdict's highlighter, the brand by default; set it to a second product colour if the brand is dark.
    Red (--flag) stays the one colour that means "needs you": if the product's accent is red, set --flag to a hue the product does not use. */
-:root{--brand:oklch(0.51 0.23 277);--brand-on:#fff;--font:system-ui,sans-serif;--display:var(--font);--mono:ui-monospace,"SF Mono",Menlo,monospace;--r-s:9999px;--r-m:16px;--tint:.06;
+:root{--brand:oklch(0.52 0.16 255);--brand-on:#fff;--font:Outfit,system-ui,sans-serif;--display:var(--font);--mono:ui-monospace,"SF Mono",Menlo,monospace;--r-s:9999px;--r-m:16px;--tint:.06;
 --accent:var(--brand);--accent-on:var(--brand-on);--accent-line:var(--accent);
 --bg:oklch(0.985 0 0);--fg:oklch(0.2 0 0);--mute:oklch(0.46 0 0);--faint:oklch(0.64 0 0);--line:oklch(0.9 0 0);--card:oklch(0.955 0 0);--band:oklch(0.965 0 0);--flag:oklch(0.5 0.19 27);--measure:62ch;
 --t-xs:.75rem;--t-s:.875rem;--t-m:1rem;--t-l:1.125rem;--t-xl:1.3rem}
@@ -402,18 +402,18 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 <!-- The bar: chapter links by their key word, the count that needs the owner, the Dark switch. Keep the links in step with the chapters below; drop ones you deleted. -->
 <div class="bar"><div>
 <span class="name">LumoSnap gallery <span class="note">· design decisions</span></span>
-<nav aria-label="Chapters"><a href="#brief">Brief</a><a href="#flows">Flows</a><a href="#direction">Direction</a><a href="#language">Design language</a><a href="#captures">In the product</a><a href="#session-2026-10-31">What changed</a><a href="#assumed">Assumed</a></nav>
-<a class="needs" href="#decide">3 need you</a>
+<nav aria-label="Chapters"><a href="#brief">Brief</a><a href="#flows">Flows</a><a href="#direction">Direction</a><a href="#language">Design language</a><a href="#captures">In the product</a><a href="#session-2026-10-31-look">New look</a><a href="#session-2026-10-31">People</a><a href="#assumed">Assumed</a></nav>
+<a class="needs" href="#decide">6 need you</a>
 <label class="theme"><input type="checkbox" id="dark"> Dark</label>
 </div></div>
 <main>
 
 <header class="hero" id="top">
 <h1>Design decisions: LumoSnap client gallery</h1>
-<p class="verdict">People get their own row of faces above a search that waits behind a button: <mark>who is a face, what is a word</mark>.</p>
-<p class="dek">People and tags used the same pill in one row, so the 7 faces pushed every tag off a phone screen. We separated them by shape and by place. This beat "people as a tab" and "people only in search".</p>
-<div class="ctas"><a class="btn primary" href="#decide"><b>3</b> choices need your call</a><a class="btn" href="#brief">Read the story ↓</a></div>
-<figure class="shot-hero"><img src="captures/after-390-two.png" alt="Phone view: a row of faces with two faces picked, then the summary line with Together and Either" width="390" height="844"><figcaption>390 px, two people picked. The search stays closed until the client asks for it.</figcaption></figure>
+<p class="verdict">The client gallery now looks like the photographer's app: <mark>grey paper, white prints, one blue</mark>, and a red heart that is the client's own.</p>
+<p class="dek">The old page used slate, indigo, glass and a serif title. It looked like a different, older product. Now the album card, the photo sheet, the folder chips and the lightbox use the desktop app's values. Nothing the client does works in a different way.</p>
+<div class="ctas"><a class="btn primary" href="#decide"><b>6</b> choices need your call</a><a class="btn" href="#session-2026-10-31-look">See what changed ↓</a></div>
+<figure class="shot-hero" style="max-width:390px"><img src="captures/redesign-after-390-real.jpg" alt="Phone view of a real album: white album card, folder chips, faces row, moment line and photos with heart buttons" width="520" height="1125"><figcaption>390 px, a real album. Earlier session: the faces row (below).</figcaption></figure>
 <dl class="stats">
 <div class="i-list"><dt>decisions, each with its reason and the default it beat</dt><dd>16</dd></div>
 <div class="i-compass"><dt>directions tried on the same content</dt><dd>3</dd></div>
@@ -605,6 +605,184 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 </section>
 
 <section id="sessions">
+<article class="session" id="session-2026-10-31-look">
+<h2><span class="key">Session 2026-10-31 (look)<span class="vh">:</span></span> the client gallery takes the desktop app's look</h2>
+<p class="kicker">Existing work · look given by the desktop redesign · the owner said the web album looks old</p>
+<p class="lede">We moved the desktop app's tokens into one Tailwind theme block. Then we used them on every part of the share page. A fresh reviewer found 5 faults; we fixed 4 and kept 1 with a reason.</p>
+
+<h3 class="i-compass"><span class="key">Direction</span> one studio, two rooms</h3>
+<ul class="fields">
+<li><strong>Character:</strong> the photographer gives the family the album from the same desk where it was made. The client sees the same paper, prints, type and blue as the studio.</li>
+<li><strong>Feel:</strong> calm and made with care in the first second. It says the studio uses good tools.</li>
+<li><strong>Richness:</strong> low chrome, because the photos are the content. Care goes into the heart, the chips and the states.</li>
+<li><strong>Signature moment:</strong> the heart on a photo, in the grid and with a double tap in the lightbox.</li>
+<li><strong>Screens:</strong> 360 px to 1440 px and more; phones first (most clients). Source: the project (viewport, mobile layouts) and the brief.</li>
+<li><strong>Rejected directions:</strong> a copy of the photographer tool (tables, "Picked by" lists: wrong person); a "wedding" theme with a serif and gold (the desktop look is given, and it would date).</li>
+</ul>
+
+<h3 class="i-list"><span class="key">Design language</span> given by the desktop app; 3 rows added for the client</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Row</th><th scope="col">Value</th><th scope="col">Source and reason</th></tr></thead>
+<tbody>
+<tr><td>Mechanics</td><td>Tokens in <code>@theme</code> in app/assets/css/main.css; shared controls (.btn, .icon-btn, .seg, .field, .skel, .tile-act) in <code>@layer components</code>; utilities on the element win; unlayered CSS only for PhotoSwipe and hover-only rules</td><td>Tailwind v4 layer order (theme, base, components, utilities) proved in the build: a utility beats a component class, unlayered CSS beats both</td></tr>
+<tr><td>Colour</td><td>canvas 94.6%, card 99.5%, inset, line, ink / ink-2 / ink-3, brand 52% 0.16 255, brand-wash for "selected"</td><td>given (desktop main.css). ink-3 is 50%, not 52%, so it keeps 4.5:1 on the grey canvas</td></tr>
+<tr><td>Heart</td><td>oklch(60% 0.21 20), only for the client's own heart</td><td>added: the one warm colour, for "I love this"; the desktop has no client heart</td></tr>
+<tr><td>Type</td><td>Outfit 300–600, one 32 KB latin woff2, swap, metric fallback, not preloaded</td><td>given; self-hosted by @nuxt/fonts, which was already installed (it served Inter before)</td></tr>
+<tr><td>Shape</td><td>card 22, inset 14, control 12, tile 10, pills 999</td><td>given</td></tr>
+<tr><td>Space</td><td>8 px between photos (was 16); tiles stay 4:5</td><td>gap given; 4:5 kept because portrait tiles fill a phone better than the desktop's 3:2</td></tr>
+<tr><td>Controls</td><td>ghost pill 36 px; black pill for the one main action per view; selected = blue wash and blue border, never a fill; focus 2 px brand outline</td><td>given</td></tr>
+<tr><td>Night</td><td>lightbox 15% / buttons 25%, solid, no blur</td><td>given (desktop .lb)</td></tr>
+<tr><td>Voice</td><td>to the client, about their photographer: "Ask your photographer…", "Your photographer reads these"; "notes", not "comments"</td><td>added: the client talks to a person, not to software</td></tr>
+<tr><td>Motion</td><td>colour swaps 120 ms; one pop on the heart; notes slide 24 px; no blur, no height animation over the grid</td><td>desktop ease; nothing animates during scroll</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-list"><span class="key">Chunks</span> 6, each compared with the baseline</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Chunk</th><th scope="col">Files</th><th scope="col">By</th><th scope="col">Contract</th><th scope="col">Parity</th></tr></thead>
+<tbody>
+<tr><td>Tokens and controls</td><td>main.css, nuxt.config.ts</td><td>coordinator</td><td>landing page keeps Inter and its look</td><td>same: --font-sans untouched; gallery scoped by .gallery and font-ui</td></tr>
+<tr><td>Album card and sheet</td><td>pages/share/[token].vue</td><td>coordinator</td><td>favorites toggle, stack bursts, v1 scroll container and pagination</td><td>same functions called; v1 main keeps overflow-y-auto and @scroll</td></tr>
+<tr><td>Bars and filters</td><td>SetTabs.vue, [token].vue</td><td>coordinator</td><td>?set ?q ?tags ?people ?either; roving tabindex; search toggle</td><td>same; set bar height 56 = stickyTop</td></tr>
+<tr><td>Grid and tiles</td><td>BrowseGrid.vue, BrowseTile.vue</td><td>coordinator</td><td>SSR first rows, no shift on mount, virtual heights, ThumbHash, burst lightbox, scroll restore</td><td>SSR gap 8 = GAP 8, header mb-2 = gap; CLS 0.000 in Lighthouse and in a scroll trace</td></tr>
+<tr><td>Lightbox</td><td>[token].vue style, browse.ts, BrowseGrid.vue</td><td>coordinator</td><td>data array, double tap, heart and notes buttons, people</td><td>same; buttons got titles; bgOpacity 1</td></tr>
+<tr><td>Dialogs</td><td>CommentSidebar.vue, name modal</td><td>coordinator</td><td>one note per client, edit, implicit favorite; name format "emoji name-animal"</td><td>same; page root is inert while one is open</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-scale"><span class="key">Close calls</span> folder replaces the set cover</h3>
+<div class="call" id="c-2">
+<p class="judge"><b>What goes at the start of a set chip?</b> Judge at 390 px, rest state.</p>
+<div class="options">
+<figure class="opt picked"><div class="stage"><img src="captures/redesign-after-390-rest.jpg" alt="Set chips with folder icons" width="260" height="562"></div><figcaption><span class="badge">2A</span> Folder<span class="pick">picked</span><br>Sets read as places, as in the desktop app; chips are 8 px narrower.</figcaption></figure>
+<figure class="opt"><div class="stage"><img src="captures/redesign-before-390-rest.jpg" alt="Set chips with 24 px cover photos" width="260" height="562"></div><figcaption><span class="badge">2B</span> Cover photo<br>At 24 px a cover is a coloured dot; it does not say "set".</figcaption></figure>
+</div>
+</div>
+
+<h3 class="i-search" id="critique-2026-10-31-look"><span class="key">Critique caught</span> 5 found, 4 fixed, 1 kept, 0 open</h3>
+<dl class="counts">
+<div class="i-fix"><dt>fixed</dt><dd>4</dd></div>
+<div class="i-keep"><dt>kept, with the evidence</dt><dd>1</dd></div>
+<div class="open"><dt>open</dt><dd>0</dd></div>
+</dl>
+<p class="sowhat">The first tiles had one dark strip on every photo, so a hearted photo looked like the others. Now a heart that is yours is a white chip that stays.</p>
+<details>
+<summary>Every finding and its outcome</summary>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Found</th><th scope="col">By</th><th scope="col">Outcome</th></tr></thead>
+<tbody>
+<tr><td>The same dark strip on every tile; hearted looks like not hearted</td><td>fresh reviewer</td><td>fixed: two separate circles; yours is a white chip; on a pointer device the note shows on hover unless notes exist (<a href="#d-24">d-24</a>)</td></tr>
+<tr><td>The heart (the signature) had no capture and no answer of its own</td><td>fresh reviewer</td><td>fixed: 180 ms pop only on your own tap; captured hearted tiles, a double tap, and 5 fast taps (state ends right)</td></tr>
+<tr><td>"Start browsing" is disabled until there is a name</td><td>fresh reviewer</td><td>fixed: always on; the required field says what is missing; the label is visible</td></tr>
+<tr><td>Notes header said "0 · 0 notes" over "No notes on this photo"</td><td>fresh reviewer</td><td>fixed: the line shows only when there is a heart or a note</td></tr>
+<tr><td>Put People in the left column on wide screens</td><td>fresh reviewer</td><td>kept: the faces filter the selected set, so they stay under the set bar; moved, they would split "who" from the set they act on, and phones need one order. Put to the owner below</td></tr>
+<tr><td>Lightbox grid showed through the stage</td><td>fresh reviewer</td><td>fixed: bgOpacity 1, recaptured</td></tr>
+<tr><td>Focus could reach the page behind the name prompt; the scrubber too</td><td>render_check</td><td>fixed: page root inert; scrubber hidden under any aria-modal dialog</td></tr>
+<tr><td>Side animals in the name prompt below 4.5:1</td><td>render_check</td><td>kept: they are emoji (drawn in their own colours, not the text colour the checker reads), aria-hidden, and the chosen animal shows at full strength with its name</td></tr>
+<tr><td>Reduced motion stopped skeleton pulses</td><td>check.py</td><td>fixed: the pulse stays (opacity only, it says loading)</td></tr>
+<tr><td>Reduced motion stops the notes slide</td><td>check.py</td><td>kept: an entrance, not progress; the fade stays</td></tr>
+<tr><td>Heart burst grows from scale 0</td><td>check.py</td><td>kept: it grows from the tap point on purpose; reduced motion gets a fade only</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+
+<h3 class="i-ruler" id="measured-2026-10-31-look"><span class="key">Measured</span> faster first paint, the same LCP class, no layout shift</h3>
+<dl class="deltas">
+<div><dt>First contentful paint, Lighthouse mobile, mock, median of 3</dt><dd><s>4.49 s</s> → 4.04 s</dd></div>
+<div><dt>Layout shift (CLS), load and a scroll trace</dt><dd><s>0.000</s> → 0.000</dd></div>
+<div><dt>Bytes on load</dt><dd><s>2,778 KB</s> → 2,654 KB</dd></div>
+</dl>
+<details>
+<summary>Every measure</summary>
+<table class="delta">
+<thead><tr><th scope="col">Measure</th><th scope="col">Before</th><th scope="col">After</th><th scope="col">Change</th></tr></thead>
+<tbody>
+<tr><td>Lighthouse performance (mobile, 3 runs)</td><td>0.42</td><td>0.44–0.45</td><td>+0.02</td></tr>
+<tr><td>LCP (the mock's 10,000-photo manifest dominates)</td><td>15.95 s</td><td>15.31 s</td><td>−0.6 s</td></tr>
+<tr><td>Total blocking time</td><td>970 ms</td><td>927 ms</td><td>−43 ms</td></tr>
+<tr><td>Slowest tap (heart, set chip), 4× CPU</td><td>152 ms</td><td>160 ms</td><td>same</td></tr>
+<tr><td>backdrop-filter layers over the grid at 390 px</td><td>2 per tile + 2 bars</td><td>0</td><td>all removed</td></tr>
+<tr><td>Photo gap</td><td>16 px</td><td>8 px</td><td>wider photos</td></tr>
+<tr><td>Hydration warnings, mock and real album, production build</td><td>0</td><td>0</td><td>none</td></tr>
+</tbody>
+</table>
+</details>
+
+<h3 class="i-list" id="decisions-2026-10-31-look"><span class="key">Decisions</span> 14 that a sensible designer could make differently</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Element</th><th scope="col">Decision</th><th scope="col">Because (content, user or moment)</th><th scope="col">Rejected default or kept convention</th><th scope="col">Layer</th></tr></thead>
+<tbody>
+<tr id="d-17"><td><span class="id">d-17</span> Page</td><td>Album card and photo sheet as white cards on grey; phones: the card has round bottom corners, the sheet round top corners</td><td>the desktop's paper and prints; on a phone two prints, edge to edge, give the photos all the width</td><td class="rejected">slate-50 page with a white sidebar</td><td>2 Direction</td></tr>
+<tr id="d-18"><td><span class="id">d-18</span> Album title</td><td>Outfit 28 px regular; studio name small grey above</td><td>the desktop album card; the studio is who the client knows</td><td class="rejected">serif italic title, indigo uppercase studio</td><td>3 Type and space</td></tr>
+<tr id="d-19"><td><span class="id">d-19</span> "Synced" badge</td><td>Removed</td><td>it was always on; it said nothing true</td><td class="rejected">a static status badge</td><td>1 Bare structure</td></tr>
+<tr id="d-20"><td><span class="id">d-20</span> Favorites</td><td>Two-part switch [All | ♡ Favorites n]</td><td>the desktop's All / Picks; the client sees the current value without reading a verb</td><td class="rejected">one button whose label flips ("Show Favorites" / "Show All Images")</td><td>1 Bare structure</td></tr>
+<tr id="d-21"><td><span class="id">d-21</span> Stack bursts</td><td>A pill that is pressed or not, layers icon</td><td>the desktop stack toggle; fits beside the switch on a 390 px phone</td><td class="rejected">checkbox row of its own</td><td>4 Colour and surface</td></tr>
+<tr id="d-22"><td><span class="id">d-22</span> Set chips</td><td>Folder on each set (open and blue when active); none on "All"; covers removed</td><td>owner request; sets are places, tags and faces are not; "All" is every photo, not a place</td><td class="rejected">black selected pill with a 24 px cover</td><td>2 Direction</td></tr>
+<tr id="d-23"><td><span class="id">d-23</span> Selected</td><td>Blue wash and blue border for set, tag, stack and seg; blue ring for faces</td><td>one meaning for "selected" everywhere</td><td class="rejected">black for sets, solid indigo for tags</td><td>4 Colour and surface</td></tr>
+<tr id="d-24"><td><span class="id">d-24</span> Tile actions</td><td>Note and heart as separate 32 px dark circles, solid; yours = white chip with a red heart; note on hover only on pointer devices unless it has notes</td><td>the heart must be one tap on a phone; dozens of blurred layers cost scroll frames</td><td class="rejected">two glass circles with backdrop blur on every tile</td><td>4 Colour and surface</td></tr>
+<tr id="d-25"><td><span class="id">d-25</span> Tile</td><td>10 px corners, no shadow, no hover zoom; file name on hover for pointer devices only</td><td>prints on a sheet; zoom moved the photo under the pointer</td><td class="rejected">rounded-xl, shadow, scale 110%</td><td>4 Colour and surface</td></tr>
+<tr id="d-26"><td><span class="id">d-26</span> Bars</td><td>Set bar and moment label solid white; the sheet uses overflow clip</td><td>blur over moving photos costs frames on phones; clip rounds the sheet without breaking sticky</td><td class="rejected">95% white with backdrop blur</td><td>4 Colour and surface</td></tr>
+<tr id="d-27"><td><span class="id">d-27</span> Lightbox</td><td>Solid night stage; round 40 px buttons; your heart button turns white</td><td>the desktop lightbox; the photo gets a true black frame</td><td class="rejected">95% stage, blurred squares</td><td>4 Colour and surface</td></tr>
+<tr id="d-28"><td><span class="id">d-28</span> Notes</td><td>Phones: a bottom sheet; wide: the desktop's floating 360 px panel; "Notes" for "Comments"</td><td>a thumb reaches the bottom; the client writes to their photographer</td><td class="rejected">full-height side drawer on every screen</td><td>5 Use over time</td></tr>
+<tr id="d-29"><td><span class="id">d-29</span> Name prompt</td><td>"Who's choosing?" with why: the studio sees hearts under this name; bottom sheet on phones; no blur</td><td>the old "Welcome!" did not say why a name is needed</td><td class="rejected">"Welcome! Let's get you set up"</td><td>6 Motion and detail</td></tr>
+<tr id="d-30"><td><span class="id">d-30</span> Font</td><td>Outfit, not preloaded</td><td>the first photos get the bandwidth; swap with a metric fallback gives no shift</td><td class="rejected">preload the font</td><td>3 Type and space</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-spark"><span class="key">Life</span> 2 places</h3>
+<ol class="life">
+<li><div class="scene" aria-hidden="true"><span class="act" style="--h:3rem">pop</span></div><strong>Your heart</strong>The heart grows a little and turns red on a white chip. It tells the client "kept". Reduced motion: colour only.</li>
+<li><div class="scene" aria-hidden="true"><span class="act" style="--h:4rem">burst</span></div><strong>Double tap</strong>A heart grows at the finger in the lightbox. Reduced motion: it fades.</li>
+</ol>
+
+<h3 class="i-alert"><span class="key">App-wide states</span> each one designed in the new look</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">State</th><th scope="col">What the person sees</th><th scope="col">The way back</th></tr></thead>
+<tbody>
+<tr><td>Album not found</td><td>card: "This album isn't here" and "Ask your photographer for a new link."</td><td>"Go to LumoSnap"</td></tr>
+<tr><td>No favorites yet</td><td>red heart in a grey circle, "Tap the heart on a photo you love. It will wait for you here."</td><td>"See all photos"</td></tr>
+<tr><td>Empty album</td><td>"No photos yet" and "Your photographer has not added photos to this album yet."</td><td>none needed</td></tr>
+<tr><td>Filter gives zero</td><td>icon, the names and the set, black pill "Show Rahul or Meera · 1,125"</td><td>"Clear filters"</td></tr>
+<tr><td>Loading (set before the full list)</td><td>grey 4:5 skeleton tiles with tile corners; pulse kept with reduced motion</td><td>none needed</td></tr>
+<tr><td>Offline or slow</td><td>the SSR first rows and the album card paint at once; hearts and notes wait in the batched queue and send later</td><td>none needed</td></tr>
+<tr><td>First launch</td><td>the name prompt as a bottom sheet over the first photos</td><td>"Start browsing"</td></tr>
+<tr><td>Signed out, no access, crash</td><td>not applicable: the link is the access; a failed load shows "This album isn't here"</td><td>"Go to LumoSnap"</td></tr>
+<tr><td>No notes</td><td>"No notes on this photo" and what to ask for</td><td>the field below</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-motion"><span class="key">Motion map</span> instant controls; one pop; one slide</h3>
+<div class="scroll">
+<table class="motion">
+<thead><tr><th scope="col">Moment</th><th scope="col">Tier (none, micro, transition, moment)</th><th scope="col">How often</th><th scope="col">Trigger, feedback, loops</th><th scope="col">Reduced-motion version</th><th scope="col">How much it matters</th><th scope="col">Why</th></tr></thead>
+<tbody>
+<tr><td>Heart on a tile</td><td>micro</td><td>very often</td><td>tap; white chip at once, heart pops 180 ms, only on your tap</td><td>colour only</td><td>high</td><td>the signature; a remounted row must not replay it</td></tr>
+<tr><td>Double tap in lightbox</td><td>moment</td><td>often</td><td>heart grows at the finger, 1.5 s</td><td>fade 0.9 s</td><td>high</td><td>kept from before</td></tr>
+<tr><td>Notes open</td><td>transition</td><td>sometimes</td><td>fade 200 ms, slide 24 px (up on phones, from the right on wide)</td><td>fade</td><td>medium</td><td>shows where the panel came from</td></tr>
+<tr><td>Chips, seg, faces</td><td>none</td><td>often</td><td>colour swap 120 ms</td><td>same</td><td>medium</td><td>frequent controls stay instant</td></tr>
+<tr><td>Search opens</td><td>none</td><td>sometimes</td><td>panel shows, field gets focus</td><td>same</td><td>medium</td><td>a height animation would move the virtual grid</td></tr>
+</tbody>
+</table>
+</div>
+
+<details>
+<summary>Look notes and what was removed</summary>
+<h3>Look notes</h3>
+<p class="note">390 px headless Playwright (mobile, touch, 2×) and 1280 px, on a production build against the mock and against the real local album. Hydration warnings appear only on the owner's dev server at :3000, whose server bundle does not take hot updates; the same code as a production build on the same backend gives 0. render_check at 390, 900 and 1280: one kept item (the emoji, above).</p>
+<h3>Removed</h3>
+<p class="note">The "Synced" badge. Every backdrop blur in the gallery. The tile zoom, the tile shadow and the top shade. The set cover thumbnails. The emoji in empty and error states.</p>
+</details>
+</article>
 <article class="session" id="session-2026-10-31">
 <h2><span class="key">Session 2026-10-31<span class="vh">:</span></span> people moved out of the tag row; search moved behind a button</h2>
 <p class="kicker">Revamp · the owner said people chips compete with tags</p>
@@ -756,17 +934,21 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 </section>
 
 <section class="chapter ask" id="decide">
-<h2><span class="key">For you to decide<span class="vh">:</span></span> 3 choices, 2 things owed</h2>
+<h2><span class="key">For you to decide<span class="vh">:</span></span> 6 choices, 3 things owed</h2>
 <p class="lede">You can reverse each one.</p>
 <ol class="cards">
-<li><b>Search stays closed with only ?people=</b><span>The faces row and summary already show a people filter. Opening search for it adds 2 rows for nothing. <a href="#d-14">d-14</a></span><span class="alt">Or: open it for ?people= too, if you want every filter in one place.</span></li>
-<li><b>Albums with no sets keep search open</b><span>There is no sticky row to hold the button. <a href="#d-14">d-14</a></span><span class="alt">Or: put the button at the end of the faces row, if you want search hidden everywhere.</span></li>
-<li><b>Typed names win over tags</b><span>"can" goes to a person named Candace, not to "candid". <a href="#d-5">d-5</a></span><span class="alt">Or: lift a name only on a whole-word match, if your tags often share a start with names.</span></li>
+<li><b>Set covers are gone from the chips</b><span>A folder says "set"; a 24 px cover did not. <a href="#d-22">d-22</a></span><span class="alt">Or: show the cover as a wide photo at the top of the selected set, if your photographers choose covers with care.</span></li>
+<li><b>People stay above the photos on wide screens</b><span>The faces filter the selected set, so they sit under the set bar. <a href="#critique-2026-10-31-look">critique</a></span><span class="alt">Or: a People card in the left column at 768 px and up, like the desktop app.</span></li>
+<li><b>The scrubber keeps a 20 px gutter on phones</b><span>Without it, the scrubber covers the heart on the right column of tiles.</span><span class="alt">Or: hide the scrubber on phones and give the photos the width.</span></li>
+<li><b>Search stays closed with only ?people=</b><span>The faces row and summary already show a people filter. <a href="#d-14">d-14</a></span><span class="alt">Or: open it for ?people= too.</span></li>
+<li><b>Albums with no sets keep search open</b><span>There is no sticky row to hold the button. <a href="#d-14">d-14</a></span><span class="alt">Or: put the button at the end of the faces row.</span></li>
+<li><b>Typed names win over tags</b><span>"can" goes to a person named Candace, not to "candid". <a href="#d-5">d-5</a></span><span class="alt">Or: lift a name only on a whole-word match.</span></li>
 </ol>
 <h3>Still owed</h3>
 <ul class="owed">
-<li>Check on a real album with real faces: the crops of the mock faces are drawn, not photographed.</li>
-<li>The page has no lang attribute (all pages). Set it in nuxt.config app.head.</li>
+<li>The lightbox counter reads "1 / 6556"; PhotoSwipe builds it, so formatting it needs a custom counter element.</li>
+<li>v1 tiles (albums without browse v2) keep their old markup; only the shared chrome is new. Port them, or move those albums to v2.</li>
+<li>Check the look on a real phone in Safari: overflow: clip and :has() need Safari 16 or later.</li>
 </ul>
 </section>
 
@@ -780,7 +962,7 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 </ul>
 </section>
 
-<footer class="foot"><span>LumoSnap gallery · design decisions · latest session 2026-10-31</span><a href="design-coverage.html">Coverage report</a><a href="#top">Back to top ↑</a></footer>
+<footer class="foot"><span>LumoSnap gallery · design decisions · latest session 2026-10-31 (look)</span><a href="design-coverage.html">Coverage report</a><a href="#top">Back to top ↑</a></footer>
 </main>
 <script>
 /* Report motion: plays each .plays in a loop while it is on screen and stops it off screen. Without this script the glyphs show their end state. */

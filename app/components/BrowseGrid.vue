@@ -1,12 +1,12 @@
 <template>
-  <!-- Mobile: main's p-4 is narrower than the scrubber (w-8), so reserve the rest whenever the grid has
+  <!-- Mobile: main's px-3 is narrower than the scrubber (w-8), so reserve the rest whenever the grid has
        moments (known from the SSR rows too, so no shift on mount). measure() subtracts it. -->
-  <div ref="root" :class="{ 'pr-4 md:pr-0': layout.moments.length > 0 }">
+  <div ref="root" :class="{ 'pr-5 md:pr-0': layout.moments.length > 0 }">
     <!-- SSR + first client render: plain grid of the first rows (LCP, no hydration mismatch) -->
     <template v-if="!mounted">
       <template v-for="row in ssrRows" :key="row.key">
-        <h2 v-if="row.type === 'header'" class="h-12 mb-4 flex items-end pb-2 text-sm font-semibold text-slate-700 tabular-nums">{{ row.label }}</h2>
-        <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 [&+h2]:mt-4">
+        <h2 v-if="row.type === 'header'" class="h-12 mb-2 flex items-end pb-2.5 text-sm font-normal text-ink-2 tabular-nums">{{ row.label }}</h2>
+        <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 [&+h2]:mt-2">
           <BrowseTile v-for="t in row.tiles" :key="t.img.id" :image="t.img" :index="t.index" :burst="t.frames?.length"
             :base="base" :favs="favs" :comments="comments" :counts="counts" :client-name="clientName" eager
             :high="t.index < SSR_HIGH" @open="openTile(t)" @favorite="emit('favorite', $event)"
@@ -17,15 +17,16 @@
 
     <!-- After mount: window-virtualized rows (moment headers + image rows, mixed heights) -->
     <template v-else>
-      <!-- Sticky label of the moment at the top of the viewport; sits exactly over the inline header -->
+      <!-- Sticky label of the moment at the top of the viewport; sits exactly over the inline header.
+           Solid card, bled to the sheet's edges (main's padding, plus the scrubber room on phones). -->
       <div v-if="activeLabel" class="sticky z-20 h-0" :style="{ top: `${stickyTop}px` }" aria-hidden="true">
-        <div class="h-12 flex items-end pb-2 text-sm font-semibold text-slate-700 tabular-nums bg-slate-50/95 backdrop-blur-sm">{{ activeLabel }}</div>
+        <div class="h-12 -ml-3 pl-3 -mr-8 md:-mx-4 md:px-4 flex items-end pb-2.5 text-sm text-ink-2 tabular-nums bg-card">{{ activeLabel }}</div>
       </div>
       <div class="relative w-full" :style="{ height: `${virt.getTotalSize()}px` }">
         <div v-for="{ v, row } in virtualRows" :key="String(v.key)" :ref="measureEl" :data-index="v.index"
           class="absolute top-0 left-0 w-full" :style="{ transform: `translateY(${v.start - margin}px)` }">
-          <h2 v-if="row.type === 'header'" class="h-12 flex items-end pb-2 text-sm font-semibold text-slate-700 tabular-nums">{{ row.label }}</h2>
-          <div v-else class="grid gap-4" :style="{ height: `${tileH}px`, gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }">
+          <h2 v-if="row.type === 'header'" class="h-12 flex items-end pb-2.5 text-sm font-normal text-ink-2 tabular-nums">{{ row.label }}</h2>
+          <div v-else class="grid gap-2" :style="{ height: `${tileH}px`, gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }">
             <BrowseTile v-for="t in row.tiles" :key="t.img.id" :image="t.img" :index="t.index" :burst="t.frames?.length"
               :base="base" :favs="favs" :comments="comments" :counts="counts" :client-name="clientName"
               @open="openTile(t)" @favorite="emit('favorite', $event)" @comment="emit('comment', $event)" />
@@ -71,7 +72,7 @@ const props = defineProps<{
 const emit = defineEmits<{ favorite: [id: number]; comment: [id: number]; heart: [x: number, y: number]; person: [id: string] }>()
 
 const SSR_HIGH = 5 // first row at xl
-const GAP = 16 // gap-4
+const GAP = 8 // gap-2, the desktop's photo gap
 const HEADER_H = 48 // h-12
 const stickyTop = computed(() => props.stickyTop ?? 0)
 const scrollKey = () => `lumosnap_scroll_${props.token}${props.setId ? `:${props.setId}` : ''}`
@@ -267,6 +268,7 @@ function initLightbox() {
   lightbox.on('uiRegister', () => {
     lightbox!.pswp!.ui!.registerElement({
       name: 'favorite-button',
+      title: 'Favorite',
       order: 9,
       isButton: true,
       tagName: 'button',
@@ -279,6 +281,7 @@ function initLightbox() {
 
     lightbox!.pswp!.ui!.registerElement({
       name: 'notes-button',
+      title: 'Notes',
       order: 10,
       isButton: true,
       tagName: 'button',
@@ -376,13 +379,14 @@ onUnmounted(() => {
 </script>
 
 <style>
-/* Lightbox "in this photo": bottom-left, over the photo, under PhotoSwipe's own fade (hide-on-close). */
+/* Lightbox "in this photo": bottom-left, over the photo, under PhotoSwipe's own fade (hide-on-close).
+   Same dark chips as the lightbox buttons; solid, so a bright photo never washes the names out. */
 .pswp__people { position: absolute; left: 12px; bottom: max(12px, env(safe-area-inset-bottom)); right: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
 .pswp__people[hidden] { display: none; }
-.pswp__person { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px 0 4px; border-radius: 9999px; background: rgb(15 23 42 / 0.7); color: #fff; font-size: 14px; font-weight: 500; cursor: pointer; max-width: 100%; }
-.pswp__person:hover { background: rgb(15 23 42 / 0.9); }
-.pswp__person:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
+.pswp__person { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 4px; border-radius: 9999px; background: oklch(25% 0.005 255 / 0.92); color: oklch(96% 0 0); font: 400 14px/1 var(--font-ui); cursor: pointer; max-width: 100%; transition: background-color 0.12s; }
+.pswp__person:hover { background: oklch(32% 0.005 255); }
+.pswp__person:focus-visible { outline: 2px solid var(--color-brand-soft); outline-offset: 2px; }
 .pswp__person > span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pswp__person-face { position: relative; flex: none; width: 28px; height: 28px; border-radius: 9999px; overflow: hidden; background: #e2e8f0; color: #475569; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.pswp__person-face { position: relative; flex: none; width: 28px; height: 28px; border-radius: 9999px; overflow: hidden; background: var(--color-inset-2); color: var(--color-ink-2); font-size: 12px; font-weight: 500; display: flex; align-items: center; justify-content: center; }
 .pswp__person-face > span { position: absolute; inset: 0; background-repeat: no-repeat; }
 </style>

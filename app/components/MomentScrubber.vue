@@ -1,17 +1,17 @@
 <template>
   <!-- Right-edge moment scrubber. Drag/click the track or use the keyboard on the thumb. Local state only:
        jumping scrolls the window, the grid itself never re-renders from scrubbing. -->
-  <div ref="track" class="fixed right-0 top-20 bottom-20 w-8 z-30 touch-none select-none cursor-pointer"
+  <div ref="track" class="moment-scrubber font-ui fixed right-0 top-20 bottom-20 w-8 z-30 touch-none select-none cursor-pointer"
     @pointerdown="down" @pointermove="move" @pointerup="up" @pointercancel="up" @pointerleave="hover = null">
-    <div class="absolute right-3.5 top-0 bottom-0 w-1 rounded-full bg-slate-400/40" />
+    <div class="absolute right-3.5 top-0 bottom-0 w-1 rounded-full bg-line-2" />
     <div role="slider" tabindex="0" aria-label="Jump to moment" aria-orientation="vertical" :aria-valuemin="1"
       :aria-valuemax="labels.length" :aria-valuenow="shown + 1" :aria-valuetext="labels[shown]"
-      class="absolute right-1 w-6 h-10 -mt-5 rounded-full bg-white shadow-md ring-1 ring-slate-300 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 flex items-center justify-center"
+      class="absolute right-1 w-6 h-10 -mt-5 rounded-full bg-card shadow-lift ring-1 ring-line-2 outline-none focus-visible:ring-2 focus-visible:ring-brand flex items-center justify-center"
       :style="{ top: `${pct(shown)}%` }" @keydown="key" @focus="focused = true" @blur="focused = false; drag = null">
-      <span class="w-2.5 h-0.5 rounded bg-slate-400" />
+      <span class="w-2.5 h-0.5 rounded bg-ink-3" />
     </div>
     <div v-if="drag !== null || focused || hover !== null" aria-hidden="true"
-      class="absolute right-9 -translate-y-1/2 whitespace-nowrap rounded-lg bg-slate-900/90 text-white text-xs font-medium px-3 py-1.5 shadow-lg pointer-events-none tabular-nums"
+      class="absolute right-9 -translate-y-1/2 whitespace-nowrap rounded-ctl bg-ink text-card text-[13px] px-3 py-1.5 shadow-float pointer-events-none tabular-nums"
       :style="{ top: `${pct(hover ?? shown)}%` }">{{ labels[hover ?? shown] }}</div>
   </div>
 </template>
