@@ -8,7 +8,7 @@
         <h2 v-if="row.type === 'header'" class="h-12 mb-2 flex items-end pb-2.5 text-sm font-normal text-ink-2 tabular-nums">{{ row.label }}</h2>
         <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 [&+h2]:mt-2">
           <BrowseTile v-for="t in row.tiles" :key="t.img.id" :image="t.img" :index="t.index" :burst="t.frames?.length"
-            :base="base" :favs="favs" :comments="comments" :counts="counts" :client-name="clientName" :heart-label="heartLabel" eager
+            :base="base" :favs="favs" :comments="comments" :counts="counts" :client-name="clientName" eager
             :high="t.index < SSR_HIGH" @open="openTile(t)" @favorite="emit('favorite', $event)"
             @comment="emit('comment', $event)" />
         </div>
@@ -28,7 +28,7 @@
           <h2 v-if="row.type === 'header'" class="h-12 flex items-end pb-2.5 text-sm font-normal text-ink-2 tabular-nums">{{ row.label }}</h2>
           <div v-else class="grid gap-2" :style="{ height: `${tileH}px`, gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }">
             <BrowseTile v-for="t in row.tiles" :key="t.img.id" :image="t.img" :index="t.index" :burst="t.frames?.length"
-              :base="base" :favs="favs" :comments="comments" :counts="counts" :client-name="clientName" :heart-label="heartLabel"
+              :base="base" :favs="favs" :comments="comments" :counts="counts" :client-name="clientName"
               @open="openTile(t)" @favorite="emit('favorite', $event)" @comment="emit('comment', $event)" />
           </div>
         </div>
@@ -60,17 +60,19 @@ const props = defineProps<{
   comments: Map<number, ShareComment[]>
   counts: Map<number, number>
   clientName: string
-  only: 'in' | 'out' | null // show only photos in `favs` (favorites, a list's picks) or only those not in it
+  favoritesOnly: boolean
   stackBursts: boolean
   eventDate: string | null
   labels?: Record<string, string> // SSR head only: moment labels computed from the full album
   setId?: string | null // selected view (set + search filter): scroll position is saved per (token, view)
   stickyTop?: number // height of the sticky bar above the grid (set tabs), 0 without
   people?: BrowsePerson[] // named people (full manifest): lightbox shows who is in the open photo
-  heartLabel?: string // what the heart does here: "Favorite", or "Pick for Main album"
+  ranked?: string // "More like this": keep the given order (best first) under this header, no moments
+  tail?: { label: string; images: ManifestImage[] } // search by meaning: after the matches, under its own line
+  canLike?: boolean // the album has photo vectors: the lightbox offers "More like this"
 }>()
 
-const emit = defineEmits<{ favorite: [id: number]; comment: [id: number]; heart: [x: number, y: number]; person: [id: string] }>()
+const emit = defineEmits<{ favorite: [id: number]; comment: [id: number]; heart: [x: number, y: number]; person: [id: string]; like: [id: number] }>()
 
 const SSR_HIGH = 5 // first row at xl
 const GAP = 8 // gap-2, the desktop's photo gap
@@ -84,21 +86,22 @@ const root = ref<HTMLElement | null>(null)
 // that path rendered and eagerly loaded the whole set (a 3 s freeze on 1,250 photos).
 const mounted = ref(import.meta.client && !useNuxtApp().isHydrating)
 
-// Only / only-not is a snapshot taken when the filter flips (like v1's favorites refetch), so a heart
-// tapped inside the filtered view doesn't reshuffle the grid. A new view (setId: another list) re-takes it.
-const snap = (imgs: ManifestImage[], only: 'in' | 'out' | null) => {
+// Favorites-only is a snapshot taken when the filter flips (like v1's refetch),
+// so un-hearting inside the filtered view doesn't reshuffle the grid.
+const snap = (imgs: ManifestImage[], only: boolean) => {
   const favs = toRaw(props.favs)
-  return only ? imgs.filter(img => favs.has(img.id) === (only === 'in')) : imgs
+  return only ? imgs.filter(img => favs.has(img.id)) : imgs
 }
-const list = shallowRef<ManifestImage[]>(snap(props.images, props.only))
-watch(() => [props.images, props.only, props.setId] as const, ([imgs, only]) => { list.value = snap(imgs, only) })
+const list = shallowRef<ManifestImage[]>(snap(props.images, props.favoritesOnly))
+watch(() => [props.images, props.favoritesOnly] as const, ([imgs, only]) => { list.value = snap(imgs, only) })
+const tailList = computed(() => props.tail && { label: props.tail.label, images: snap(props.tail.images, props.favoritesOnly) })
 
 // Layout
 const cols = ref(5)
 const width = ref(0)
 const margin = ref(0)
 const tileH = computed(() => width.value ? ((width.value - (cols.value - 1) * GAP) / cols.value) * 1.25 : 300) // aspect-[4/5]
-const rowOpts = computed(() => ({ stackBursts: props.stackBursts, eventDate: props.eventDate, labels: props.labels }))
+const rowOpts = computed(() => ({ stackBursts: props.stackBursts, eventDate: props.eventDate, labels: props.labels, ranked: props.ranked, tail: tailList.value }))
 const layout = computed(() => buildRows(list.value, cols.value, rowOpts.value))
 // SSR: the page ships only the first tiles; one row per moment, laid out by the responsive CSS grid.
 const ssrRows = computed(() => mounted.value ? [] : buildRows(list.value, Infinity, rowOpts.value).rows)
@@ -148,7 +151,7 @@ let saveTimer: ReturnType<typeof setTimeout> | null = null
 function saveScroll() {
   if (saveTimer) clearTimeout(saveTimer)
   saveTimer = setTimeout(() => {
-    if (props.only) return
+    if (props.favoritesOnly) return
     const item = virt.value.getVirtualItemForOffset(window.scrollY)
     if (!item) return
     const rows = layout.value.rows
@@ -167,7 +170,7 @@ watch(() => props.setId, () => {
   if (saveTimer) clearTimeout(saveTimer)
 }, { flush: 'sync' })
 async function restoreScroll() {
-  if (restored || props.only) return
+  if (restored || props.favoritesOnly) return
   const saved = JSON.parse(sessionStorage.getItem(scrollKey()) || 'null') as { id: number; off: number } | null
   if (!saved) {
     restored = true
@@ -200,7 +203,9 @@ function openTile(t: Tile) {
 // Built with DOM nodes, not an HTML string: names are typed by the photographer.
 const onImage = computed(() => peopleByImage(props.people ?? []))
 let peopleEl: HTMLElement | null = null
+let likeEl: HTMLButtonElement | null = null
 function renderPeople(img: ManifestImage | undefined) {
+  if (likeEl) likeEl.hidden = !props.canLike || !img
   if (!peopleEl) return
   const list = (img && onImage.value.get(img.id)) ?? []
   peopleEl.replaceChildren(...list.map(p => {
@@ -223,6 +228,8 @@ function renderPeople(img: ManifestImage | undefined) {
   }))
   peopleEl.hidden = !list.length
 }
+// "More like this": a labelled pill (an icon alone did not say what it does), first in the row under the photo.
+const LIKE_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>'
 
 function updateLightboxUI() {
   if (!lightbox?.pswp) return
@@ -273,7 +280,7 @@ function initLightbox() {
   lightbox.on('uiRegister', () => {
     lightbox!.pswp!.ui!.registerElement({
       name: 'favorite-button',
-      title: props.heartLabel ?? 'Favorite',
+      title: 'Favorite',
       order: 9,
       isButton: true,
       tagName: 'button',
@@ -302,9 +309,21 @@ function initLightbox() {
       appendTo: 'root',
       className: 'pswp__people pswp__hide-on-close',
       onInit: (el) => {
-        peopleEl = el
-        el.setAttribute('role', 'group')
-        el.setAttribute('aria-label', 'In this photo')
+        likeEl = document.createElement('button')
+        likeEl.type = 'button'
+        likeEl.className = 'pswp__person pswp__like'
+        likeEl.innerHTML = `${LIKE_ICON}<span>More like this</span>`
+        likeEl.addEventListener('click', () => {
+          const img = lightbox?.pswp ? items()[lightbox.pswp.currIndex] : undefined
+          if (!img) return
+          lightbox?.pswp?.close()
+          emit('like', img.id)
+        })
+        peopleEl = document.createElement('div')
+        peopleEl.className = 'pswp__faces'
+        peopleEl.setAttribute('role', 'group')
+        peopleEl.setAttribute('aria-label', 'In this photo')
+        el.append(likeEl, peopleEl)
       },
     })
   })
@@ -319,7 +338,7 @@ function initLightbox() {
     updateLightboxUI()
   })
   lightbox.on('close', () => scrollToImage(burst.value?.index ?? currIndex.value))
-  lightbox.on('destroy', () => { currIndex.value = -1; burst.value = null; peopleEl = null })
+  lightbox.on('destroy', () => { currIndex.value = -1; burst.value = null; peopleEl = null; likeEl = null })
 
   // Double-tap to favorite (same thresholds as v1)
   lightbox.on('afterInit', () => {
@@ -376,7 +395,10 @@ onUnmounted(() => {
 /* Lightbox "in this photo": bottom-left, over the photo, under PhotoSwipe's own fade (hide-on-close).
    Same dark chips as the lightbox buttons; solid, so a bright photo never washes the names out. */
 .pswp__people { position: absolute; left: 12px; bottom: max(12px, env(safe-area-inset-bottom)); right: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
-.pswp__people[hidden] { display: none; }
+.pswp__people [hidden] { display: none; }
+.pswp__faces { display: contents; }
+/* Not a person: an outlined pill, set apart from the faces after it */
+.pswp__like { padding-left: 12px; gap: 6px; margin-right: 8px; box-shadow: inset 0 0 0 1px oklch(100% 0 0 / 0.35); }
 .pswp__person { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 4px; border-radius: 9999px; background: oklch(25% 0.005 255 / 0.92); color: oklch(96% 0 0); font: 400 14px/1 var(--font-ui); cursor: pointer; max-width: 100%; transition: background-color 0.12s; }
 .pswp__person:hover { background: oklch(32% 0.005 255); }
 .pswp__person:focus-visible { outline: 2px solid var(--color-brand-soft); outline-offset: 2px; }

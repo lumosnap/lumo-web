@@ -92,15 +92,20 @@ function momentLabel(imgs: ManifestImage[], key: string | null, showDate: boolea
 export function buildRows(
     images: ManifestImage[],
     cols: number,
-    opts: { stackBursts: boolean; eventDate?: string | null; labels?: Record<string, string> }
+    opts: {
+        stackBursts: boolean; eventDate?: string | null; labels?: Record<string, string>
+        ranked?: string // keep the input order under this one header, no moments ("More like this": best first)
+        tail?: { label: string; images: ManifestImage[] } // after everything, under its own header, in input order
+    }
 ): BrowseLayout {
     const groups = new Map<string | null, ManifestImage[]>()
     for (const img of images) {
-        const g = groups.get(img.m)
+        const key = opts.ranked ? null : img.m
+        const g = groups.get(key)
         if (g) g.push(img)
-        else groups.set(img.m, [img])
+        else groups.set(key, [img])
     }
-    const ordered = [...groups].map(([k, g]) => [k, g.sort(byTime)] as const)
+    const ordered = opts.ranked ? [...groups] : [...groups].map(([k, g]) => [k, g.sort(byTime)] as const)
         .sort((a, b) => (a[0] === null ? 1 : b[0] === null ? -1 : byTime(a[1][0]!, b[1][0]!)))
     const headed = ordered.some(([k]) => k !== null)
 
@@ -116,12 +121,16 @@ export function buildRows(
     }
 
     const out: BrowseLayout = { rows: [], visible: [], rowOf: [], moments: [] }
-    for (const [key, g] of ordered) {
-        if (headed) {
-            const label = opts.labels?.[key ?? ''] ?? momentLabel(g, key, days.size > 1)
-            out.moments.push({ label, row: out.rows.length })
-            out.rows.push({ type: 'header', key: `m:${key}`, moment: key ?? '', label })
-        }
+    const header = (key: string, label: string) => {
+        out.moments.push({ label, row: out.rows.length })
+        out.rows.push({ type: 'header', key: `m:${key}`, moment: key, label })
+    }
+    const groupsOut: (readonly [string | null, ManifestImage[]])[] = [...ordered]
+    if (opts.tail?.images.length) groupsOut.push(['\u0000tail', opts.tail.images])
+    for (const [key, g] of groupsOut) {
+        if (key === '\u0000tail') header(key, opts.tail!.label)
+        else if (opts.ranked) header('\u0000ranked', opts.ranked)
+        else if (headed) header(key ?? '', opts.labels?.[key ?? ''] ?? momentLabel(g, key, days.size > 1))
         const stacks: ManifestImage[][] = []
         const bursts = new Map<string, ManifestImage[]>()
         for (const img of g) {
@@ -326,7 +335,6 @@ export interface ShareFeedback {
     favorites: number[]
     counts: Record<string, number>
     comments: Record<string, ShareComment[]>
-    lists?: Record<string, { imageIds: number[]; submittedAt: number | null }> // this client's picks per list
 }
 
 export interface UnsyncedChange {

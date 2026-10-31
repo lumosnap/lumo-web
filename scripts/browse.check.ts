@@ -3,7 +3,9 @@ import assert from 'node:assert/strict'
 import { andIds, joinNames, peopleByImage, queryPeople, avatarCrop, browseHead, peopleIds, resolvePeople, buildRows, columnsFor, filterIds, mergeFeedback, parseTags, resolveSets, setImages, tagEntries, tagIndex, tagLabel, toRows, topTags, type ManifestImage } from '../app/utils/browse.ts'
 import { createTagSearch } from '../app/utils/search.ts'
 import { TAG_VOCAB } from '../app/utils/tag-vocab.ts'
-import { blockMessage, deadlineInfo, listLock, mergePicks, netOps, pickBlock, setProgress, triageQueue, type PickList } from '../app/utils/picks.ts'
+import { byMeaning, decodeRow, encodeLSV1, meanVector, nearest, normalize, parseLSV1, scoreRows } from '../app/utils/vectors.ts'
+import { TAG_VECTOR_SLUGS } from '../app/utils/tag-vector-slugs.ts'
+import { readFileSync } from 'node:fs'
 
 assert.deepEqual(toRows([1, 2, 3, 4, 5], 2), [[1, 2], [3, 4], [5]])
 assert.deepEqual(toRows([], 3), [])
@@ -230,36 +232,66 @@ assert.deepEqual(avatarCrop([-1, 2, 0.1, 0.1], 1000, 1000).backgroundPosition, '
 assert.deepEqual(avatarCrop(null, 1600, 2000), { backgroundSize: 'cover', backgroundPosition: 'center' })
 assert.deepEqual(avatarCrop([0.4, 0.2, 0.2, 0.2], 0, 0), { backgroundSize: 'cover', backgroundPosition: 'center' })
 
-// Selection lists: limits, per-set progress, one-by-one queue, optimistic merge.
-const L: PickList = { id: 'main', name: 'Main album', maxPicks: 4, deadline: null, setLimits: [{ setId: 'h', max: 2 }, { setId: 'gone', max: 9 }, { setId: 'c', max: 3 }] }
-const S = [{ id: 'c', name: 'Ceremony', ids: [5, 6, 7] }, { id: 'h', name: 'Haldi', ids: [1, 2, 3] }]
-// Progress in set order (Ceremony before Haldi), limits on unknown sets dropped.
-assert.deepEqual(setProgress(L, S, new Set([1, 5, 9])), [{ setId: 'c', name: 'Ceremony', picked: 1, max: 3 }, { setId: 'h', name: 'Haldi', picked: 1, max: 2 }])
-assert.deepEqual(setProgress({ ...L, setLimits: null }, S, new Set([1])), [])
-assert.equal(pickBlock(L, S, new Set([1]), 2), null)
-assert.deepEqual(pickBlock(L, S, new Set([1, 2]), 3), { scope: 'set', setId: 'h', name: 'Haldi', max: 2 })
-assert.equal(pickBlock(L, S, new Set([1, 2]), 5), null) // Haldi full, Ceremony is not
-assert.deepEqual(pickBlock(L, S, new Set([1, 5, 6, 9]), 7), { scope: 'list', name: 'Main album', max: 4 }) // list first
-assert.equal(pickBlock(L, S, new Set([1, 2, 5, 9]), 2), null) // unpicking is always allowed
-assert.equal(pickBlock({ ...L, maxPicks: null, setLimits: null }, S, new Set(Array.from({ length: 999 }, (_, i) => i)), 5000), null)
-assert.equal(blockMessage({ scope: 'list', name: 'Main album', max: 300 }), 'Main album is full: 300 of 300. Unpick one to make room.')
-assert.match(blockMessage({ scope: 'set', setId: 'h', name: 'Haldi', max: 40 }), /^Haldi is full: 40 of 40\./)
-// Merge: queued + in-flight ops over the server list; ops of other lists ignored; idempotent.
-const ops = [{ listId: 'main', imageId: 2, add: true }, { listId: 'main', imageId: 1, add: false }, { listId: 'x', imageId: 7, add: true }, { listId: 'main', imageId: 3, add: true }, { listId: 'main', imageId: 3, add: false }]
-assert.deepEqual([...mergePicks([1, 4], ops, 'main')].sort(), [2, 4])
-assert.deepEqual([...mergePicks([2, 4], ops, 'main')].sort(), [2, 4]) // server already has the pick
-assert.deepEqual(netOps(ops.filter(o => o.listId === 'main')), { add: [2], remove: [1, 3] })
-// Queue: scope order, decided photos out.
-assert.deepEqual(triageQueue([{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }], new Set([2]), new Set([3])).map(i => i.id), [1, 4])
-// Deadline: rounded up to whole days; past closes edits.
-const NOW = Date.UTC(2026, 9, 28, 12)
-assert.equal(deadlineInfo(null, NOW), null)
-assert.equal(deadlineInfo(NOW + 2.1 * 86_400_000, NOW)!.label, '3 days left')
-assert.equal(deadlineInfo(NOW + 3_600_000, NOW)!.label, 'Last day')
-assert.deepEqual(deadlineInfo(Date.UTC(2026, 9, 31, 6), NOW + 4 * 86_400_000), { past: true, label: 'Closed on 31 Oct' })
-assert.equal(listLock(L, { imageIds: [], submittedAt: NOW }, false, NOW), 'sent')
-assert.equal(listLock(L, { imageIds: [], submittedAt: null }, true, NOW), 'locked')
-assert.equal(listLock({ ...L, deadline: NOW }, undefined, false, NOW), 'closed')
-assert.equal(listLock({ ...L, deadline: NOW + 1 }, undefined, false, NOW), null)
+// Ranked rows ("More like this"): input order, no moment headers, even when photos have moments.
+const ranked = buildRows([album[4]!, album[0]!, album[3]!], 2, { stackBursts: true, ranked: 'Closest first · 3 photos' })
+assert.deepEqual(ids(ranked), ['Closest first · 3 photos', [4, 1], [3]])
+// Meaning tail: after the moments, under its own header, in its own order; the lightbox list covers it.
+const withTail = buildRows([album[0]!], 2, { stackBursts: true, tail: { label: 'Looks like Beach · 2 photos', images: [album[3]!, album[1]!] } })
+assert.deepEqual(ids(withTail), ['4:17 PM · 1 photo', [1], 'Looks like Beach · 2 photos', [3, 2]])
+assert.deepEqual(withTail.visible.map(i => i.id), [1, 3, 2])
+assert.deepEqual(ids(buildRows(plain.slice(0, 3), 2, { stackBursts: true, tail: { label: 'T', images: [] } })), [[0, 1], [2]]) // empty tail: nothing
 
-console.log('browse.check ok')
+// LSV1 photo vectors: a tiny file built here, scored against plain float math.
+let vs = 7
+const vr = () => ((vs = (vs * 1664525 + 1013904223) >>> 0) / 2 ** 32) * 2 - 1
+const DIMS = 768
+const raw = Array.from({ length: 12 }, () => normalize(Float32Array.from({ length: DIMS }, vr)))
+raw[5] = normalize(raw[4]!.map((x, d) => x + 0.05 * raw[9]![d]!)) // 5 is nearly 4
+const lsv = encodeLSV1(raw.map((vec, i) => ({ id: 100 + i, vec })), 'siglip2-b16-q8')
+assert.equal(lsv.byteLength, 64 + 8 * DIMS + 4 * 12 + 12 * DIMS)
+const vf = parseLSV1(lsv)
+assert.deepEqual([vf.dims, vf.count, vf.model, vf.ids[3], vf.row.get(111)], [768, 12, 'siglip2-b16-q8', 103, 11])
+const dot = (a: ArrayLike<number>, b: ArrayLike<number>) => { let s = 0; for (let d = 0; d < a.length; d++) s += a[d]! * b[d]!; return s }
+const qv = raw[2]!
+const fast = scoreRows(vf, qv).scores
+raw.forEach((v, i) => assert.ok(Math.abs(fast[i]! - dot(qv, v)) < 0.01, `row ${i}: ${fast[i]} vs ${dot(qv, v)}`))
+// The int8 shortcut equals decoding then dotting (same numbers, different order of sums).
+raw.forEach((_, i) => assert.ok(Math.abs(fast[i]! - dot(qv, decodeRow(vf, i)) * Math.hypot(...Array.from(vf.mean, (m, d) => m + vf.scale[d]! * vf.codes[i * DIMS + d]!))) < 1e-4))
+const near = nearest(vf, decodeRow(vf, 4), 3)
+assert.deepEqual(near.ids.slice(0, 2), [104, 105]) // itself, then its near twin
+assert.ok(near.scores[0]! > 0.99 && near.scores[1]! > 0.95 && near.scores[2]! < 0.3)
+assert.deepEqual(nearest(vf, decodeRow(vf, 4), 5, [108, 105, 999]).ids, [105, 108]) // allowed only; unknown ids ignored
+assert.deepEqual(nearest(vf, qv, 4, null, 0.5).ids, [102]) // min score
+assert.throws(() => parseLSV1(new ArrayBuffer(10)))
+assert.throws(() => parseLSV1(lsv.slice(0, 2000)), /truncated/)
+const bad = lsv.slice(0); new Uint8Array(bad)[0] = 88; assert.throws(() => parseLSV1(bad), /magic/)
+// Meaning: logit = scale·cos + bias; kept when >= minLogit and >= margin over the album mean; tagged ones excluded.
+const toward = (v: Float32Array, k: number) => normalize(qv.map((x, d) => k * x + v[d]!))
+const mf = parseLSV1(encodeLSV1([0, 0.02, 0.3, 0.5, 1].map((k, i) => ({ id: i, vec: toward(raw[i + 6]!, k) })), 'm'))
+const LG = { scale: 100, bias: -10 }
+const all = byMeaning(mf, qv, LG, null, new Set(), { minLogit: -100, margin: 0, max: 60 })
+assert.deepEqual(all.ids, [4, 3, 2]) // above the album mean only, best first
+assert.deepEqual(byMeaning(mf, qv, LG, null, new Set([4]), { minLogit: -100, margin: 0, max: 60 }).ids, [3, 2])
+assert.deepEqual(byMeaning(mf, qv, LG, new Set([2, 0]), new Set(), { minLogit: -100, margin: 0, max: 60 }).ids, [2])
+assert.deepEqual(byMeaning(mf, qv, LG, null, new Set(), { minLogit: 100 * all.scores[1]! - 10 - 0.01, margin: 0, max: 60 }).ids, [4, 3])
+assert.deepEqual(byMeaning(mf, qv, LG, null, new Set(), { minLogit: -100, margin: 0, max: 1 }).ids, [4])
+assert.equal(meanVector([raw[0]!, raw[0]!]).every((x, d) => Math.abs(x - raw[0]![d]!) < 1e-6), true)
+// Deleted photos: the file still has ids [1, 2, 3], the manifest only [1, 3]. 2 is never returned, never a query.
+const del = parseLSV1(encodeLSV1([1, 2, 3].map(id => ({ id, vec: raw[id === 3 ? 4 : id === 2 ? 5 : 0]! })), 'x'), [1, 3])
+assert.equal(del.row.has(2), false)
+assert.deepEqual(nearest(del, raw[4]!, 5).ids, [3, 1]) // 2 (a near twin of 3) left out
+assert.deepEqual(nearest(del, raw[4]!, 5, [1, 2, 3]).ids, [3, 1])
+assert.ok(!byMeaning(del, raw[4]!, LG, null, new Set(), { minLogit: -1e9, margin: -1e9, max: 9 }).ids.includes(2))
+// The shipped tag asset: one row per slug, same model tag as the desktop's photo files, every vocabulary slug.
+const tf = parseLSV1(new Uint8Array(readFileSync(new URL('../app/assets/tag-vectors.bin', import.meta.url))).buffer)
+assert.deepEqual([tf.count, tf.dims, tf.model], [TAG_VECTOR_SLUGS.length, 768, 'siglip2-b16-q8'])
+assert.deepEqual([...TAG_VECTOR_SLUGS].sort(), Object.keys(TAG_VOCAB).sort())
+// 10k photos: one int8 dot product each.
+const tenKv = encodeLSV1(Array.from({ length: 10000 }, (_, i) => ({ id: i, vec: raw[i % 12]! })), 'x')
+const tvf = parseLSV1(tenKv)
+t1 = performance.now()
+for (let k = 0; k < 5; k++) nearest(tvf, qv, 60)
+const per = (performance.now() - t1) / 5
+assert.ok(per < 150, `10k scan took ${per} ms`)
+
+console.log(`browse.check ok (10k vector scan ${per.toFixed(1)} ms)`)

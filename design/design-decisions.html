@@ -402,7 +402,7 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 <!-- The bar: chapter links by their key word, the count that needs the owner, the Dark switch. Keep the links in step with the chapters below; drop ones you deleted. -->
 <div class="bar"><div>
 <span class="name">LumoSnap gallery <span class="note">· design decisions</span></span>
-<nav aria-label="Chapters"><a href="#brief">Brief</a><a href="#flows">Flows</a><a href="#direction">Direction</a><a href="#language">Design language</a><a href="#captures">In the product</a><a href="#session-2026-10-31-filters">Filters</a><a href="#session-2026-10-31-look">New look</a><a href="#session-2026-10-31">People</a><a href="#assumed">Assumed</a></nav>
+<nav aria-label="Chapters"><a href="#session-2026-11-01-like">More like this</a><a href="#brief">Brief</a><a href="#flows">Flows</a><a href="#direction">Direction</a><a href="#language">Design language</a><a href="#captures">In the product</a><a href="#session-2026-10-31-filters">Filters</a><a href="#session-2026-10-31-look">New look</a><a href="#session-2026-10-31">People</a><a href="#assumed">Assumed</a></nav>
 <a class="needs" href="#decide">6 need you</a>
 <label class="theme"><input type="checkbox" id="dark"> Dark</label>
 </div></div>
@@ -420,7 +420,7 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 <div class="i-search"><dt>critique findings, 5 closed</dt><dd>5</dd></div>
 <div class="open"><dt>choices waiting for you</dt><dd>3</dd></div>
 </dl>
-<p class="note">Latest session <time datetime="2026-11-01">2026-11-01</time> (selection). Coverage: <a href="design-coverage.html">design-coverage.html</a></p>
+<p class="note">Latest session <time datetime="2026-11-01">2026-11-01</time> (more like this; selection lists removed). Coverage: <a href="design-coverage.html">design-coverage.html</a></p>
 <nav class="short" aria-labelledby="short-h">
 <h2 id="short-h">The short version</h2>
 <ol>
@@ -429,7 +429,8 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 <li><a href="#direction"><span>Direction: a row of faces apart from the tags, not people as a tab, because who and what are different questions</span></a></li>
 <li><a href="#language"><span>Design language: the existing slate and indigo look, kept; faces add one new shape, the 56 px circle</span></a></li>
 <li><a href="#captures"><span>Captures: at 390 px the rest state has 2 rows above the grid, not 4</span></a></li>
-<li><a href="#session-2026-11-01-select"><span>Session 2026-11-01 (selection): lists, limits on the tabs, one by one, send</span></a></li>
+<li><a href="#session-2026-11-01-like"><span>Session 2026-11-01 (more like this): similar photos from any photo, search words that find untagged photos, a smaller phone card; selection lists removed</span></a></li>
+<li><a href="#session-2026-11-01-select"><span>Session 2026-11-01 (selection, removed): lists, limits on the tabs, one by one, send</span></a></li>
 <li><a href="#session-2026-10-31-filters"><span>Session 2026-10-31 (filters): the filter bar, People and Tags cards, the Filter pill</span></a></li>
 <li><a href="#session-2026-10-31"><span>Session 2026-10-31: people moved out of the tag row; search moved behind a button</span></a>
 <ol><li><a href="#c-1">Close calls: faces row picked over a People tab</a></li><li><a href="#critique-2026-10-31">Critique caught: 5 fixed, 0 kept, 0 open</a></li><li><a href="#measured-2026-10-31">Measured: rows above the grid at rest, 4 to 2</a></li><li><a href="#decisions-2026-10-31">Decisions: 16, most in structure and states</a></li></ol></li>
@@ -607,12 +608,181 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 </section>
 
 <section id="sessions">
+<article class="session" id="session-2026-11-01-like">
+<h2><span class="key">Session 2026-11-01 (more like this)<span class="vh">:</span></span> find photos by how they look: "More like this" from any photo, and search words that find photos the tags missed</h2>
+<p class="kicker">Existing work · Revamp inside the given look · phase 4 v1.5: album photo vectors (LSV1), a worker, no model in the browser · selection lists removed</p>
+<p class="lede">The desktop app now uploads one small file per album: a 768-number fingerprint of each photo. The gallery reads it in a background worker. From any photo, "More like this" shows the closest photos first. A search word first finds the tagged photos, then the photos that look like the word. Albums without the file work as before. The phone card is smaller: the first photo starts at 300 px, not 422 px.</p>
+
+<figure class="shot-hero" style="max-width:390px"><img src="captures/like-390-results.jpg" alt="Phone: a real wedding album after More like this; one header, Closest to this photo first, 15 photos; the filter bar at the bottom shows a small square print, Like this photo, 15, Clear" width="520" height="1125"><figcaption>390 px, the real 15-photo LumoTest album, after "More like this" on a family photo.</figcaption></figure>
+
+<h3 class="i-compass"><span class="key">Brief</span> a relative who remembers a photo, not its tag</h3>
+<ul class="fields">
+<li><strong>For:</strong> the family, in a phone browser or at a desktop browser (both matter; there is no app).</li>
+<li><strong>Job:</strong> "there was one of grandma near the lamp, show me more like that"; "stage", "temple", "kalyanam".</li>
+<li><strong>Moment:</strong> browsing for fun, or looking for one photo. A tag that missed must not mean "no photos".</li>
+<li><strong>Feel:</strong> the gallery understands the photo, quietly. No "AI" word, no score numbers.</li>
+<li><strong>Signature moment:</strong> the tap on "More like this" in the lightbox, and the grid that answers it.</li>
+<li><strong>Screens:</strong> 360 px to 1440 px and more. Source: the project and the owner (phone browsers and desktop browsers are equal).</li>
+<li><strong>Real content:</strong> the LumoTest album (15 photos, ids 24–38) with its real LSV1 file; a synthetic 10,000-photo file (clustered by moment and burst, 7.7 MB).</li>
+</ul>
+
+<h3 class="i-compass"><span class="key">Direction</span> the photographer's contact sheet, sorted by eye</h3>
+<ul class="fields">
+<li><strong>Kept direction:</strong> one studio, two rooms. No new colour. One new shape: the square print in the filter bar (round means a person, so a photo is square).</li>
+<li><strong>Where it shows:</strong> (1) a labelled pill in the lightbox, in the row with the faces; (2) one grid header that says why the order is not by time; (3) a "Looks like" header under the tagged matches, so the less sure photos are said to be less sure.</li>
+<li><strong>Rejected:</strong> mixing meaning results into the moments (a family member cannot tell sure from unsure); an icon-only button in the top bar (no room at 390 px with a label, and an icon did not say what it does); a long-press menu on tiles (a long press on a link opens the browser's own menu on phones).</li>
+</ul>
+
+<h3 class="i-list"><span class="key">Chunks</span> 5, each compared with the baseline</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Chunk</th><th scope="col">Files</th><th scope="col">By</th><th scope="col">Contract</th><th scope="col">Parity</th></tr></thead>
+<tbody>
+<tr><td>Vectors</td><td>utils/vectors.ts, utils/tag-vector-slugs.ts, assets/tag-vectors.bin, scripts/build-tag-vectors.ts</td><td>coordinator</td><td>new: LSV1 parse, int8 score, nearest, by meaning; manifest ids are the truth (deleted photos in the file never come back)</td><td>asserts against float math; 10k scan 21 ms in node</td></tr>
+<tr><td>Worker</td><td>workers/vectors.worker.ts, composables/useVectors.ts</td><td>coordinator</td><td>new: created on first use, never in SSR; similarTo, nearest, phrase</td><td>n/a</td></tr>
+<tr><td>Grid</td><td>utils/browse.ts (buildRows), BrowseGrid.vue</td><td>coordinator</td><td>moments, bursts, SSR rows, virtualization, favorites snapshot, scroll restore</td><td>old asserts unchanged; ranked and tail are new options only</td></tr>
+<tr><td>Page</td><td>pages/share/[token].vue, PersonFace.vue</td><td>coordinator</td><td>?set ?q ?tags ?people ?either; favorites and notes</td><td>CLS 0 at 390 and 1280; 15 SSR tiles with JS off; new ?like=</td></tr>
+<tr><td>Lists out</td><td>TriageView.vue, stores/picks.ts, utils/picks.ts deleted; SetTabs, BrowseTile, useApi back to 22e3ffc</td><td>coordinator</td><td>favorites and notes as before 189951f</td><td>All / Favorites, Favorites chip in the bar, implicit favorite on a note: as before</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-scale"><span class="key">Close calls</span> 2</h3>
+<div class="call" id="c-l1">
+<p class="judge"><b>Where do the photos found by meaning go?</b> Judge at 390 px with "stage".</p>
+<div class="options">
+<figure class="opt picked"><div class="stage"><img src="captures/like-390-meaning.jpg" alt="Tagged stage photos by moment, then a header Looks like stage, 1 photo, then that photo" width="195" height="422"></div><figcaption><span class="badge">L1A</span> After the tagged ones, under "Looks like"<span class="pick">picked</span><br>Sure first, then maybe; the header says which is which.</figcaption></figure>
+<figure class="opt"><div class="stage">Mixed into the moments</div><figcaption><span class="badge">L1B</span> In time order with the rest<br>More photos per moment, but a wrong one looks like a wrong tag.</figcaption></figure>
+</div>
+</div>
+<div class="call" id="c-l2">
+<p class="judge"><b>How does the phone card get smaller?</b> Judge at 390 px at rest.</p>
+<div class="options">
+<figure class="opt picked"><div class="stage"><img src="captures/like-390-rest-realx.jpg" alt="Phone at rest: title, one line, All and Favorites, set chips, face chips, photos from 300 px" width="195" height="422"></div><figcaption><span class="badge">L2A</span> Face chips, one meta line<span class="pick">picked</span><br>Faces stay faces (28 px) and full names fit; 122 px back for photos.</figcaption></figure>
+<figure class="opt"><div class="stage"><img src="captures/like-390-header-before.jpg" alt="Before: owner line, 28 px title, date line, 56 px faces with names under them" width="195" height="422"></div><figcaption><span class="badge">L2B</span> Before: 56 px circles, three title lines<br>The faces row alone was 92 px.</figcaption></figure>
+</div>
+</div>
+
+<h3 class="i-search" id="critique-2026-11-01-like"><span class="key">Critique caught</span> 14 found, 4 fixed, 9 kept, 1 for you</h3>
+<dl class="counts">
+<div class="i-fix"><dt>fixed</dt><dd>4</dd></div>
+<div class="i-keep"><dt>kept, with the evidence</dt><dd>9</dd></div>
+<div class="open"><dt>for you to decide</dt><dd>1</dd></div>
+</dl>
+<p class="sowhat">A fresh reviewer read "Like this photo" as the heart: in this product "like" means a favourite. The chip now says "Similar to" with the print after it.</p>
+<figure class="shot-hero" style="max-width:390px"><img src="captures/like-390-error.jpg" alt="Phone: Could not find similar photos, Check the connection, then try again, Try again and Show all photos; the bar shows Similar to with a small print" width="520" height="1125"><figcaption>390 px, the error state, after the fixes.</figcaption></figure>
+<details>
+<summary>Every finding and its outcome</summary>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Found</th><th scope="col">By</th><th scope="col">Outcome</th></tr></thead>
+<tbody>
+<tr><td>"Like this photo" reads as the heart</td><td>fresh reviewer</td><td>fixed: "Similar to [print] ×"</td></tr>
+<tr><td>Error icon is an empty circle</td><td>fresh reviewer</td><td>fixed: wifi-off was not in the icon bundle; now image-off, as the album error</td></tr>
+<tr><td>"More like this" looks like a person in the lightbox</td><td>fresh reviewer</td><td>fixed: outlined, with a gap before the faces</td></tr>
+<tr><td>Loading says nothing to a screen reader</td><td>fresh reviewer</td><td>fixed before review: the spinner is labelled "Finding photos" in the live count</td></tr>
+<tr><td>Set chip stays blue while the filter is on</td><td>fresh reviewer</td><td>kept: the set still holds (similar photos inside Ceremony), so it is truly on</td></tr>
+<tr><td>Filter bar not at the bottom of the screen with few photos</td><td>fresh reviewer</td><td>kept: earlier decision (filters session): in flow at the end of the sheet, so it never covers the last row</td></tr>
+<tr><td>Count with no noun on phones</td><td>fresh reviewer</td><td>kept: earlier decision; "photos" is in the accessible text</td></tr>
+<tr><td>"Looks like" header styled as a time header; "temple" shows one weak photo</td><td>fresh reviewer</td><td>kept: the words say it; the cut-off was raised once (margin 2) and the one photo is a Kerala temple-style group</td></tr>
+<tr><td>A "−" pill at the right of the grid at 1280</td><td>fresh reviewer</td><td>kept: the moment scrubber from an earlier session, not new</td></tr>
+<tr><td>Blank note button on one tile</td><td>fresh reviewer</td><td>kept: icon still loading at capture time; the same tile shows it in the next capture</td></tr>
+<tr><td>Two "All" controls on phones</td><td>fresh reviewer</td><td>kept: both existed before; one is the view, one the set</td></tr>
+<tr><td>Chips cut hard under Filter</td><td>fresh reviewer</td><td>kept: existing set row, not changed here</td></tr>
+<tr><td>Source photo not marked in its results</td><td>fresh reviewer</td><td>kept: the header "Closest to this photo first" and the print in the bar name it</td></tr>
+<tr><td>Chips and the bar's × are 36 px, under 44 px</td><td>fresh reviewer</td><td>for you: the whole chip is the target (36 × 120 px and more); 44 px would grow the bar and the face row</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+
+
+<h3 class="i-ruler" id="measured-2026-11-01-like"><span class="key">Measured</span> photos 122 px higher on phones; a 10k scan under 0.1 s on a slow CPU</h3>
+<dl class="deltas">
+<div><dt>first photo at 390 × 844, album with sets, people and tags</dt><dd>422 → 300 px</dd></div>
+<div><dt>first photo at 390, plain album</dt><dd>298 → 244 px</dd></div>
+<div><dt>first photo at 1280</dt><dd>132 px (no change)</dd></div>
+<div><dt>CLS on load, 390 and 1280, 4 albums</dt><dd>0.000</dd></div>
+<div><dt>10k "more like this" scan, 4× CPU throttle (worker code on the main thread)</dt><dd>98 ms median (25 ms without throttle)</dd></div>
+<div><dt>10k meaning scan, 4× throttle</dt><dd>95 ms</dd></div>
+<div><dt>tap to ranked grid, 10k, 4× throttle, lightbox close included</dt><dd>0.6 s; 0.8 s the first time (7.7 MB file from a local server)</dd></div>
+<div><dt>new JS in the page chunk</dt><dd>the worker (5 kB) and tag vectors (76 kB) load only on first use</dd></div>
+</dl>
+
+<h3 class="i-list" id="decisions-2026-11-01-like"><span class="key">Decisions</span> 12</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Element</th><th scope="col">Decision</th><th scope="col">Because</th><th scope="col">Rejected default or kept convention</th><th scope="col">Layer</th></tr></thead>
+<tbody>
+<tr id="d-l1"><td><span class="id">d-l1</span> Worker</td><td>One module worker, made on the first "More like this" or search focus; the file is fetched once and kept</td><td>a 10k scan is 25–100 ms; on the main thread it would delay taps</td><td class="rejected">scoring on the main thread</td><td>1 Bare structure</td></tr>
+<tr id="d-l2"><td><span class="id">d-l2</span> Score</td><td>w = q × scale once, then one int8 dot product per photo, four running sums</td><td>the LSV1 layout allows it with no copies; four sums made it 2× faster in V8</td><td class="rejected">decoding every vector to float</td><td>1 Bare structure</td></tr>
+<tr id="d-l3"><td><span class="id">d-l3</span> Deleted photos</td><td>Rows of ids not in the manifest are dropped at parse; they are never a result or a query</td><td>the desktop does not rebuild the file when photos are only deleted</td><td class="rejected">trust the file's ids</td><td>5 Use over time</td></tr>
+<tr id="d-l4"><td><span class="id">d-l4</span> Lightbox</td><td>"More like this" as a labelled pill, first in the row with the faces</td><td>see Direction; it is the one place a person looks at one photo</td><td class="rejected">an icon in the top bar</td><td>3 Type and space</td></tr>
+<tr id="d-l5"><td><span class="id">d-l5</span> Results</td><td>The photo itself first, then up to 60 by closeness; its own burst left out; one frame per other burst</td><td>near copies of the same moment are not "more"; the first tile says what is answered</td><td class="rejected">raw top 60 (half of it one burst)</td><td>1 Bare structure</td></tr>
+<tr id="d-l6"><td><span class="id">d-l6</span> Filter</td><td>?like= is one more filter: it works inside the set, people, tags, search and Favorites, shows in the bar, Clear removes it, the link shares it</td><td>the bar is where every filter already lives</td><td class="kept">kept: the filter bar</td><td>1 Bare structure</td></tr>
+<tr id="d-l7"><td><span class="id">d-l7</span> Header</td><td>One grid header: "Closest to this photo first · 15 photos"</td><td>without moments, the order needs a reason on screen</td><td class="rejected">no header</td><td>3 Type and space</td></tr>
+<tr id="d-l8"><td><span class="id">d-l8</span> Meaning query</td><td>Each typed word goes to the nearest tag of the whole vocabulary (synonyms, Hindi, Malayalam, Tamil); their phrase vectors are averaged</td><td>the tag search only knows tags that are in the album; "temple" with no temple tag found nothing</td><td class="rejected">a text model in the browser</td><td>1 Bare structure</td></tr>
+<tr id="d-l9"><td><span class="id">d-l9</span> Cutoff</td><td>Kept when the SigLIP logit is at least −8.5 and 2 above the album's mean for the phrase; the desktop's "strict" tags (haldi, thali …) need its own near-certain bar; at most 60</td><td>calibrated on LumoTest: couple, temple, stage, flowers, kids give 1 extra each; beach, dance, food give none; with margin 1.5 "temple" gave 4 of 15, haldi gave 2 false ones</td><td class="rejected">a fixed top-N</td><td>5 Use over time</td></tr>
+<tr id="d-l10"><td><span class="id">d-l10</span> Phone card</td><td>Title 22 px and one line (studio · date · count); Stack bursts in the Filter panel when the album has one</td><td>the owner asked for the photos to start higher</td><td class="rejected">three title lines</td><td>3 Type and space</td></tr>
+<tr id="d-l11"><td><span class="id">d-l11</span> Faces on phones</td><td>Face chips (28 px face, full name) in place of 56 px circles with names under them; md+ keeps the circles in the column</td><td>92 px to 44 px; full names on one line ("bride father" and "bride mom" stay apart)</td><td class="rejected">smaller circles (names still need two lines)</td><td>3 Type and space</td></tr>
+<tr id="d-l12"><td><span class="id">d-l12</span> SSR</td><td>A ?like= link shows the skeleton until the worker answers; every other URL keeps its server-rendered first rows</td><td>the server has no vectors; a wrong first row is worse than a skeleton</td><td class="kept">kept: SSR first rows</td><td>5 Use over time</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-alert"><span class="key">App-wide states</span> 6 for vectors, the rest unchanged</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">State</th><th scope="col">What the person sees</th></tr></thead>
+<tbody>
+<tr><td>No vectors (manifest vectors: null)</td><td>no "More like this", search by tags only, ?like= ignored: as before</td></tr>
+<tr><td>Loading</td><td>the skeleton grid; a spinner in the filter bar in place of the count; the chip already shows the photo</td></tr>
+<tr><td>Error (file not reachable)</td><td>"Could not find similar photos. Check the connection, then try again." Try again / Show all photos</td></tr>
+<tr><td>Photo newer than the file</td><td>a short line: "This photo is newer than the album's photo index…"; the filter goes</td></tr>
+<tr><td>Nothing similar in this filter (Favorites with none)</td><td>the usual "No photos match" and Clear filters</td></tr>
+<tr><td>Search with only meaning results</td><td>the "Looks like" header alone, no "No photos match"</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-motion"><span class="key">Motion map</span> still: results change at once</h3>
+<div class="scroll">
+<table class="motion">
+<thead><tr><th scope="col">Moment</th><th scope="col">Tier (none, micro, transition, moment)</th><th scope="col">How often</th><th scope="col">Trigger, feedback, loops</th><th scope="col">Reduced-motion version</th><th scope="col">How much it matters</th><th scope="col">Why</th></tr></thead>
+<tbody>
+<tr><td>More like this</td><td>transition</td><td>sometimes</td><td>the lightbox closes (PhotoSwipe's own), the page goes to the top, skeleton, then the grid</td><td>no zoom out</td><td>high</td><td>the answer is the grid; an extra effect would delay it</td></tr>
+<tr><td>Meaning results arrive</td><td>none</td><td>often</td><td>the "Looks like" rows appear under the tagged rows (below, so nothing above moves)</td><td>same</td><td>medium</td><td>CLS 0</td></tr>
+<tr><td>Finding</td><td>micro</td><td>sometimes</td><td>spinner in the bar's count place</td><td>still icon</td><td>low</td><td>says "working" where the count will be</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-list"><span class="key">Copy</span> the words a relative uses</h3>
+<ul class="fields">
+<li><strong>Vocabulary:</strong> "More like this", "Like this photo", "Closest to this photo first", "Looks like “stage”". No "AI", "similar", "vector", "score".</li>
+<li><strong>Pairs:</strong> "Could not find similar photos", not "Vector index failed"; "newer than the album's photo index", not "id missing".</li>
+</ul>
+
+<h3 class="i-list"><span class="key">Removed</span> selection lists, at the owner's word</h3>
+<p class="note">Selection lists removed: clients only give feedback (hearts and notes); photographers export via Copy to folder. Gone: the list switcher, the count row and Send, the sent banner, the bottom count pill, chapter limits on the set tabs and in the column, All / Not picked / Picked, One by one (TriageView), stores/picks.ts, utils/picks.ts, ?list= and ?view=, manifest and feedback lists in the API types, and their asserts. All / Favorites and notes work as before 189951f. The earlier selection session stays below for the record; its captures are deleted.</p>
+
+<h3>Bug check: "Couple portraits" over a getting-ready photo</h3>
+<p class="note">Mock data, not code. The mock's "Couple portraits" set was every 41st photo of the whole day, so photo #1 (getting ready) was in it; One by one showed the set name over the set's own first photo. The mock now takes the couple set from the couple-shoot moments. One by one is removed in this session anyway.</p>
+
+<details>
+<summary>Look notes, checks and what was skipped</summary>
+<h3>Look notes</h3>
+<p class="note">Headless Chromium, production build, scratch mock (manifest vectors, the real LumoTest LSV1 file, a synthetic 10k file): 390 px (touch, 2x) and 1280 px. Captures: captures/like-*.jpg. Loading via a 6 s delay on the file; error via a blocked request.</p>
+<h3>Skipped</h3>
+<p class="note">A long-press menu on tiles (the browser's link menu owns long press on phones). "More like this" in v1 albums (no manifest). Phrase vectors for free text outside the tag vocabulary: it needs a text model; the vocabulary search maps words to the closest tag instead.</p>
+</details>
+</article>
+
 <article class="session" id="session-2026-11-01-select">
 <h2><span class="key">Session 2026-11-01 (selection)<span class="vh">:</span></span> the family picks the album: a count under the thumb, chapter limits on the tabs, one photo at a time, then send</h2>
-<p class="kicker">Existing work · Revamp inside the given look · phase 5: selection lists from the photographer, limits, one by one, send</p>
+<p class="kicker">Removed later the same day (see the next session up): selection lists removed: clients only give feedback; photographers export via Copy to folder. Its captures are deleted.</p>
 <p class="lede">The photographer can now ask for lists ("Main album: 300, 40 from Haldi"). With lists, the heart picks into the active list. The count stays at the bottom of the screen. A full chapter stops a pick before anything is sent. "One by one" shows the photos that are not decided yet. "Send" shows a summary, then locks the list. Albums without lists work as before.</p>
 
-<figure class="shot-hero" style="max-width:390px"><img src="captures/select-390-rest.jpg" alt="Phone view: album card with three list pills, 0 / 300 picked, 3 days left, Send; All, Not picked, Picked; set tabs with Getting ready 0 / 30; the count pill with One by one at the bottom" width="520" height="1125"><figcaption>390 px, mock album (10,000 photos, 3 lists).</figcaption></figure>
 
 <h3 class="i-compass"><span class="key">Brief</span> a parent with a deadline and 10,000 photos</h3>
 <ul class="fields">
@@ -652,14 +822,14 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 <div class="call" id="c-s1">
 <p class="judge"><b>Where does the count live on a phone?</b> Judge at 390 px, deep in the grid.</p>
 <div class="options">
-<figure class="opt picked"><div class="stage"><img src="captures/select-390-picking.jpg" alt="Deep in the grid: set tabs at the top, the count pill at the bottom" width="195" height="422"></div><figcaption><span class="badge">S1A</span> A pill at the bottom<span class="pick">picked</span><br>Under the thumb; 0 px above the photos; the same shape as the filter bar, which stacks above it.</figcaption></figure>
+<figure class="opt picked"><div class="stage">(capture removed)</div><figcaption><span class="badge">S1A</span> A pill at the bottom<span class="pick">picked</span><br>Under the thumb; 0 px above the photos; the same shape as the filter bar, which stacks above it.</figcaption></figure>
 <figure class="opt"><div class="stage">In the set row</div><figcaption><span class="badge">S1B</span> In the sticky set row<br>Albums without sets have no row, and the chips get less room.</figcaption></figure>
 </div>
 </div>
 <div class="call" id="c-s2">
 <p class="judge"><b>How does a full chapter say no?</b> Judge at 390 px.</p>
 <div class="options">
-<figure class="opt picked"><div class="stage"><img src="captures/select-390-set-full.jpg" alt="A dark line at the bottom: Haldi is full: 40 of 40" width="195" height="422"></div><figcaption><span class="badge">S2A</span> One dark line, then nothing sent<span class="pick">picked</span><br>The heart does not fill, so nothing to undo; the line names the chapter and the way out.</figcaption></figure>
+<figure class="opt picked"><div class="stage">(capture removed)</div><figcaption><span class="badge">S2A</span> One dark line, then nothing sent<span class="pick">picked</span><br>The heart does not fill, so nothing to undo; the line names the chapter and the way out.</figcaption></figure>
 <figure class="opt"><div class="stage">Hearts greyed out</div><figcaption><span class="badge">S2B</span> Disable the hearts in a full chapter<br>A dead heart does not say why, and an unpick must still work.</figcaption></figure>
 </div>
 </div>
@@ -671,7 +841,6 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 <div class="open"><dt>for you to decide</dt><dd>1</dd></div>
 </dl>
 <p class="sowhat">In One by one, a parent read "244 to go" as "244 more to pick", and the Haldi limit that stops Keep was not on the screen. Now the header says "14 / 40 picked · 986 left to see", and the done screen leads to the next chapter with room.</p>
-<figure class="shot-hero" style="max-width:640px"><img src="captures/select-1280-triage.jpg" alt="One by one at 1280 px: Haldi, 14 / 40 picked, 986 left to see; Skip and Keep with key hints" width="1280" height="860"><figcaption>1280 px, One by one over Haldi, Not picked.</figcaption></figure>
 <details>
 <summary>Every finding and its outcome</summary>
 <div class="scroll">
@@ -776,7 +945,7 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 <details>
 <summary>Look notes, checks and what was skipped</summary>
 <h3>Look notes</h3>
-<p class="note">Headless Chromium against the production build and the scratch mock (contract: lists, picks with 409 and 423, submit): 390 px (touch, 2x) and 1280 px. Captures: captures/select-*.jpg. check.py: no errors in the new files (the errors it lists are in the landing and booking pages). render_check.py (a copy that sets a client name, so the name prompt does not cover the page): the set-tab covers are the baseline's; the dock "covers a photo" only while that photo scrolls under it; at the end of the album the dock sits below the last row.</p>
+<p class="note">Headless Chromium against the production build and the scratch mock (contract: lists, picks with 409 and 423, submit): 390 px (touch, 2x) and 1280 px. Captures: deleted with the feature. check.py: no errors in the new files (the errors it lists are in the landing and booking pages). render_check.py (a copy that sets a client name, so the name prompt does not cover the page): the set-tab covers are the baseline's; the dock "covers a photo" only while that photo scrolls under it; at the end of the album the dock sits below the last row.</p>
 <h3>Life</h3>
 <p class="note">The counter heart pops on Keep (progress made). The photo leaves the way it was sent (the choice, seen). The sent sheet names the date and the next list (the work moves on).</p>
 <h3>Removed</h3>
@@ -1251,9 +1420,8 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 <h2><span class="key">For you to decide<span class="vh">:</span></span> 9 choices, 4 things owed</h2>
 <p class="lede">You can reverse each one.</p>
 <ol class="cards">
-<li><b>One by one says "Keep", the rest says "pick"</b><span>Your brief's words and keys (K / S). <a href="#d-s10">d-s10</a></span><span class="alt">Or: "Pick" / "Skip", with P and K both working.</span></li>
-<li><b>The phone card grows with lists</b><span>About 585 px above the first photo at rest. <a href="#d-s4">d-s4</a></span><span class="alt">Or: one line ("212 / 300 · 3 days left") after the first pick; Stack bursts and faces under the tabs.</span></li>
-<li><b>Skips stay on the phone</b><span>A skip is "not now", not a no for you. <a href="#d-s11">d-s11</a></span><span class="alt">Or: send them, so another phone of the same person skips them too.</span></li>
+<li><b>Chips stay 36 px tall</b><span>The whole chip is the target. <a href="#critique-2026-11-01-like">critique</a></span><span class="alt">Or: 44 px chips, the face row and bar grow 8 px.</span></li>
+<li><b>Meaning cut-off</b><span>Logit −8.5 and 2 over the album mean, from one 15-photo album. <a href="#d-l9">d-l9</a></span><span class="alt">Or: stricter (fewer "Looks like" photos), tuned on a big labelled album.</span></li>
 <li><b>Set covers are gone from the chips</b><span>A folder says "set"; a 24 px cover did not. <a href="#d-22">d-22</a></span><span class="alt">Or: show the cover as a wide photo at the top of the selected set, if your photographers choose covers with care.</span></li>
 <li><b>Done: People are a card in the column at 768 px and up</b><span>You chose it. <a href="#d-f1">d-f1</a></span></li>
 <li><b>Done: no scrubber on phones</b><span>You chose it. <a href="#d-f7">d-f7</a></span></li>
@@ -1263,7 +1431,7 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 </ol>
 <h3>Still owed</h3>
 <ul class="owed">
-<li>Selection was checked against a mock of the lists contract, not the worker. Check 409 and 423 bodies and the bare <code>{ imageIds }</code> body on the real API (the client also takes <code>{ data: … }</code>).</li>
+<li>The vectors file URL must send CORS headers (the worker fetches it from the gallery origin) and be cached as immutable; checked only against the mock.</li>
 <li>The lightbox counter reads "1 / 6556"; PhotoSwipe builds it, so formatting it needs a custom counter element.</li>
 <li>v1 tiles (albums without browse v2) keep their old markup; only the shared chrome is new. Port them, or move those albums to v2.</li>
 <li>Check the look on a real phone in Safari: overflow: clip and :has() need Safari 16 or later.</li>
