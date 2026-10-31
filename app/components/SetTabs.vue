@@ -10,7 +10,14 @@
       <Icon v-if="t.id" :name="t.id === modelValue ? 'lucide:folder-open' : 'lucide:folder'" size="16"
         :class="t.id === modelValue ? 'text-brand' : 'text-ink-3'" />
       <span>{{ t.name }}</span>
-      <span class="n">{{ t.count.toLocaleString('en-US') }}</span>
+      <!-- A chapter the selection limits shows how far along it is ("14 / 40"), in place of its size.
+           Width kept for the longest value, so the tabs after it never move when picks arrive. -->
+      <span v-if="t.id && progress?.has(t.id)" class="n inline-flex items-center gap-1" :style="{ minWidth: `${String(progress.get(t.id)!.max).length * 2 + 2}ch` }"
+        :class="progress.get(t.id)!.picked >= progress.get(t.id)!.max ? 'text-brand' : 'text-ink-2'">
+        <span class="sr-only">picked</span>{{ ready ? progress.get(t.id)!.picked : '–' }} / {{ progress.get(t.id)!.max }}
+        <Icon v-if="ready && progress.get(t.id)!.picked >= progress.get(t.id)!.max" name="lucide:check" size="12" />
+      </span>
+      <span v-else class="n">{{ t.count.toLocaleString('en-US') }}</span>
     </button>
   </div>
 </template>
@@ -18,7 +25,11 @@
 <script setup lang="ts">
 import type { BrowseSet } from '~/utils/browse'
 
-const props = defineProps<{ sets: BrowseSet[]; modelValue: string | null; total: number; panel: string }>()
+const props = defineProps<{
+  sets: BrowseSet[]; modelValue: string | null; total: number; panel: string
+  progress?: Map<string, { picked: number; max: number }> // selection limits per set
+  ready?: boolean // picks loaded (until then the picked part is a dash)
+}>()
 const emit = defineEmits<{ 'update:modelValue': [id: string | null] }>()
 
 const list = ref<HTMLElement | null>(null)

@@ -420,7 +420,7 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 <div class="i-search"><dt>critique findings, 5 closed</dt><dd>5</dd></div>
 <div class="open"><dt>choices waiting for you</dt><dd>3</dd></div>
 </dl>
-<p class="note">Latest session <time datetime="2026-10-31">2026-10-31</time> (filters). Coverage: <a href="design-coverage.html">design-coverage.html</a></p>
+<p class="note">Latest session <time datetime="2026-11-01">2026-11-01</time> (selection). Coverage: <a href="design-coverage.html">design-coverage.html</a></p>
 <nav class="short" aria-labelledby="short-h">
 <h2 id="short-h">The short version</h2>
 <ol>
@@ -429,6 +429,7 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 <li><a href="#direction"><span>Direction: a row of faces apart from the tags, not people as a tab, because who and what are different questions</span></a></li>
 <li><a href="#language"><span>Design language: the existing slate and indigo look, kept; faces add one new shape, the 56 px circle</span></a></li>
 <li><a href="#captures"><span>Captures: at 390 px the rest state has 2 rows above the grid, not 4</span></a></li>
+<li><a href="#session-2026-11-01-select"><span>Session 2026-11-01 (selection): lists, limits on the tabs, one by one, send</span></a></li>
 <li><a href="#session-2026-10-31-filters"><span>Session 2026-10-31 (filters): the filter bar, People and Tags cards, the Filter pill</span></a></li>
 <li><a href="#session-2026-10-31"><span>Session 2026-10-31: people moved out of the tag row; search moved behind a button</span></a>
 <ol><li><a href="#c-1">Close calls: faces row picked over a People tab</a></li><li><a href="#critique-2026-10-31">Critique caught: 5 fixed, 0 kept, 0 open</a></li><li><a href="#measured-2026-10-31">Measured: rows above the grid at rest, 4 to 2</a></li><li><a href="#decisions-2026-10-31">Decisions: 16, most in structure and states</a></li></ol></li>
@@ -606,6 +607,185 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 </section>
 
 <section id="sessions">
+<article class="session" id="session-2026-11-01-select">
+<h2><span class="key">Session 2026-11-01 (selection)<span class="vh">:</span></span> the family picks the album: a count under the thumb, chapter limits on the tabs, one photo at a time, then send</h2>
+<p class="kicker">Existing work · Revamp inside the given look · phase 5: selection lists from the photographer, limits, one by one, send</p>
+<p class="lede">The photographer can now ask for lists ("Main album: 300, 40 from Haldi"). With lists, the heart picks into the active list. The count stays at the bottom of the screen. A full chapter stops a pick before anything is sent. "One by one" shows the photos that are not decided yet. "Send" shows a summary, then locks the list. Albums without lists work as before.</p>
+
+<figure class="shot-hero" style="max-width:390px"><img src="captures/select-390-rest.jpg" alt="Phone view: album card with three list pills, 0 / 300 picked, 3 days left, Send; All, Not picked, Picked; set tabs with Getting ready 0 / 30; the count pill with One by one at the bottom" width="520" height="1125"><figcaption>390 px, mock album (10,000 photos, 3 lists).</figcaption></figure>
+
+<h3 class="i-compass"><span class="key">Brief</span> a parent with a deadline and 10,000 photos</h3>
+<ul class="fields">
+<li><strong>For:</strong> the bride or a parent, on a phone, over several evenings; the phone goes round the family.</li>
+<li><strong>Job:</strong> pick the photos for each list the photographer asked for, inside the limits, and send them.</li>
+<li><strong>Moment:</strong> a big album, a date, mild pressure. They want to know "how many more?" and "am I done?".</li>
+<li><strong>Feel:</strong> calm and sure. The count is always true; nothing is lost; a refusal says why at once.</li>
+<li><strong>Richness:</strong> low chrome, as before: the photos are the content. Care goes into the count, the refusals and the ending.</li>
+<li><strong>Signature moment:</strong> Keep in "One by one", and the count that moves with it.</li>
+<li><strong>Ending:</strong> "Sent to Mock Studio": a check, the count, the date, and the next list if one is open.</li>
+<li><strong>Screens:</strong> 360 px to 1440 px and more, phones first. Source: the project and the brief.</li>
+<li><strong>Real content:</strong> 10,000 photos; lists of 300, 60 and 3; chapters of 30, 40, 80; a limit on a chapter that is still uploading (left out); a deadline 2.4 days away, one that passed, one sent list.</li>
+</ul>
+
+<h3 class="i-compass"><span class="key">Direction</span> the photographer's pick sheet, in the family's hand</h3>
+<ul class="fields">
+<li><strong>Kept direction:</strong> one studio, two rooms (the desktop look). Selection adds no new colour and no new shape.</li>
+<li><strong>Where it shows:</strong> (1) the count lives in a pill at the bottom, the same shape as the filter bar, under the thumb at any depth; (2) chapter progress lives where chapters already are: the set tabs on phones, a list in the column on wide screens; (3) one by one uses the lightbox's night stage, so it reads as "looking at one photo", not as a new app.</li>
+<li><strong>Rejected:</strong> a cart drawer (shopping, wrong for a family album); a progress header fixed at the top (a third sticky row over the photos on a phone); a separate "selection" page (the person loses the place in 10,000 photos).</li>
+</ul>
+
+<h3 class="i-list"><span class="key">Chunks</span> 5, each compared with the baseline</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Chunk</th><th scope="col">Files</th><th scope="col">By</th><th scope="col">Contract</th><th scope="col">Parity</th></tr></thead>
+<tbody>
+<tr><td>Logic</td><td>utils/picks.ts, scripts/browse.check.ts</td><td>coordinator</td><td>pure: limits, chapter progress, queue, merge, deadline, lock</td><td>new asserts pass; old asserts unchanged</td></tr>
+<tr><td>Writes</td><td>stores/picks.ts, composables/useApi.ts</td><td>coordinator</td><td>share.ts guarantees: queued, batched, re-queued on network failure, unsynced ops replayed on a feedback reload</td><td>5 fast taps on one heart send 1 request; a 409 rolls back and reloads the truth</td></tr>
+<tr><td>Grid filter</td><td>BrowseGrid.vue, BrowseTile.vue</td><td>coordinator</td><td>favorites-only snapshot, scroll restore, SSR rows, lightbox heart</td><td>favoritesOnly became only = in / out; favorites pass "in"; heart label is a prop</td></tr>
+<tr><td>Page</td><td>pages/share/[token].vue, SetTabs.vue</td><td>coordinator</td><td>?set ?q ?tags ?people ?either; favorites when there are no lists</td><td>token "mock" (no lists): All / Favorites, no pill, "Favorite" labels, CLS 0</td></tr>
+<tr><td>One by one</td><td>components/TriageView.vue</td><td>coordinator</td><td>new</td><td>n/a</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-scale"><span class="key">Close calls</span> 2</h3>
+<div class="call" id="c-s1">
+<p class="judge"><b>Where does the count live on a phone?</b> Judge at 390 px, deep in the grid.</p>
+<div class="options">
+<figure class="opt picked"><div class="stage"><img src="captures/select-390-picking.jpg" alt="Deep in the grid: set tabs at the top, the count pill at the bottom" width="195" height="422"></div><figcaption><span class="badge">S1A</span> A pill at the bottom<span class="pick">picked</span><br>Under the thumb; 0 px above the photos; the same shape as the filter bar, which stacks above it.</figcaption></figure>
+<figure class="opt"><div class="stage">In the set row</div><figcaption><span class="badge">S1B</span> In the sticky set row<br>Albums without sets have no row, and the chips get less room.</figcaption></figure>
+</div>
+</div>
+<div class="call" id="c-s2">
+<p class="judge"><b>How does a full chapter say no?</b> Judge at 390 px.</p>
+<div class="options">
+<figure class="opt picked"><div class="stage"><img src="captures/select-390-set-full.jpg" alt="A dark line at the bottom: Haldi is full: 40 of 40" width="195" height="422"></div><figcaption><span class="badge">S2A</span> One dark line, then nothing sent<span class="pick">picked</span><br>The heart does not fill, so nothing to undo; the line names the chapter and the way out.</figcaption></figure>
+<figure class="opt"><div class="stage">Hearts greyed out</div><figcaption><span class="badge">S2B</span> Disable the hearts in a full chapter<br>A dead heart does not say why, and an unpick must still work.</figcaption></figure>
+</div>
+</div>
+
+<h3 class="i-search" id="critique-2026-11-01-select"><span class="key">Critique caught</span> 11 found, 7 fixed, 3 kept, 1 for you</h3>
+<dl class="counts">
+<div class="i-fix"><dt>fixed</dt><dd>7</dd></div>
+<div class="i-keep"><dt>kept, with the evidence</dt><dd>3</dd></div>
+<div class="open"><dt>for you to decide</dt><dd>1</dd></div>
+</dl>
+<p class="sowhat">In One by one, a parent read "244 to go" as "244 more to pick", and the Haldi limit that stops Keep was not on the screen. Now the header says "14 / 40 picked · 986 left to see", and the done screen leads to the next chapter with room.</p>
+<figure class="shot-hero" style="max-width:640px"><img src="captures/select-1280-triage.jpg" alt="One by one at 1280 px: Haldi, 14 / 40 picked, 986 left to see; Skip and Keep with key hints" width="1280" height="860"><figcaption>1280 px, One by one over Haldi, Not picked.</figcaption></figure>
+<details>
+<summary>Every finding and its outcome</summary>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Found</th><th scope="col">By</th><th scope="col">Outcome</th></tr></thead>
+<tbody>
+<tr><td>"244 to go" reads as photos left to pick</td><td>fresh reviewer</td><td>fixed: "244 left to see"</td></tr>
+<tr><td>One by one hides the chapter limit that blocks Keep</td><td>fresh reviewer</td><td>fixed: "14 / 40 picked" first in the header</td></tr>
+<tr><td>Done screen is a dead end</td><td>fresh reviewer</td><td>fixed: "Next: Getting ready 1 / 30" (the next chapter with room), else "Send Main album"</td></tr>
+<tr><td>"Haldi is full" gives no way to act</td><td>fresh reviewer</td><td>fixed: "See Haldi picks" opens Haldi, Picked</td></tr>
+<tr><td>409 line does not say how many picks were lost</td><td>fresh reviewer</td><td>fixed: "Your last pick there was not saved" / "your last 3 picks"</td></tr>
+<tr><td>Sent check is blue (blue means selected)</td><td>fresh reviewer</td><td>fixed: ink on grey</td></tr>
+<tr><td>Chapter progress and photo counts look the same in the tabs</td><td>fresh reviewer</td><td>fixed: progress in ink-2 (counts stay ink-3), blue only when full</td></tr>
+<tr><td>Notices look different (one washed out)</td><td>fresh reviewer</td><td>was a capture during the 1 s fade; fixed anyway: the notice and sheet rise in 160 ms</td></tr>
+<tr><td>"Sent on 1 Nov" notice repeats the banner</td><td>fresh reviewer</td><td>kept: it answers a heart tap on a sent list (the test tapped one); it does not show on load</td></tr>
+<tr><td>Blue focus ring on Close in the done screen</td><td>fresh reviewer</td><td>kept: the test used keys, so :focus-visible is right</td></tr>
+<tr><td>"94 photos" in the Picked filter bar repeats the dock</td><td>fresh reviewer</td><td>kept: inside a chapter it is that chapter's count, not the list's</td></tr>
+<tr><td>About 585 of 844 px above the first photo on a phone</td><td>fresh reviewer</td><td>for you: collapse the card after the first pick, and move Stack bursts and faces under the tabs; it changes albums without lists too</td></tr>
+<tr><td>"Keep" in One by one, "pick" everywhere else</td><td>fresh reviewer</td><td>for you: the brief says Keep / Skip and K / S</td></tr>
+<tr><td>The dock sits on photos (render_check ERROR)</td><td>render_check</td><td>kept: it is in flow at the end of the sheet; at the end of the album it is 72 px below the last row, so no photo stays under it</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+
+
+<h3 class="i-ruler" id="measured-2026-11-01-select"><span class="key">Measured</span> no shift; one request per burst of taps</h3>
+<dl class="deltas">
+<div><dt>CLS on load, 390 and 1280, lists, ?view=picked, no lists</dt><dd>0.000</dd></div>
+<div><dt>requests for 5 fast taps on one heart</dt><dd>1 (net: picked)</dd></div>
+<div><dt>a refused pick (chapter full, known here)</dt><dd>0 requests</dd></div>
+<div><dt>dock at the end of the album</dt><dd>below the last row (no photo stays under it)</dd></div>
+<div><dt>hydration warnings, page errors</dt><dd>0</dd></div>
+</dl>
+
+<h3 class="i-list" id="decisions-2026-11-01-select"><span class="key">Decisions</span> 14</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Element</th><th scope="col">Decision</th><th scope="col">Because</th><th scope="col">Rejected default or kept convention</th><th scope="col">Layer</th></tr></thead>
+<tbody>
+<tr id="d-s1"><td><span class="id">d-s1</span> Heart</td><td>With lists, the heart picks into the active list; no all-client count on tiles</td><td>the family already knows the heart; a second "select" mark would ask them to learn two</td><td class="rejected">a checkbox for lists beside the heart</td><td>1 Bare structure</td></tr>
+<tr id="d-s2"><td><span class="id">d-s2</span> Views</td><td>All / Not picked / Picked replace All / Favorites; ?view=unpicked|picked</td><td>"not picked yet" is how people finish; Picked is the list itself</td><td class="rejected">a separate list page</td><td>1 Bare structure</td></tr>
+<tr id="d-s3"><td><span class="id">d-s3</span> List switcher</td><td>Pills in the album card, only with 2 or more lists; a lock on a sent one; ?list=</td><td>3 lists fit on one phone row; the active one looks selected like every other choice</td><td class="rejected">a select menu (hides the other lists)</td><td>1 Bare structure</td></tr>
+<tr id="d-s4"><td><span class="id">d-s4</span> Count row</td><td>"212 / 300 picked", a status line, Send; fixed 48 px; a dash until picks load</td><td>the grid must not move when picks arrive (CLS 0)</td><td class="rejected">a row that grows with the status</td><td>3 Type and space</td></tr>
+<tr id="d-s5"><td><span class="id">d-s5</span> Dock</td><td>Bottom pill: heart, count, list name (opens the review), One by one</td><td>see <a href="#c-s1">S1</a></td><td class="rejected">a fixed header</td><td>3 Type and space</td></tr>
+<tr id="d-s6"><td><span class="id">d-s6</span> Chapter progress</td><td>Set tabs show "14 / 40" in place of the size, only for limited chapters; blue and a check when full; width kept for the longest value</td><td>the limit is about that chapter, so it sits on the chapter</td><td class="rejected">a separate progress panel on phones</td><td>3 Type and space</td></tr>
+<tr id="d-s7"><td><span class="id">d-s7</span> Column</td><td>md+: the limited chapters as rows under the bar; a row opens the chapter</td><td>owner request; it doubles as a way to the chapter that needs work</td><td class="rejected">read-only numbers</td><td>3 Type and space</td></tr>
+<tr id="d-s8"><td><span class="id">d-s8</span> Refusals</td><td>A full list or chapter stops the pick before the API, with one dark line; a 409 rolls back and reads the truth again</td><td>see <a href="#c-s2">S2</a>; another phone of the same person can fill the list</td><td class="rejected">hearts disabled in a full chapter</td><td>5 Use over time</td></tr>
+<tr id="d-s9"><td><span class="id">d-s9</span> Writes</td><td>A sibling store: one request per list, 1.5 s after the last tap; retry every 10 s on a network failure; ops replayed over any feedback read</td><td>a limit is checked on the server, so picks go out sooner than favorites (10 s)</td><td class="kept">kept: share.ts's queue and merge</td><td>5 Use over time</td></tr>
+<tr id="d-s10"><td><span class="id">d-s10</span> One by one</td><td>The view's undecided photos (picked and skipped out), in grid order, burst frames one by one; Keep / Skip / Undo buttons; swipe and K, S, arrows, U, Esc</td><td>bursts are where choosing is hardest; every gesture has a button (WCAG 2.5.7)</td><td class="rejected">a swipe-only card stack</td><td>1 Bare structure</td></tr>
+<tr id="d-s11"><td><span class="id">d-s11</span> Skips</td><td>Kept on this device per person and list; "See the skipped ones again" on the done screen</td><td>a skip is "not now", not a no for the photographer, so it is not sent</td><td class="rejected">sending skips to the server</td><td>5 Use over time</td></tr>
+<tr id="d-s12"><td><span class="id">d-s12</span> Send</td><td>A review sheet: count, chapters, the consequence, "Send 3 photos" / "Keep choosing"; focus starts on Keep choosing</td><td>sending locks the list: the consequence is said before, and Enter must not send by accident</td><td class="rejected">a one-tap send with a toast</td><td>6 Motion and detail</td></tr>
+<tr id="d-s13"><td><span class="id">d-s13</span> Locked and closed</td><td>Sent: the count row turns grey with a lock, "Sent on 1 Nov · ask Mock Studio to reopen"; past the deadline: "Closed on 30 Oct · you can still send", Send stays</td><td>the contract: edits stop, sending still works after the deadline</td><td class="rejected">hiding the hearts</td><td>5 Use over time</td></tr>
+<tr id="d-s14"><td><span class="id">d-s14</span> Ending</td><td>"Sent to Mock Studio", the count and date; "Next: Parents' album" when another list is open</td><td>the hand-off after the flow is the next list, not the top of the page</td><td class="rejected">close the sheet and show a toast</td><td>6 Motion and detail</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-alert"><span class="key">App-wide states</span> 10 for selection, the rest unchanged</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">State</th><th scope="col">What the person sees</th></tr></thead>
+<tbody>
+<tr><td>Loading (picks not read yet)</td><td>counts show a dash ("– / 300", "– / 40"); Picked and Not picked show the skeleton, not a wrong grid</td></tr>
+<tr><td>No name yet</td><td>a heart or One by one opens "Who's choosing?" first</td></tr>
+<tr><td>Empty: Picked with nothing</td><td>"Nothing picked in Haldi yet", how to add, "See all photos"; the filter bar steps aside</td></tr>
+<tr><td>Empty: Not picked with nothing left</td><td>"Every photo in Haldi is picked", "See all photos"</td></tr>
+<tr><td>Full (known here)</td><td>the pick does not happen; "Haldi is full: 40 of 40. Unpick a Haldi photo to make room."</td></tr>
+<tr><td>Full (409, another phone)</td><td>the picks roll back; "… is already full (30 of 30), maybe from another phone. Your last picks there were not saved."</td></tr>
+<tr><td>Locked (423 or sent)</td><td>grey banner with a lock; a heart tap says "Main album was sent on 1 Nov. Ask Mock Studio to reopen it."; One by one goes</td></tr>
+<tr><td>Closed (deadline passed)</td><td>"Closed on 30 Oct · you can still send"; hearts say so; Send works</td></tr>
+<tr><td>Offline</td><td>picks stay on the screen and in the queue; retried every 10 s; Send first sends them and says so if it cannot</td></tr>
+<tr><td>Not found, no access, signed out, crash, first launch</td><td>not changed: the album error card; a share link has no sign-in; first launch still asks "Who's choosing?" before the first pick</td></tr>
+<tr><td>One by one, done</td><td>"You’ve seen them all", the counts, "Back to photos", "See the skipped ones again"</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-motion"><span class="key">Motion map</span> quick where it is frequent, a little more for Keep</h3>
+<div class="scroll">
+<table class="motion">
+<thead><tr><th scope="col">Moment</th><th scope="col">Tier (none, micro, transition, moment)</th><th scope="col">How often</th><th scope="col">Trigger, feedback, loops</th><th scope="col">Reduced-motion version</th><th scope="col">How much it matters</th><th scope="col">Why</th></tr></thead>
+<tbody>
+<tr><td>Pick on a tile</td><td>micro</td><td>very often</td><td>heart pop 180 ms (existing); count changes at once; bar width 200 ms</td><td>no pop</td><td>high</td><td>the count is the answer</td></tr>
+<tr><td>Pick refused</td><td>micro</td><td>sometimes</td><td>dark line rises 8 px in 160 ms; goes after 6 s or on tap</td><td>appears</td><td>high</td><td>it must answer the tap that caused it</td></tr>
+<tr><td>Keep / Skip</td><td>moment</td><td>very often</td><td>the photo leaves the way it was sent (180 ms, slight turn); the next is there; the counter heart pops on Keep</td><td>instant swap</td><td>high</td><td>signature moment; short, so a fast thumb never waits</td></tr>
+<tr><td>Swipe drag</td><td>micro</td><td>often</td><td>the photo follows the finger; a Keep or Skip cue fades in; 90 px commits</td><td>same (follows the finger)</td><td>high</td><td>says the result before the finger lifts</td></tr>
+<tr><td>Send sheet</td><td>transition</td><td>rare</td><td>rises 8 px in 160 ms</td><td>appears</td><td>high</td><td>the 1 s fade of the name prompt is too slow for a sheet opened often</td></tr>
+<tr><td>Sent</td><td>moment</td><td>rare</td><td>the sheet changes in place to the check and the date</td><td>same</td><td>high</td><td>the ending is the words, not an effect</td></tr>
+<tr><td>List or view switch</td><td>none</td><td>sometimes</td><td>the grid changes at once</td><td>same</td><td>medium</td><td>the answer is the new grid</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-list"><span class="key">Copy</span> the words people use for an album</h3>
+<ul class="fields">
+<li><strong>Vocabulary:</strong> "pick", "picked", "not picked"; the list's own name ("Main album"); "chapter" in the sheet's list label only, sets keep their names; "send", "sent", "locked", "reopen".</li>
+<li><strong>Pairs:</strong> "212 / 300 picked", not "Selection progress: 70%"; "Haldi is full: 40 of 40", not "Limit exceeded"; "Ask Mock Studio to reopen it", not "Contact support".</li>
+<li><strong>Exception for the owner:</strong> One by one says "Keep" and "Skip" (the brief's words, and K / S). Everywhere else says "pick". See <a href="#decide">For you to decide</a>.</li>
+</ul>
+
+<details>
+<summary>Look notes, checks and what was skipped</summary>
+<h3>Look notes</h3>
+<p class="note">Headless Chromium against the production build and the scratch mock (contract: lists, picks with 409 and 423, submit): 390 px (touch, 2x) and 1280 px. Captures: captures/select-*.jpg. check.py: no errors in the new files (the errors it lists are in the landing and booking pages). render_check.py (a copy that sets a client name, so the name prompt does not cover the page): the set-tab covers are the baseline's; the dock "covers a photo" only while that photo scrolls under it; at the end of the album the dock sits below the last row.</p>
+<h3>Life</h3>
+<p class="note">The counter heart pops on Keep (progress made). The photo leaves the way it was sent (the choice, seen). The sent sheet names the date and the next list (the work moves on).</p>
+<h3>Removed</h3>
+<p class="note">The implicit favorite on a note in list mode (it would spend a pick). The photo count on limited chapter tabs (the progress takes its place). The filter bar over an empty Picked view.</p>
+<h3>Skipped</h3>
+<p class="note">"Also picked by Mom" on tiles: the contract does not give other people's list picks, so it is skipped. One by one starts at the top of the view, not at the moment on screen. Unsynced picks live in memory, as favorites do: a reload before the 1.5 s send loses at most the last taps (beforeunload sends them).</p>
+</details>
+</article>
+
 <article class="session" id="session-2026-10-31-filters">
 <h2><span class="key">Session 2026-10-31 (filters)<span class="vh">:</span></span> what is filtered stays in view; people and tags get a place of their own on wide screens</h2>
 <p class="kicker">Revamp · the owner said the tag filter is missing, and asked for people in the column and a filter bar</p>
@@ -1068,9 +1248,12 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 </section>
 
 <section class="chapter ask" id="decide">
-<h2><span class="key">For you to decide<span class="vh">:</span></span> 6 choices, 3 things owed</h2>
+<h2><span class="key">For you to decide<span class="vh">:</span></span> 9 choices, 4 things owed</h2>
 <p class="lede">You can reverse each one.</p>
 <ol class="cards">
+<li><b>One by one says "Keep", the rest says "pick"</b><span>Your brief's words and keys (K / S). <a href="#d-s10">d-s10</a></span><span class="alt">Or: "Pick" / "Skip", with P and K both working.</span></li>
+<li><b>The phone card grows with lists</b><span>About 585 px above the first photo at rest. <a href="#d-s4">d-s4</a></span><span class="alt">Or: one line ("212 / 300 · 3 days left") after the first pick; Stack bursts and faces under the tabs.</span></li>
+<li><b>Skips stay on the phone</b><span>A skip is "not now", not a no for you. <a href="#d-s11">d-s11</a></span><span class="alt">Or: send them, so another phone of the same person skips them too.</span></li>
 <li><b>Set covers are gone from the chips</b><span>A folder says "set"; a 24 px cover did not. <a href="#d-22">d-22</a></span><span class="alt">Or: show the cover as a wide photo at the top of the selected set, if your photographers choose covers with care.</span></li>
 <li><b>Done: People are a card in the column at 768 px and up</b><span>You chose it. <a href="#d-f1">d-f1</a></span></li>
 <li><b>Done: no scrubber on phones</b><span>You chose it. <a href="#d-f7">d-f7</a></span></li>
@@ -1080,6 +1263,7 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 </ol>
 <h3>Still owed</h3>
 <ul class="owed">
+<li>Selection was checked against a mock of the lists contract, not the worker. Check 409 and 423 bodies and the bare <code>{ imageIds }</code> body on the real API (the client also takes <code>{ data: … }</code>).</li>
 <li>The lightbox counter reads "1 / 6556"; PhotoSwipe builds it, so formatting it needs a custom counter element.</li>
 <li>v1 tiles (albums without browse v2) keep their old markup; only the shared chrome is new. Port them, or move those albums to v2.</li>
 <li>Check the look on a real phone in Safari: overflow: clip and :has() need Safari 16 or later.</li>
@@ -1096,7 +1280,7 @@ details::details-content{content-visibility:visible;display:block}summary{list-s
 </ul>
 </section>
 
-<footer class="foot"><span>LumoSnap gallery · design decisions · latest session 2026-10-31 (look)</span><a href="design-coverage.html">Coverage report</a><a href="#top">Back to top ↑</a></footer>
+<footer class="foot"><span>LumoSnap gallery · design decisions · latest session 2026-11-01 (selection)</span><a href="design-coverage.html">Coverage report</a><a href="#top">Back to top ↑</a></footer>
 </main>
 <script>
 /* Report motion: plays each .plays in a loop while it is on screen and stops it off screen. Without this script the glyphs show their end state. */

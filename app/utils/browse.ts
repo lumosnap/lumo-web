@@ -326,6 +326,7 @@ export interface ShareFeedback {
     favorites: number[]
     counts: Record<string, number>
     comments: Record<string, ShareComment[]>
+    lists?: Record<string, { imageIds: number[]; submittedAt: number | null }> // this client's picks per list
 }
 
 export interface UnsyncedChange {

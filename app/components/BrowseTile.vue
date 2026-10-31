@@ -24,7 +24,7 @@
         <span v-if="notesCount > 0" class="text-xs font-medium tabular-nums">{{ notesCount }}</span>
       </button>
       <button type="button" class="tile-act" :class="favorited ? 'bg-card text-ink' : 'bg-black/55 text-white hover:bg-black/70'" :aria-pressed="favorited"
-        :aria-label="favCount ? `Favorite, ${favCount}` : 'Favorite'"
+        :aria-label="heartLabel ?? (favCount ? `Favorite, ${favCount}` : 'Favorite')"
         @click.stop.prevent="heart">
         <!-- Inline: the icon font draws outlines only, and a heart that is yours is filled -->
         <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" :fill="favorited ? 'currentColor' : 'none'" stroke="currentColor"
@@ -59,6 +59,7 @@ const props = defineProps<{
   burst?: number // frame count when this tile is a stacked burst
   eager?: boolean
   high?: boolean
+  heartLabel?: string // lists: "Pick for Main album" (no all-client count there)
 }>()
 
 const emit = defineEmits<{ open: [index: number]; favorite: [id: number]; comment: [id: number] }>()

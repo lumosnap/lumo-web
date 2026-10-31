@@ -2,7 +2,7 @@
   <!-- Grey paper, white prints: the album card and the photo sheet sit on the canvas, as in the photographer's app. -->
   <!-- inert under the name prompt and the notes panel: keyboard focus stays in the dialog -->
   <div class="gallery bg-canvas flex flex-col" :class="isV2 ? 'min-h-screen' : 'h-screen overflow-hidden'"
-    :inert="showNameModal || showCommentSidebar || undefined">
+    :inert="showNameModal || showCommentSidebar || triageOpen || !!sheet || undefined">
     <!-- Loading State (Skeleton) -->
     <div v-if="loading" class="flex-1 flex flex-col md:flex-row md:p-4 md:gap-4 overflow-hidden">
       <aside class="w-full md:w-80 shrink-0 bg-card rounded-b-card md:rounded-card p-5 md:p-6 flex flex-col gap-3">
@@ -49,9 +49,67 @@
           </p>
         </div>
 
-        <!-- Your picks: all or favorites; bursts stacked or not -->
+        <!-- The selection the photographer asked for: which list, how far along, when it is due, and the way to
+             send it. Every line keeps its height from the first paint (picks arrive after), so the grid never moves. -->
+        <section v-if="activeList" aria-labelledby="list-name" class="px-5 pb-4 md:p-4 md:bg-card md:rounded-card flex flex-col gap-3">
+          <div v-if="lists.length > 1" role="group" aria-label="Selection" class="-mx-5 px-5 md:mx-0 md:px-0 flex gap-1.5 overflow-x-auto [scrollbar-width:none] md:flex-wrap">
+            <button v-for="l in lists" :key="l.id" type="button" class="btn btn-ghost h-8 px-3 text-[13px]" :aria-pressed="l.id === activeList.id"
+              @click="activeListId = l.id">
+              <Icon v-if="listFb.get(l.id)?.submittedAt" name="lucide:lock" size="13" class="text-ink-3" />{{ l.name }}
+            </button>
+          </div>
+          <div>
+            <h2 id="list-name" :class="lists.length > 1 ? 'sr-only' : 'text-[13px] text-ink-3 mb-0.5'">{{ activeList.name }}</h2>
+            <!-- Sent or locked: the row turns into a grey banner (same height), the Send button goes -->
+            <div class="flex items-center gap-3 h-12 -mx-2.5 px-2.5 rounded-ctl" :class="{ 'bg-inset': lock === 'sent' || lock === 'locked' }">
+              <div class="flex-1 min-w-0">
+                <p class="text-[17px] leading-6 text-ink tabular-nums">
+                  <span class="font-medium">{{ pickedText }}</span><template v-if="maxPicks"> / {{ maxPicks.toLocaleString('en-US') }}</template>
+                  <span class="text-ink-2"> picked</span>
+                </p>
+                <!-- Status: sent (locked), closed (deadline passed), or the time left -->
+                <p class="text-[13px] leading-5 truncate flex items-center gap-1"
+                  :class="lock ? 'text-ink-2' : deadline?.soon ? 'text-ink font-medium' : 'text-ink-3'">
+                  <Icon v-if="lock === 'sent' || lock === 'locked'" name="lucide:lock" size="13" class="shrink-0" />
+                  <template v-if="lock === 'sent'">Sent on {{ shortDate(sentAt!) }} · ask {{ owner }} to reopen</template>
+                  <template v-else-if="lock === 'locked'">Locked · ask {{ owner }} to reopen</template>
+                  <template v-else-if="lock === 'closed'">{{ deadline?.label }} · you can still send</template>
+                  <template v-else-if="deadline">{{ deadline.label }}</template>
+                  <template v-else>&nbsp;</template>
+                </p>
+              </div>
+              <button v-if="lock !== 'sent' && lock !== 'locked'" type="button" class="btn btn-ghost gap-1.5 shrink-0"
+                :aria-label="`Send ${activeList.name} to ${owner}`" @click="openSheet">
+                <Icon name="lucide:send" size="16" />Send
+              </button>
+            </div>
+          </div>
+          <div v-if="maxPicks" class="h-1 rounded-full bg-inset-2 overflow-hidden" aria-hidden="true">
+            <div class="h-full rounded-full bg-brand transition-[width] duration-200" :style="{ width: `${Math.min(100, (picked.size / maxPicks) * 100)}%` }"></div>
+          </div>
+          <!-- md+: chapter progress in the column, beside the photos; a row opens that chapter. Phones: on the set tabs. -->
+          <ul v-if="chapters.length" class="hidden md:flex flex-col -mx-1" aria-label="Chapters">
+            <li v-for="c in chapters" :key="c.setId">
+              <button type="button" class="w-full h-9 px-2 flex items-center gap-2 rounded-ctl text-sm hover:bg-inset"
+                :class="selectedSet === c.setId ? 'bg-brand-wash text-ink' : 'text-ink-2'" :aria-pressed="selectedSet === c.setId"
+                @click="selectedSet = selectedSet === c.setId ? null : c.setId">
+                <Icon :name="selectedSet === c.setId ? 'lucide:folder-open' : 'lucide:folder'" size="15" :class="selectedSet === c.setId ? 'text-brand' : 'text-ink-3'" />
+                <span class="flex-1 min-w-0 truncate text-left">{{ c.name }}</span>
+                <span class="tabular-nums" :class="c.picked >= c.max ? 'text-brand' : 'text-ink-3'">{{ picksReady ? c.picked : '–' }} / {{ c.max }}</span>
+                <Icon v-if="picksReady && c.picked >= c.max" name="lucide:check" size="14" class="text-brand" />
+              </button>
+            </li>
+          </ul>
+        </section>
+
+        <!-- Your picks: all or favorites (lists: all, not picked, picked); bursts stacked or not -->
         <div class="px-5 pb-5 md:p-4 md:bg-card md:rounded-card flex flex-wrap items-center gap-2">
-          <div class="seg md:w-full" role="group" aria-label="Show">
+          <div v-if="activeList" class="seg md:w-full" role="group" aria-label="Show">
+            <button v-for="[v, label] in VIEWS" :key="v" type="button" class="md:flex-1 md:justify-center px-3" :aria-pressed="view === v" @click="view = v">
+              <Icon v-if="v === 'picked'" name="lucide:heart" size="16" :class="view === v ? 'text-heart' : ''" />{{ label }}
+            </button>
+          </div>
+          <div v-else class="seg md:w-full" role="group" aria-label="Show">
             <button type="button" class="md:flex-1 md:justify-center" :aria-pressed="!showFavoritesOnly" @click="showFavoritesOnly && toggleShowFavorites()">All</button>
             <button type="button" class="md:flex-1 md:justify-center" :aria-pressed="showFavoritesOnly" @click="!showFavoritesOnly && toggleShowFavorites()">
               <Icon name="lucide:heart" size="16" :class="showFavoritesOnly ? 'text-heart' : ''" />Favorites
@@ -102,7 +160,7 @@
         <!-- Browse v2: set tabs (only when the album has sets), sticky over the grid; solid, no blur over scrolling photos -->
         <div v-if="isV2 && manifest && sets.length"
           class="sticky top-0 z-30 -mx-3 md:-mx-4 mb-1 px-3 md:px-4 bg-card flex items-center gap-2">
-          <SetTabs v-model="selectedSet" :sets="sets" :total="allCount"
+          <SetTabs v-model="selectedSet" :sets="sets" :total="allCount" :progress="chapterMap" :ready="picksReady"
             panel="set-panel" class="flex-1 min-w-0" />
           <!-- Search and tags live behind this button, at the row's trailing edge: reachable from anywhere in the album.
                Open with an active search, it focuses the field instead of hiding a filter that is on.
@@ -160,7 +218,7 @@
         </div>
 
         <!-- Browse v2: set/filter picked before the full manifest arrived (SSR only shipped the URL's view) -->
-        <div v-if="isV2 && manifest && !gridImages" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+        <div v-if="isV2 && manifest && (!gridImages || gridWaits)" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
           <div v-for="i in 10" :key="i" class="skel aspect-[4/5]"></div>
         </div>
 
@@ -183,13 +241,25 @@
         </div>
 
         <!-- Browse v2: virtualized grid over the full manifest -->
-        <div v-else-if="isV2 && manifest && gridImages && (showFavoritesOnly ? gridImages.some(i => v2Favs.has(i.id)) : gridImages.length > 0)"
+        <div v-else-if="isV2 && manifest && gridImages && gridHas"
           v-bind="sets.length ? { id: 'set-panel', role: 'tabpanel', 'aria-labelledby': `set-tab-${selectedSet ?? 'all'}` } : {}">
-          <BrowseGrid :token="token" :images="gridImages" :base="manifest.base" :favs="v2Favs" :comments="v2Comments"
-            :counts="v2Counts" :client-name="clientName" :favorites-only="showFavoritesOnly" :stack-bursts="stackBursts"
+          <BrowseGrid :token="token" :images="gridImages" :base="manifest.base" :favs="marks" :comments="v2Comments"
+            :counts="hasLists ? NO_COUNTS : v2Counts" :client-name="clientName" :only="only" :heart-label="heartLabel" :stack-bursts="stackBursts"
             :event-date="manifest.album.eventDate" :labels="manifest.labels" :set-id="viewKey"
-            :sticky-top="sets.length ? 56 : 0" :people="full ? people : undefined" @person="showPerson" @favorite="toggleFavoriteV2" @comment="openCommentSidebarV2"
-            @heart="showHeartAnimation" />
+            :sticky-top="sets.length ? 56 : 0" :people="full ? people : undefined" @person="showPerson" @favorite="onHeart" @comment="openCommentSidebarV2"
+            @heart="onBurst" />
+        </div>
+
+        <!-- Lists: Picked with nothing picked here, or Not picked with everything picked -->
+        <div v-else-if="isV2 && activeList && gridImages && only" class="min-h-[50vh] flex flex-col items-center justify-center text-center p-8 pb-24">
+          <span class="mb-5 w-14 h-14 rounded-full bg-inset flex items-center justify-center" aria-hidden="true" :class="only === 'in' ? 'text-heart' : 'text-brand'">
+            <Icon :name="only === 'in' ? 'lucide:heart' : 'lucide:check'" size="24" />
+          </span>
+          <h2 class="text-xl text-ink mb-2 text-balance">
+            {{ only === 'in' ? `Nothing picked${viewName ? ` in ${viewName}` : ''} yet` : `Every photo${viewName ? ` in ${viewName}` : ''} is picked` }}
+          </h2>
+          <p v-if="only === 'in'" class="text-ink-2 max-w-xs">Tap the heart on a photo to add it to {{ activeList.name }}.</p>
+          <button type="button" class="btn btn-ghost mt-6" @click="view = 'all'">See all photos</button>
         </div>
 
         <!-- Empty State -->
@@ -272,8 +342,8 @@
         <!-- Browse v2: what is filtered, kept in view while the photos scroll. Sticky to the bottom of the window,
              at the end of the sheet: it adds nothing above the grid (no shift when a face is tapped), sits under
              the thumb on a phone, and never stacks under the set bar. One line; the items scroll inside it. -->
-        <div v-if="isV2 && barOn" class="sticky z-30 bottom-[max(0.75rem,env(safe-area-inset-bottom))] mt-4 flex justify-center pointer-events-none">
-          <div role="region" aria-label="Filters on"
+        <div v-if="isV2 && (barOn || activeList)" class="sticky z-30 bottom-[max(0.75rem,env(safe-area-inset-bottom))] mt-4 flex flex-col items-center gap-2 pointer-events-none">
+          <div v-if="barOn" role="region" aria-label="Filters on"
             class="pointer-events-auto max-w-full min-w-0 h-12 flex items-center gap-1 pl-1.5 pr-1.5 rounded-full bg-card ring-1 ring-line-2 shadow-[0_10px_28px_-10px_oklch(20%_0.01_255/0.3)]">
             <!-- Items scroll sideways; the fade says there is more. The end padding lets the last item clear the fade. -->
             <div class="min-w-0 flex items-center gap-1 overflow-x-auto [scrollbar-width:none] pr-4 [mask-image:linear-gradient(to_left,transparent,black_1rem)]">
@@ -297,8 +367,8 @@
               <button v-for="t in activeTags" :key="t" type="button" class="fchip" :aria-label="`Remove tag ${tagLabel(t, TAG_VOCAB)}`" @click="toggleTag(t)">
                 {{ tagLabel(t, TAG_VOCAB) }}<Icon name="lucide:x" size="14" class="text-ink-3" />
               </button>
-              <button v-if="showFavoritesOnly" type="button" class="fchip" aria-label="Remove favorites" @click="toggleShowFavorites">
-                <Icon name="lucide:heart" size="14" class="text-heart" />Favorites<Icon name="lucide:x" size="14" class="text-ink-3" />
+              <button v-if="only" type="button" class="fchip" :aria-label="`Remove ${onlyLabel.toLowerCase()}`" @click="clearOnly">
+                <Icon :name="only === 'in' ? 'lucide:heart' : 'lucide:circle-dashed'" size="14" :class="only === 'in' ? 'text-heart' : 'text-ink-3'" />{{ onlyLabel }}<Icon name="lucide:x" size="14" class="text-ink-3" />
               </button>
             </div>
             <span aria-live="polite" class="shrink-0 px-1.5 text-sm text-ink-2 tabular-nums"><template v-if="barCount">{{ barCount.toLocaleString('en-US') }}<span class="max-md:sr-only">&nbsp;photo{{ barCount === 1 ? '' : 's' }}</span></template></span>
@@ -308,6 +378,25 @@
                 @click="either = m === 'any'">{{ label }}</button>
             </div>
             <button type="button" class="shrink-0 h-9 px-3 rounded-full text-[13px] font-medium text-ink-2 hover:bg-inset hover:text-ink" @click="clearAll">Clear</button>
+          </div>
+          <!-- Lists: the count stays under the thumb at any depth. The count opens the review sheet;
+               "One by one" goes through what is left in this view. -->
+          <div v-if="activeList" role="region" aria-label="Your selection"
+            class="pointer-events-auto max-w-full h-12 flex items-center gap-1 px-1.5 rounded-full bg-card ring-1 ring-line-2 shadow-[0_10px_28px_-10px_oklch(20%_0.01_255/0.3)]">
+            <button type="button" class="h-9 pl-2.5 pr-3 rounded-full flex items-center gap-2 min-w-0 hover:bg-inset"
+              :aria-label="`${activeList.name}: ${pickedText}${maxPicks ? ` of ${maxPicks}` : ''} picked. Review and send`" @click="openSheet">
+              <Icon v-if="lock === 'sent' || lock === 'locked'" name="lucide:lock" size="15" class="text-ink-3 shrink-0" />
+              <svg v-else width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor" class="text-heart shrink-0"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg>
+              <span class="text-[15px] font-medium tabular-nums text-ink">{{ counterText }}</span>
+              <span class="text-[13px] text-ink-3 truncate max-w-[7rem] md:max-w-[12rem]">{{ activeList.name }}</span>
+            </button>
+            <template v-if="!lock">
+              <span class="w-px h-6 bg-line-2 shrink-0" aria-hidden="true"></span>
+              <button id="triage-open" type="button" class="h-9 px-3 rounded-full flex items-center gap-1.5 text-[13px] font-medium text-ink hover:bg-inset disabled:opacity-45"
+                :disabled="!canTriage" @click="openTriage">
+                <Icon name="lucide:gallery-horizontal-end" size="16" class="text-ink-2" />One by one
+              </button>
+            </template>
           </div>
         </div>
       </main>
@@ -389,6 +478,90 @@
     <CommentSidebar :is-open="showCommentSidebar" :image="currentCommentImage" :client-name="clientName"
       :loading="commentLoading" @close="closeCommentSidebar" @submit="handleSubmitComment" />
 
+    <!-- One by one (lists) -->
+    <Teleport to="body">
+      <TriageView v-if="triageOpen && manifest && activeList" :images="triageList" :base="manifest.base"
+        :title="filterKey ? `${viewName ?? 'All photos'}, filtered` : viewName ?? 'All photos'" :list-name="activeList.name" :counter="counterText"
+        :blocked="triageBlocked" :can-undo="history.length > 0" :skipped-here="triageSkipped"
+        :chapter="selectedSet && chapterMap.get(selectedSet) ? `${chapterMap.get(selectedSet)!.picked} / ${chapterMap.get(selectedSet)!.max} picked` : undefined"
+        :next="triageNext?.label" @next="triageNext?.run()"
+        @keep="triageKeep" @skip="triageSkip" @undo="triageUndo" @close="closeTriage" @reset="triageReset" />
+    </Teleport>
+
+    <!-- Send: what goes to the photographer, then the ending. A bottom sheet on phones, as the name prompt. -->
+    <Teleport to="body">
+      <div v-if="sheet && activeList" class="gallery fixed inset-0 z-[200000] bg-ink/55 flex items-end sm:items-center justify-center sm:p-4"
+        @click.self="sheet = null" @keydown.esc="sheet = null">
+        <div role="dialog" aria-modal="true" aria-labelledby="sheet-title"
+          class="bg-card rounded-t-card sm:rounded-card shadow-float max-w-md w-full max-h-[90dvh] overflow-y-auto px-6 pt-7 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:p-8 rise-in">
+          <template v-if="sheet === 'review'">
+            <h2 id="sheet-title" class="text-[24px] leading-tight tracking-[-0.015em] text-ink text-balance">
+              {{ lock === 'sent' || lock === 'locked' ? activeList.name : `Send ${activeList.name} to ${owner}?` }}
+            </h2>
+            <p class="mt-3 text-ink tabular-nums">
+              <span class="text-[32px] leading-none font-medium tracking-tight">{{ pickedText }}</span>
+              <span class="text-ink-2"> photo{{ picked.size === 1 ? '' : 's' }}<template v-if="maxPicks"> of {{ maxPicks.toLocaleString('en-US') }}</template></span>
+            </p>
+            <ul v-if="sheetChapters.length" class="mt-4 rounded-inset bg-inset divide-y divide-line" aria-label="By chapter">
+              <li v-for="c in sheetChapters" :key="c.id" class="h-10 px-3.5 flex items-center gap-2 text-sm">
+                <Icon name="lucide:folder" size="15" class="text-ink-3 shrink-0" />
+                <span class="flex-1 min-w-0 truncate text-ink-2">{{ c.name }}</span>
+                <span class="tabular-nums text-ink">{{ c.picked }}<template v-if="c.max"> / {{ c.max }}</template></span>
+              </li>
+            </ul>
+            <template v-if="lock === 'sent' || lock === 'locked'">
+              <p class="mt-5 text-[15px] text-ink-2 leading-relaxed flex gap-2"><Icon name="lucide:lock" size="16" class="mt-1 shrink-0 text-ink-3" />{{ lockMessage }}</p>
+              <button type="button" class="btn btn-ghost w-full h-12 text-base mt-6" @click="sheet = null">Close</button>
+            </template>
+            <template v-else>
+              <p class="mt-5 text-[15px] text-ink-2 leading-relaxed text-pretty">
+                <template v-if="lock === 'closed'">The deadline was {{ shortDate(activeList.deadline!) }}. You can still send. </template>
+                After you send, this selection is locked. {{ owner }} can reopen it if you need a change.
+              </p>
+              <p v-if="sendError" role="alert" class="mt-3 text-[15px] text-ink font-medium">{{ sendError }}</p>
+              <p v-else-if="picksReady && !picked.size" class="mt-3 text-[15px] text-ink-2">Pick at least one photo first.</p>
+              <div class="mt-6 flex flex-col gap-2">
+                <button type="button" class="btn btn-primary w-full h-12 text-base gap-2" :disabled="!picked.size || sending" @click="sendList">
+                  <Icon :name="sending ? 'lucide:loader-circle' : 'lucide:send'" size="18" :class="{ 'animate-spin': sending }" />
+                  {{ sending ? 'Sending…' : `Send ${picked.size.toLocaleString('en-US')} photo${picked.size === 1 ? '' : 's'}` }}
+                </button>
+                <button type="button" class="btn btn-ghost w-full h-12 text-base" @click="sheet = null">Keep choosing</button>
+              </div>
+            </template>
+          </template>
+          <template v-else>
+            <!-- The ending: the choosing is done, the album is the photographer's now -->
+            <span class="mx-auto mb-5 w-14 h-14 rounded-full bg-inset text-ink flex items-center justify-center" aria-hidden="true">
+              <Icon name="lucide:check" size="26" />
+            </span>
+            <h2 id="sheet-title" class="text-center text-[26px] leading-tight tracking-[-0.015em] text-ink">Sent to {{ owner }}</h2>
+            <p class="mt-2 text-center text-ink-2 text-balance tabular-nums">
+              {{ picked.size.toLocaleString('en-US') }} photo{{ picked.size === 1 ? '' : 's' }} for {{ activeList.name }}<template v-if="sentAt">, on {{ shortDate(sentAt) }}</template>.
+              Ask {{ owner }} if you need to change something.
+            </p>
+            <div class="mt-7 flex flex-col gap-2">
+              <button v-if="nextList" type="button" class="btn btn-primary w-full h-12 text-base" @click="goNextList">Next: {{ nextList.name }}</button>
+              <button type="button" class="btn w-full h-12 text-base" :class="nextList ? 'btn-ghost' : 'btn-primary'" @click="sheet = null">Done</button>
+            </div>
+          </template>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- A refused pick, said once at the bottom of the screen: over the grid, the lightbox and one by one -->
+    <Teleport to="body">
+      <div class="gallery fixed inset-x-0 z-[200001] bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4rem)] flex justify-center px-4 pointer-events-none"
+        role="status" aria-live="polite">
+        <div v-if="notice" class="pointer-events-auto max-w-md pl-4 pr-2 py-2 min-h-12 rounded-ctl bg-ink text-card text-[14px] leading-snug shadow-float rise-in flex items-start gap-2">
+          <div class="flex-1 py-1.5">
+            <p class="text-pretty">{{ notice }}</p>
+            <button v-if="noticeAction" type="button" class="mt-2 -ml-1 h-9 px-3 rounded-full bg-night-2 text-card text-[13px] font-medium hover:bg-ink-2" @click="noticeAction.run()">{{ noticeAction.label }}</button>
+          </div>
+          <button type="button" class="shrink-0 w-9 h-9 rounded-full grid place-items-center text-card/70 hover:text-card" aria-label="Dismiss" @click="notice = ''"><Icon name="lucide:x" size="16" /></button>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Double Tap Heart Animation -->
     <Teleport to="body">
       <div v-for="anim in heartAnimations" :key="anim.id" class="fixed pointer-events-none z-[200000]"
@@ -415,7 +588,10 @@ import SetTabs from '~/components/SetTabs.vue'
 import PersonFace from '~/components/PersonFace.vue'
 import type { ShareManifest } from '~/composables/useApi'
 import { useShareStore } from '~/stores/share'
-import { andIds, avatarCrop, browseHead, filterIds, joinNames, peopleIds, queryPeople, resolvePeople, mergeFeedback, parseTags, resolveSets, setImages, tagEntries, tagIndex, tagLabel, topTags, type BrowsePerson, type BrowseSet, PSWP_BASE_OPTIONS, renderLightboxButtons, thumbUrl, toShareImage, type ShareComment } from '~/utils/browse'
+import { usePicksStore, type FlushOutcome } from '~/stores/picks'
+import TriageView from '~/components/TriageView.vue'
+import { blockMessage, deadlineInfo, listLock, mergePicks, pickBlock, setProgress, shortDate, triageQueue, type ListFeedback } from '~/utils/picks'
+import { andIds, avatarCrop, browseHead, buildRows, filterIds, joinNames, peopleIds, queryPeople, resolvePeople, mergeFeedback, parseTags, resolveSets, setImages, tagEntries, tagIndex, tagLabel, topTags, type BrowsePerson, type BrowseSet, PSWP_BASE_OPTIONS, renderLightboxButtons, thumbUrl, toShareImage, type ShareComment } from '~/utils/browse'
 import { TAG_VOCAB } from '~/utils/tag-vocab'
 
 // Disable default layout for this page
@@ -439,8 +615,10 @@ const isV2 = route.query.browse === 'v2'
 // Flush changes on leave/close
 onBeforeUnmount(() => {
   shareStore.stopPeriodicFlush()
+  picksStore.stop()
   if (clientName.value) {
     shareStore.flushChanges(token, clientName.value)
+    picksStore.flush(token, clientName.value)
   }
 })
 
@@ -449,6 +627,7 @@ if (import.meta.client) {
   window.addEventListener('beforeunload', () => {
     if (clientName.value) {
       shareStore.flushChanges(token, clientName.value)
+      picksStore.flush(token, clientName.value)
     }
   })
 }
@@ -686,7 +865,8 @@ function clearFilters() {
 }
 // Filter bar: everything that narrows the grid, each removable on its own. People in `who` order (picked, then
 // typed); the typed part of the search that is not a name shows as its own item.
-const barOn = computed(() => !!filterKey.value || showFavoritesOnly.value)
+// Lists: an empty Picked / Not picked view has its own way out (See all photos), so the bar does not cover it.
+const barOn = computed(() => !!filterKey.value || (only.value !== null && (gridHas.value || !hasLists.value)))
 const barPeople = computed(() => who.value.map(id => people.value.find(p => p.id === id)).filter(p => !!p))
 const barQuery = computed(() => (hasTags.value ? lifted.value.rest : ''))
 const queryWords = () => qInput.value.split(/\s+/).filter(Boolean)
@@ -700,11 +880,12 @@ const removeQuery = () => setQuery(queryWords().filter(w => queryPeople(w, peopl
 const barCount = computed(() => {
   const g = gridImages.value
   if (!g) return null
-  return showFavoritesOnly.value ? g.filter(i => v2Favs.has(i.id)).length : resultCount.value
+  const m = marks.value
+  return only.value ? g.filter(i => m.has(i.id) === (only.value === 'in')).length : resultCount.value
 })
 function clearAll() {
   clearFilters()
-  if (showFavoritesOnly.value) toggleShowFavorites()
+  clearOnly()
 }
 // Lightbox face tapped: that person's photos (in the selected set), from the top of the filters.
 function showPerson(id: string) {
@@ -716,7 +897,7 @@ function showPerson(id: string) {
   })
 }
 // Scroll position is saved per view (set + filter); a new view starts at the top.
-const viewKey = computed(() => [selectedSet.value, filterKey.value].filter(Boolean).join('|') || null)
+const viewKey = computed(() => [selectedSet.value, filterKey.value, hasLists.value && view.value !== 'all' ? `${activeList.value?.id}:${view.value}` : ''].filter(Boolean).join('|') || null)
 
 watch(sets, list => { if (selectedSet.value && !list.some(s => s.id === selectedSet.value)) selectedSet.value = null })
 watch([selectedSet, query, activeTags, activePeople, mode], ([id, q, tags, picked, m]) => {
@@ -730,6 +911,265 @@ watch([selectedSet, query, activeTags, activePeople, mode], ([id, q, tags, picke
 const v2Favs = reactive(new Set<number>())
 const v2Comments = reactive(new Map<number, ShareComment[]>())
 const v2Counts = reactive(new Map<number, number>()) // favorites per image, all clients
+
+// ---- Selection lists ("300 for the main album, 40 from Haldi") ----
+// With lists the heart picks into the active list, and All / Not picked / Picked replace All / Favorites.
+// Without lists (lists: [] or absent) nothing here renders and favorites work as before.
+const picksStore = usePicksStore()
+const lists = computed(() => (isV2 ? manifest.value?.lists ?? [] : []))
+const hasLists = computed(() => lists.value.length > 0)
+const activeListId = ref(typeof route.query.list === 'string' ? route.query.list : '')
+const activeList = computed(() => lists.value.find(l => l.id === activeListId.value) ?? lists.value[0] ?? null)
+type View = 'all' | 'unpicked' | 'picked'
+const VIEWS: [View, string][] = [['all', 'All'], ['unpicked', 'Not picked'], ['picked', 'Picked']]
+const view = ref<View>(route.query.view === 'picked' || route.query.view === 'unpicked' ? route.query.view : 'all')
+const listFb = reactive(new Map<string, ListFeedback>()) // server state per list, this client
+const serverLocked = reactive(new Set<string>()) // lists the server answered 423 for
+const picked = reactive(new Set<number>()) // active list as the person sees it (server + unsynced)
+const picksReady = ref(false) // feedback read: until then counts are a dash and Picked / Not picked wait
+const NO_COUNTS = new Map<number, number>() // lists show no all-client counts on tiles
+// Deadline and lock lines need the clock: client only, so SSR and hydration render the same.
+const now = ref<number | null>(null)
+const owner = computed(() => albumInfo.value?.ownerName || 'your photographer')
+
+// Rebuild the visible picks from the server list + unsynced ops, touching only changed keys (each tile
+// reads its own key, so a reload re-renders the tiles that changed, not all of them).
+function syncPicked() {
+  const l = activeList.value
+  const merged = l ? mergePicks(listFb.get(l.id)?.imageIds ?? [], picksStore.unsyncedOps(), l.id) : new Set<number>()
+  for (const id of [...picked]) if (!merged.has(id)) picked.delete(id)
+  merged.forEach(id => { if (!picked.has(id)) picked.add(id) })
+}
+watch(activeList, syncPicked)
+
+const lock = computed(() => (activeList.value && now.value !== null
+  ? listLock(activeList.value, listFb.get(activeList.value.id), serverLocked.has(activeList.value.id), now.value) : null))
+const deadline = computed(() => (activeList.value && now.value !== null ? deadlineInfo(activeList.value.deadline, now.value) : null))
+const sentAt = computed(() => (activeList.value ? listFb.get(activeList.value.id)?.submittedAt ?? null : null))
+const lockMessage = computed(() => {
+  const l = activeList.value
+  if (!l || !lock.value) return ''
+  if (lock.value === 'sent') return `${l.name} was sent on ${shortDate(sentAt.value!)}. Ask ${owner.value} to reopen it.`
+  if (lock.value === 'closed') return `${l.name} closed on ${shortDate(l.deadline!)}. You can still send what you picked.`
+  return `${l.name} is locked. Ask ${owner.value} to reopen it.`
+})
+// Chapter progress for the sets the list limits; the tabs read it by set id.
+const chapters = computed(() => setProgress(activeList.value, sets.value, picked))
+const chapterMap = computed(() => new Map(chapters.value.map(c => [c.setId, c])))
+const maxPicks = computed(() => activeList.value?.maxPicks ?? null)
+const pickedText = computed(() => (picksReady.value ? picked.size.toLocaleString('en-US') : '–'))
+const counterText = computed(() => `${pickedText.value}${maxPicks.value ? ` / ${maxPicks.value.toLocaleString('en-US')}` : ''}`)
+const heartLabel = computed(() => (activeList.value ? `Pick for ${activeList.value.name}` : undefined))
+
+// One short line at the bottom of the screen for a refused pick: above the lightbox and the one-by-one view.
+const notice = ref('')
+const noticeAction = shallowRef<{ label: string; run: () => void } | null>(null)
+let noticeTimer: ReturnType<typeof setTimeout> | undefined
+function notify(msg: string, action: { label: string; run: () => void } | null = null) {
+  notice.value = ''
+  clearTimeout(noticeTimer)
+  nextTick(() => { notice.value = msg; noticeAction.value = action }) // re-announced even when the same line repeats
+  noticeTimer = setTimeout(() => { notice.value = '' }, action ? 8000 : 6000)
+}
+// "Haldi is full" leads to the Haldi picks, where one can come out.
+const showPicksOf = (setId: string, name: string) => ({
+  label: `See ${name} picks`,
+  run: () => { notice.value = ''; clearFilters(); selectedSet.value = setId; view.value = 'picked'; window.scrollTo({ top: 0, behavior: 'instant' }) },
+})
+
+// Heart in list mode. Limits the page already knows are checked before anything is sent.
+let refused = false // read by the double-tap burst right after
+function togglePick(id: number) {
+  refused = true
+  if (!clientName.value) { showNameModal.value = true; return }
+  const l = activeList.value
+  if (!l) return
+  if (lock.value) return notify(lockMessage.value)
+  const had = picked.has(id)
+  const block = had ? null : pickBlock(l, sets.value, picked, id)
+  if (block) return notify(blockMessage(block), block.scope === 'set' ? showPicksOf(block.setId, block.name) : null)
+  refused = false
+  if (had) picked.delete(id)
+  else picked.add(id)
+  picksStore.addOp({ listId: l.id, imageId: id, add: !had })
+  picksStore.schedule(token, clientName.value)
+}
+
+// What the server said about a batch. A refusal rolls the optimistic picks back by reading the truth again
+// (another phone of the same person may have filled the list meanwhile).
+function onPicksFlushed(out: FlushOutcome[]) {
+  let reload = false
+  for (const { listId, ops, result } of out) {
+    const lost = ops.filter(o => o.add).length
+    const name = lists.value.find(l => l.id === listId)?.name ?? 'This list'
+    if (result.ok) listFb.set(listId, { imageIds: result.imageIds, submittedAt: listFb.get(listId)?.submittedAt ?? null })
+    else if (result.error === 'limit') {
+      const set = result.setId ? sets.value.find(s => s.id === result.setId) : null
+      const [what, max] = set ? [set.name, result.max] : [name, result.maxPicks]
+      notify(`${what} is already full${max ? ` (${max} of ${max})` : ''}, maybe from another phone. Your last ${lost === 1 ? 'pick' : `${lost} picks`} there ${lost === 1 ? 'was' : 'were'} not saved.`,
+        set ? showPicksOf(set.id, set.name) : null)
+      reload = true
+    } else if (result.error === 'locked') {
+      serverLocked.add(listId)
+      notify(`${name} is locked now, so your last picks were not saved. Ask ${owner.value} to reopen it.`)
+      reload = true
+    }
+  }
+  if (reload) loadFeedback()
+  else syncPicked()
+}
+
+// The heart, wherever it is: a list pick, or a favorite as before.
+function onHeart(id: number) {
+  if (hasLists.value) togglePick(id)
+  else { refused = false; toggleFavoriteV2(id) }
+}
+function onBurst(x: number, y: number) {
+  if (!refused) showHeartAnimation(x, y)
+}
+
+// Grid filter: Picked / Not picked (lists) or Favorites (no lists), as a snapshot (see BrowseGrid).
+const only = computed<'in' | 'out' | null>(() => (hasLists.value
+  ? view.value === 'picked' ? 'in' : view.value === 'unpicked' ? 'out' : null
+  : showFavoritesOnly.value ? 'in' : null))
+const marks = computed(() => (hasLists.value ? picked : v2Favs))
+// Picked / Not picked need this client's picks: wait for them (skeleton) instead of showing a wrong grid.
+const gridWaits = computed(() => hasLists.value && view.value !== 'all' && !picksReady.value)
+const gridHas = computed(() => {
+  const g = gridImages.value
+  if (!g) return false
+  const m = marks.value
+  return only.value === 'in' ? g.some(i => m.has(i.id)) : only.value === 'out' ? g.some(i => !m.has(i.id)) : g.length > 0
+})
+const viewName = computed(() => sets.value.find(s => s.id === selectedSet.value)?.name ?? null)
+const onlyLabel = computed(() => (hasLists.value ? (view.value === 'picked' ? 'Picked' : 'Not picked') : 'Favorites'))
+function clearOnly() {
+  if (hasLists.value) view.value = 'all'
+  else if (showFavoritesOnly.value) toggleShowFavorites()
+}
+watch([activeListId, view], ([id, v]) => {
+  if (!hasLists.value) return
+  const url = new URL(window.location.href)
+  for (const [k, val] of [['list', id && id !== lists.value[0]?.id ? id : ''], ['view', v === 'all' ? '' : v]] as const) {
+    if (val) url.searchParams.set(k, val)
+    else url.searchParams.delete(k)
+  }
+  window.history.replaceState(window.history.state, '', url)
+})
+
+// ---- One by one: the view's undecided photos, in grid order. Skips are kept on this device, per person + list.
+const triageOpen = ref(false)
+const skipped = reactive(new Set<number>())
+const skipKey = () => `lumosnap_skip_${token}:${clientName.value}:${activeList.value?.id}`
+function loadSkips() {
+  skipped.clear()
+  if (!import.meta.client || !activeList.value || !clientName.value) return
+  try { (JSON.parse(localStorage.getItem(skipKey()) || '[]') as number[]).forEach(id => skipped.add(id)) } catch { /* bad entry: start over */ }
+}
+const saveSkips = () => localStorage.setItem(skipKey(), JSON.stringify([...skipped]))
+// Order as the grid shows it (moments by time), every burst frame on its own: a burst is where choosing is hardest.
+const triageOrder = computed(() => (triageOpen.value && gridImages.value
+  ? buildRows(gridImages.value, 1, { stackBursts: false, eventDate: manifest.value?.album.eventDate }).visible : []))
+const triageList = computed(() => triageQueue(triageOrder.value, picked, skipped))
+const triageSkipped = computed(() => triageOrder.value.reduce((n, i) => n + (skipped.has(i.id) && !picked.has(i.id) ? 1 : 0), 0))
+const triageBlocked = computed(() => {
+  const img = triageList.value[0]
+  if (!img || !activeList.value) return null
+  if (lock.value) return lockMessage.value
+  const b = pickBlock(activeList.value, sets.value, picked, img.id)
+  return b && blockMessage(b)
+})
+const history = ref<{ id: number; kind: 'keep' | 'skip' }[]>([])
+const canTriage = computed(() => !!gridImages.value?.length && !lock.value)
+function openTriage() {
+  if (!clientName.value) { showNameModal.value = true; return }
+  history.value = []
+  triageOpen.value = true
+}
+function closeTriage() {
+  triageOpen.value = false
+  nextTick(() => document.getElementById('triage-open')?.focus())
+}
+function triageKeep(id: number) {
+  togglePick(id)
+  if (!refused) history.value.push({ id, kind: 'keep' })
+}
+function triageSkip(id: number) {
+  skipped.add(id)
+  saveSkips()
+  history.value.push({ id, kind: 'skip' })
+}
+function triageUndo() {
+  const last = history.value.pop()
+  if (!last) return
+  if (last.kind === 'skip') { skipped.delete(last.id); saveSkips() }
+  else if (picked.has(last.id)) togglePick(last.id)
+}
+// Done screen: the next chapter that still has room, else sending the list.
+const triageNext = computed(() => {
+  const c = chapters.value.find(c => c.setId !== selectedSet.value && c.picked < c.max)
+  if (c) return { label: `Next: ${c.name} ${c.picked} / ${c.max}`, run: () => { clearFilters(); view.value = 'all'; selectedSet.value = c.setId; history.value = [] } }
+  if (picked.size) return { label: `Send ${activeList.value?.name}`, run: () => { triageOpen.value = false; openSheet() } }
+  return null
+})
+function triageReset() {
+  triageOrder.value.forEach(i => skipped.delete(i.id))
+  saveSkips()
+  history.value = []
+}
+
+// ---- Send: review sheet, then the list is the photographer's.
+const sheet = ref<null | 'review' | 'sent'>(null)
+const sending = ref(false)
+const sendError = ref('')
+const nextList = computed(() => lists.value.find(l => l.id !== activeList.value?.id && !listFb.get(l.id)?.submittedAt) ?? null)
+// Every chapter with a limit or a pick, in set order. Sets can overlap, so these do not add up to the total.
+const sheetChapters = computed(() => sets.value.flatMap(s => {
+  const c = chapterMap.value.get(s.id)
+  const n = c?.picked ?? s.ids.reduce((k, id) => k + (picked.has(id) ? 1 : 0), 0)
+  return c || n ? [{ id: s.id, name: s.name, picked: n, max: c?.max ?? null }] : []
+}))
+let sheetOpener: HTMLElement | null = null
+function openSheet() {
+  sendError.value = ''
+  sheetOpener = document.activeElement as HTMLElement | null
+  sheet.value = 'review'
+}
+// Focus into the sheet on open (on the safe button: Enter must not send by accident), back to what opened it on close.
+watch(sheet, (v, was) => {
+  if (v && !was) nextTick(() => (document.querySelector<HTMLElement>('[aria-labelledby="sheet-title"] .btn-ghost') ?? document.querySelector<HTMLElement>('[aria-labelledby="sheet-title"] .btn'))?.focus())
+  if (!v && was) nextTick(() => sheetOpener?.focus())
+})
+async function sendList() {
+  const l = activeList.value
+  if (!l || sending.value) return
+  sending.value = true
+  sendError.value = ''
+  // Picks still on this phone go first; the photographer gets what the screen shows.
+  const out = await picksStore.flush(token, clientName.value)
+  if (picksStore.queue.length || out.some(o => !o.result.ok)) {
+    sending.value = false
+    sendError.value = out.some(o => !o.result.ok && o.result.error !== 'network')
+      ? 'Some picks changed on the way. Check the count, then send again.'
+      : `Could not reach ${owner.value}. Check the connection, then send again.`
+    return
+  }
+  const at = await api.submitList(token, l.id, clientName.value)
+  sending.value = false
+  if (at === null) {
+    sendError.value = `Could not send to ${owner.value}. Check the connection, then send again.`
+    loadFeedback() // sent from another phone already? the sheet then shows it as sent
+    return
+  }
+  listFb.set(l.id, { imageIds: [...picked], submittedAt: at })
+  sheet.value = 'sent'
+}
+watch(sentAt, at => { if (at && sheet.value === 'review') sheet.value = 'sent' })
+function goNextList() {
+  if (nextList.value) activeListId.value = nextList.value.id
+  view.value = 'all'
+  sheet.value = null
+}
 
 // Initialize state from SSR data
 const loading = ref(false)
@@ -867,6 +1307,7 @@ async function toggleShowFavorites() {
 // Client name from localStorage
 const CLIENT_NAME_KEY = 'lumosnap_client_name'
 const clientName = ref('')
+watch([activeList, clientName], loadSkips)
 
 // Computed
 const favoriteIds = computed(() => {
@@ -995,7 +1436,7 @@ async function handleSubmitComment(note: string) {
   if (isV2) {
     const id = currentCommentImage.value.id
     shareStore.addChange(id, 'comment', note)
-    if (!v2Favs.has(id)) {
+    if (!hasLists.value && !v2Favs.has(id)) {
       v2Favs.add(id) // Implicit favorite, as in v1
       v2Counts.set(id, (v2Counts.get(id) ?? 0) + 1)
       shareStore.addChange(id, 'favorite')
@@ -1128,6 +1569,7 @@ async function saveName() {
 
   // Start periodic flush with new name
   shareStore.startPeriodicFlush(token, clientName.value)
+  if (isV2) picksStore.start(token, clientName.value, onPicksFlushed)
 
   // Refetch data with new name to sync favorites
   if (isV2) await loadFeedback()
@@ -1281,7 +1723,7 @@ function openCommentSidebar(image: ImageData) {
 // (read after the response lands) so a reload can't undo a heart or comment made meanwhile.
 async function loadFeedback() {
   const fb = await api.getFeedback(token, clientName.value)
-  if (!fb) return
+  if (!fb) { picksReady.value = true; return } // offline: show what this phone knows rather than wait forever
   const m = mergeFeedback(fb, shareStore.unsyncedChanges(), clientName.value)
   v2Favs.clear()
   m.favs.forEach(id => v2Favs.add(id))
@@ -1289,6 +1731,13 @@ async function loadFeedback() {
   m.counts.forEach((n, id) => v2Counts.set(id, n))
   v2Comments.clear()
   m.comments.forEach((list, id) => v2Comments.set(id, list))
+  if (fb.lists) {
+    listFb.clear()
+    for (const [id, v] of Object.entries(fb.lists)) listFb.set(id, v)
+    serverLocked.clear() // fresh truth: a reopened list is editable again
+  }
+  syncPicked()
+  picksReady.value = true
 }
 
 function toggleFavoriteV2(id: number) {
@@ -1320,9 +1769,12 @@ onMounted(async () => {
     Promise.all([api.getManifest(token), query.value && hasTags.value ? loadSearch() : null])
       .then(([m]) => { if (m) manifest.value = m })
     const savedName = localStorage.getItem(CLIENT_NAME_KEY)
+    now.value = Date.now()
+    setInterval(() => { now.value = Date.now() }, 60_000) // deadline lines stay true on a page left open
     if (savedName) {
       clientName.value = savedName
       shareStore.startPeriodicFlush(token, savedName)
+      picksStore.start(token, savedName, onPicksFlushed)
       loadFeedback()
     } else {
       showNameModal.value = true
@@ -1452,6 +1904,11 @@ body:has([aria-modal="true"]) .moment-scrubber { visibility: hidden; }
   height: auto;
   line-height: 1;
 }
+
+/* Notice and send sheet: up 8 px and in, quick, so a refusal answers the tap that caused it */
+.rise-in { animation: rise-in 0.16s var(--ease-soft); }
+@keyframes rise-in { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .rise-in { animation: none; } }
 
 /* Instagram-style Heart Burst Animation */
 .heart-burst {

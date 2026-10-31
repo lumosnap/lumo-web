@@ -1,6 +1,7 @@
 import type { NitroFetchOptions } from 'nitropack'
 import type { ChangeAction } from '~/stores/share'
 import type { ManifestImage, ManifestPerson, ManifestSet, ShareFeedback } from '~/utils/browse'
+import type { PickList } from '~/utils/picks'
 
 export interface ShareManifest {
     v: 1
@@ -9,7 +10,15 @@ export interface ShareManifest {
     images: ManifestImage[]
     sets?: ManifestSet[] // photographer-defined groups; ids may reference images still uploading
     people?: ManifestPerson[] // named faces; same id rules as sets, box is on the cover image
+    lists?: PickList[] // selection lists the photographer asks for; [] or absent = plain favorites
 }
+
+// Picks write: the list after the change, or why the server refused it. 'network' = try again later.
+export type PickResult =
+    | { ok: true; imageIds: number[] }
+    | { ok: false; error: 'limit'; maxPicks: number | null; setId?: string; max?: number }
+    | { ok: false; error: 'locked' }
+    | { ok: false; error: 'network' }
 
 // API composable for public routes
 export function useApi() {
@@ -103,6 +112,28 @@ export function useApi() {
             baseURL: baseUrl,
             query: { clientName },
         }).catch(() => null)
+    }
+
+    // Selection lists: add/remove this client's picks in one list. 409 = a limit, 423 = locked.
+    async function pickList(token: string, listId: string, clientName: string, add: number[], remove: number[]): Promise<PickResult> {
+        try {
+            const r = await $fetch<{ imageIds?: number[]; data?: { imageIds: number[] } }>(`/api/v1/share/${token}/lists/${listId}/picks`, {
+                baseURL: baseUrl, method: 'POST', body: { clientName, add, remove },
+            })
+            return { ok: true, imageIds: r.imageIds ?? r.data?.imageIds ?? [] }
+        } catch (e: any) {
+            const status = e?.statusCode ?? e?.response?.status
+            if (status === 409) return { ok: false, error: 'limit', maxPicks: e.data?.maxPicks ?? null, setId: e.data?.setId, max: e.data?.max }
+            if (status === 423) return { ok: false, error: 'locked' }
+            return { ok: false, error: 'network' }
+        }
+    }
+
+    // Send the list to the photographer. Null on failure (423 included: the caller reloads feedback).
+    async function submitList(token: string, listId: string, clientName: string) {
+        return $fetch<{ submittedAt?: number; data?: { submittedAt: number } }>(`/api/v1/share/${token}/lists/${listId}/submit`, {
+            baseURL: baseUrl, method: 'POST', body: { clientName },
+        }).then(r => r.submittedAt ?? r.data?.submittedAt ?? Date.now()).catch(() => null)
     }
 
     // Create favorite
@@ -201,6 +232,8 @@ export function useApi() {
         getAlbum,
         getManifest,
         getFeedback,
+        pickList,
+        submitList,
         createFavorite,
         deleteFavorite,
         updateFavoriteNotes,

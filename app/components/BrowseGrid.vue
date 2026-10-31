@@ -8,7 +8,7 @@
         <h2 v-if="row.type === 'header'" class="h-12 mb-2 flex items-end pb-2.5 text-sm font-normal text-ink-2 tabular-nums">{{ row.label }}</h2>
         <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 [&+h2]:mt-2">
           <BrowseTile v-for="t in row.tiles" :key="t.img.id" :image="t.img" :index="t.index" :burst="t.frames?.length"
-            :base="base" :favs="favs" :comments="comments" :counts="counts" :client-name="clientName" eager
+            :base="base" :favs="favs" :comments="comments" :counts="counts" :client-name="clientName" :heart-label="heartLabel" eager
             :high="t.index < SSR_HIGH" @open="openTile(t)" @favorite="emit('favorite', $event)"
             @comment="emit('comment', $event)" />
         </div>
@@ -28,7 +28,7 @@
           <h2 v-if="row.type === 'header'" class="h-12 flex items-end pb-2.5 text-sm font-normal text-ink-2 tabular-nums">{{ row.label }}</h2>
           <div v-else class="grid gap-2" :style="{ height: `${tileH}px`, gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }">
             <BrowseTile v-for="t in row.tiles" :key="t.img.id" :image="t.img" :index="t.index" :burst="t.frames?.length"
-              :base="base" :favs="favs" :comments="comments" :counts="counts" :client-name="clientName"
+              :base="base" :favs="favs" :comments="comments" :counts="counts" :client-name="clientName" :heart-label="heartLabel"
               @open="openTile(t)" @favorite="emit('favorite', $event)" @comment="emit('comment', $event)" />
           </div>
         </div>
@@ -60,13 +60,14 @@ const props = defineProps<{
   comments: Map<number, ShareComment[]>
   counts: Map<number, number>
   clientName: string
-  favoritesOnly: boolean
+  only: 'in' | 'out' | null // show only photos in `favs` (favorites, a list's picks) or only those not in it
   stackBursts: boolean
   eventDate: string | null
   labels?: Record<string, string> // SSR head only: moment labels computed from the full album
   setId?: string | null // selected view (set + search filter): scroll position is saved per (token, view)
   stickyTop?: number // height of the sticky bar above the grid (set tabs), 0 without
   people?: BrowsePerson[] // named people (full manifest): lightbox shows who is in the open photo
+  heartLabel?: string // what the heart does here: "Favorite", or "Pick for Main album"
 }>()
 
 const emit = defineEmits<{ favorite: [id: number]; comment: [id: number]; heart: [x: number, y: number]; person: [id: string] }>()
@@ -83,13 +84,14 @@ const root = ref<HTMLElement | null>(null)
 // that path rendered and eagerly loaded the whole set (a 3 s freeze on 1,250 photos).
 const mounted = ref(import.meta.client && !useNuxtApp().isHydrating)
 
-// Favorites-only is a snapshot taken when the filter flips (like v1's refetch),
-// so un-hearting inside the filtered view doesn't reshuffle the grid.
-const list = shallowRef<ManifestImage[]>(props.images)
-watch(() => [props.images, props.favoritesOnly] as const, ([imgs, only]) => {
+// Only / only-not is a snapshot taken when the filter flips (like v1's favorites refetch), so a heart
+// tapped inside the filtered view doesn't reshuffle the grid. A new view (setId: another list) re-takes it.
+const snap = (imgs: ManifestImage[], only: 'in' | 'out' | null) => {
   const favs = toRaw(props.favs)
-  list.value = only ? imgs.filter(img => favs.has(img.id)) : imgs
-})
+  return only ? imgs.filter(img => favs.has(img.id) === (only === 'in')) : imgs
+}
+const list = shallowRef<ManifestImage[]>(snap(props.images, props.only))
+watch(() => [props.images, props.only, props.setId] as const, ([imgs, only]) => { list.value = snap(imgs, only) })
 
 // Layout
 const cols = ref(5)
@@ -146,7 +148,7 @@ let saveTimer: ReturnType<typeof setTimeout> | null = null
 function saveScroll() {
   if (saveTimer) clearTimeout(saveTimer)
   saveTimer = setTimeout(() => {
-    if (props.favoritesOnly) return
+    if (props.only) return
     const item = virt.value.getVirtualItemForOffset(window.scrollY)
     if (!item) return
     const rows = layout.value.rows
@@ -165,7 +167,7 @@ watch(() => props.setId, () => {
   if (saveTimer) clearTimeout(saveTimer)
 }, { flush: 'sync' })
 async function restoreScroll() {
-  if (restored || props.favoritesOnly) return
+  if (restored || props.only) return
   const saved = JSON.parse(sessionStorage.getItem(scrollKey()) || 'null') as { id: number; off: number } | null
   if (!saved) {
     restored = true
@@ -271,7 +273,7 @@ function initLightbox() {
   lightbox.on('uiRegister', () => {
     lightbox!.pswp!.ui!.registerElement({
       name: 'favorite-button',
-      title: 'Favorite',
+      title: props.heartLabel ?? 'Favorite',
       order: 9,
       isButton: true,
       tagName: 'button',
