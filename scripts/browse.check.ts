@@ -156,6 +156,16 @@ assert.deepEqual(parseTags(undefined), [])
 // Untagged album (every manifest today): empty index -> search UI hidden.
 assert.equal(tagIndex(album).size, 0)
 assert.equal(tagIndex(plain.map(i => ({ ...i, g: null }))).size, 0)
+// Non-wedding vocab (birthday / corporate / baby / concert slugs).
+const ev = createTagSearch(tagEntries(['birthday', 'naming-ceremony', 'speaker', 'baby', 'party', 'reception', 'kids', 'singer', 'performance'], TAG_VOCAB))
+assert.equal(ev.match('bday')[0], 'birthday')
+assert.equal(ev.match('जन्मदिन')[0], 'birthday')
+assert.equal(ev.match('പിറന്നാൾ')[0], 'birthday')
+assert.equal(ev.match('noolukettu')[0], 'naming-ceremony')
+assert.equal(ev.match('speakers')[0], 'speaker')
+assert.equal(ev.match('kunju')[0], 'baby')
+assert.equal(ev.match('party')[0], 'party') // label beats reception's "party" synonym
+assert.equal(ev.match('singer')[0], 'singer')
 // 10k images: index + filter stay cheap.
 const SL = Object.keys(TAG_VOCAB)
 const tenK = Array.from({ length: 10000 }, (_, i) => img(i, { g: [SL[i % SL.length]!, SL[(i * 7) % SL.length]!, 'couple'] }))
