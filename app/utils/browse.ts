@@ -184,6 +184,57 @@ export function setImages(images: ManifestImage[], set: BrowseSet) {
     return images.filter(i => ids.has(i.id))
 }
 
+// ---- People (face clusters named by the photographer) ----
+
+export type FaceBox = [x: number, y: number, w: number, h: number] // normalized to the cover image
+export interface ManifestPerson { id: string; name: string; cover: number | null; box: FaceBox | null; ids: number[] }
+export interface BrowsePerson { id: string; name: string; cover: ManifestImage; box: FaceBox | null; ids: number[] }
+
+// Like resolveSets: unknown ids dropped, people with no visible photo hidden. The box belongs to the
+// named cover, so a fallback cover (first visible photo) has no box: plain centred thumbnail.
+export function resolvePeople(people: ManifestPerson[], images: ManifestImage[]): BrowsePerson[] {
+    const byId = new Map(images.map(i => [i.id, i]))
+    return people.flatMap(p => {
+        const ids = [...new Set(p.ids)].filter(id => byId.has(id))
+        if (!ids.length) return []
+        const named = byId.get(p.cover ?? NaN)
+        return [{ id: p.id, name: p.name, cover: named ?? byId.get(ids[0]!)!, box: named ? p.box : null, ids }]
+    })
+}
+
+// Background crop of a w x h image that shows the face box as a centred square with some room around
+// it (pad x the box's longer side), clamped inside the image. Percentages, so it fits any avatar size.
+// No box -> the whole thumbnail, cover-fitted.
+export function avatarCrop(box: FaceBox | null, w: number, h: number, pad = 1.8) {
+    if (!box || !(w > 0 && h > 0)) return { backgroundSize: 'cover', backgroundPosition: 'center' }
+    const c = (v: number) => Math.min(1, Math.max(0, v))
+    const [x, y] = [c(box[0]), c(box[1])]
+    const [bw, bh] = [c(box[2]), c(box[3])]
+    const side = Math.min(w, h, Math.max(bw * w, bh * h, 1) * pad)
+    // Left/top edge of the square, kept inside the image; background-position % maps 0..(W - side) to 0..100.
+    const pos = (centre: number, full: number) => {
+        const free = full - side
+        return free > 0 ? (Math.min(free, Math.max(0, centre * full - side / 2)) / free) * 100 : 50
+    }
+    const r = (n: number) => Math.round(n * 100) / 100
+    return {
+        backgroundSize: `${r((w / side) * 100)}% ${r((h / side) * 100)}%`,
+        backgroundPosition: `${r(pos(x + bw / 2, w))}% ${r(pos(y + bh / 2, h))}%`,
+    }
+}
+
+// Photos with ALL the given people. Unknown ids (person hidden, renamed away) are ignored; none left -> null.
+export function peopleIds(people: BrowsePerson[], selected: string[]): Set<number> | null {
+    const sets = selected.map(id => people.find(p => p.id === id)).filter(p => !!p).map(p => new Set(p.ids))
+    if (!sets.length) return null
+    sets.sort((a, b) => a.size - b.size)
+    return new Set([...sets[0]!].filter(id => sets.every(s => s.has(id))))
+}
+
+// Intersection of two optional filters (null = no filter).
+export const andIds = (a: Set<number> | null, b: Set<number> | null) =>
+    !a ? b : !b ? a : new Set([...a].filter(id => b.has(id)))
+
 // ---- Tags (search + chips; the vocabulary search lives in search.ts) ----
 
 export type TagVocab = Record<string, { label: string; syn: string[] }>

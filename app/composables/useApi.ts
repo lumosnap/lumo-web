@@ -1,6 +1,6 @@
 import type { NitroFetchOptions } from 'nitropack'
 import type { ChangeAction } from '~/stores/share'
-import type { ManifestImage, ManifestSet, ShareFeedback } from '~/utils/browse'
+import type { ManifestImage, ManifestPerson, ManifestSet, ShareFeedback } from '~/utils/browse'
 
 export interface ShareManifest {
     v: 1
@@ -8,6 +8,7 @@ export interface ShareManifest {
     base: string
     images: ManifestImage[]
     sets?: ManifestSet[] // photographer-defined groups; ids may reference images still uploading
+    people?: ManifestPerson[] // named faces; same id rules as sets, box is on the cover image
 }
 
 // API composable for public routes

@@ -109,9 +109,9 @@
             panel="set-panel" />
         </div>
 
-        <!-- Browse v2: tag search (only for albums with AI tags). Filters inside the selected set. -->
-        <div v-if="isV2 && manifest && hasTags" role="search" class="mb-4 flex flex-col gap-3">
-          <div class="relative max-w-xl">
+        <!-- Browse v2: tag search (albums with AI tags) and people (albums with named faces). Filters inside the selected set. -->
+        <div v-if="isV2 && manifest && (hasTags || people.length)" role="search" class="mb-4 flex flex-col gap-3">
+          <div v-if="hasTags" class="relative max-w-xl">
             <label for="photo-search" class="sr-only">Search photos</label>
             <Icon name="lucide:search" size="18" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input id="photo-search" v-model="qInput" type="search" autocomplete="off" enterkeyhint="search"
@@ -124,7 +124,21 @@
               <Icon name="lucide:x" size="16" />
             </button>
           </div>
-          <div v-if="chips.length" role="group" aria-label="Filter by tag" class="flex gap-2 overflow-x-auto [scrollbar-width:none]">
+          <!-- One scrolling row: people first (faces are found faster than words), then tags -->
+          <div v-if="chips.length || people.length" class="flex gap-2 items-center overflow-x-auto [scrollbar-width:none]">
+          <div v-if="people.length" role="group" aria-label="Filter by person" class="flex gap-2 shrink-0">
+            <button v-for="p in people" :key="p.id" type="button" :aria-pressed="activePeople.includes(p.id)"
+              class="shrink-0 h-8 pl-1 pr-3 rounded-full text-sm font-medium border flex items-center gap-1.5 whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              :class="activePeople.includes(p.id) ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'"
+              @click="togglePerson(p.id)">
+              <span aria-hidden="true" class="w-6 h-6 rounded-full bg-slate-200 bg-no-repeat"
+                :style="{ backgroundImage: `url(${thumbUrl(manifest.base, p.cover)})`, ...avatarCrop(p.box, p.cover.w, p.cover.h) }"></span>
+              <span class="max-w-40 truncate">{{ p.name }}</span>
+              <Icon v-if="activePeople.includes(p.id)" name="lucide:check" size="14" />
+            </button>
+          </div>
+          <span v-if="people.length && chips.length" aria-hidden="true" class="shrink-0 w-px h-5 bg-slate-200"></span>
+          <div v-if="chips.length" role="group" aria-label="Filter by tag" class="flex gap-2 shrink-0">
             <button v-for="c in chips" :key="c.slug" type="button" :aria-pressed="activeTags.includes(c.slug)"
               class="shrink-0 h-8 px-3 rounded-full text-sm font-medium border flex items-center gap-1.5 whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
               :class="activeTags.includes(c.slug) ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'"
@@ -132,6 +146,7 @@
               <Icon v-if="activeTags.includes(c.slug)" name="lucide:check" size="14" />
               {{ c.label }}
             </button>
+          </div>
           </div>
           <p aria-live="polite" class="text-sm text-slate-500 tabular-nums min-h-5">
             {{ resultCount === null ? '' : `${resultCount} photo${resultCount === 1 ? '' : 's'}` }}
@@ -151,7 +166,7 @@
               @click="setQuery(suggestion)">{{ suggestion }}</button>?
           </p>
           <button type="button" class="mt-5 h-9 px-4 rounded-full border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-100"
-            @click="setQuery(''); activeTags = []">Clear search</button>
+            @click="setQuery(''); activeTags = []; activePeople = []">{{ activeTags.length || activePeople.length ? 'Clear filters' : 'Clear search' }}</button>
         </div>
 
         <!-- Browse v2: virtualized grid over the full manifest -->
@@ -357,7 +372,7 @@ import BrowseGrid from '~/components/BrowseGrid.vue'
 import SetTabs from '~/components/SetTabs.vue'
 import type { ShareManifest } from '~/composables/useApi'
 import { useShareStore } from '~/stores/share'
-import { browseHead, filterIds, mergeFeedback, parseTags, resolveSets, setImages, tagEntries, tagIndex, tagLabel, topTags, type BrowseSet, PSWP_BASE_OPTIONS, renderLightboxButtons, thumbUrl, toShareImage, type ShareComment } from '~/utils/browse'
+import { andIds, avatarCrop, browseHead, filterIds, peopleIds, resolvePeople, mergeFeedback, parseTags, resolveSets, setImages, tagEntries, tagIndex, tagLabel, topTags, type BrowsePerson, type BrowseSet, PSWP_BASE_OPTIONS, renderLightboxButtons, thumbUrl, toShareImage, type ShareComment } from '~/utils/browse'
 import { TAG_VOCAB } from '~/utils/tag-vocab'
 
 // Disable default layout for this page
@@ -424,7 +439,8 @@ if (!isV2 && albumData.value?.data?.album.browseV2) {
 const V2_SSR_IMAGES = 15
 const CHIPS = 8
 // Tag search state comes from ?q= / ?tags= so SSR renders the filtered first rows.
-const filterKeyOf = (q: string, tags: string[]) => (q || tags.length ? `${q}|${tags.join(',')}` : '')
+const filterKeyOf = (q: string, tags: string[], people: string[]) =>
+  (q || tags.length || people.length ? `${q}|${tags.join(',')}|${people.join(',')}` : '')
 const { data: manifestHead } = await useAsyncData(
   `manifest-${token}`,
   async () => {
@@ -439,31 +455,35 @@ const { data: manifestHead } = await useAsyncData(
     const idx = tagIndex(m.images)
     const q = idx.size && typeof route.query.q === 'string' ? route.query.q.trim() : ''
     const tags = idx.size ? parseTags(route.query.tags) : []
+    // People: ?people= ids of visible people only (unknown ones are ignored, as on the client).
+    const people = resolvePeople(m.people ?? [], m.images)
+    const who = parseTags(route.query.people).filter(id => people.some(p => p.id === id))
     let shown = scope
     let matchCount: number | null = null
-    if (q || tags.length) {
-      const { createTagSearch } = await import('~/utils/search')
-      const ids = filterIds(idx, [...(q ? createTagSearch(tagEntries(idx.keys(), TAG_VOCAB)).groups(q) : []), ...tags.map(t => [t])])
+    if (q || tags.length || who.length) {
+      const search = q ? (await import('~/utils/search')).createTagSearch(tagEntries(idx.keys(), TAG_VOCAB)) : null
+      const ids = andIds(filterIds(idx, [...(search ? search.groups(q) : []), ...tags.map(t => [t])]), peopleIds(people, who))
       if (ids) shown = scope.filter(i => ids.has(i.id))
       matchCount = shown.length
     }
     const { images, labels } = browseHead(shown, V2_SSR_IMAGES, m.album.eventDate)
     return {
-      ...m, images, labels, sets: [],
+      ...m, images, labels, sets: [], people: [],
       resolved: resolved.map(s => ({ ...s, ids: [] })),
+      resolvedPeople: people.map(p => ({ ...p, ids: [] })),
       headSet: head?.id ?? null,
       total: m.images.length,
       hasBursts: m.images.some(i => i.b !== null), // whole album, so the switch is in the SSR HTML (no shift)
       hasTags: idx.size > 0,
       chips: idx.size ? topTags(scope, CHIPS, tags).top : [],
-      headFilter: filterKeyOf(q, tags),
+      headFilter: filterKeyOf(q, tags, who),
       matchCount,
     }
   },
   { immediate: isV2 }
 )
 type ManifestHead = {
-  labels: Record<string, string>; resolved: BrowseSet[]; headSet: string | null; total: number; hasBursts: boolean
+  labels: Record<string, string>; resolved: BrowseSet[]; resolvedPeople: BrowsePerson[]; headSet: string | null; total: number; hasBursts: boolean
   hasTags: boolean; chips: { slug: string; count: number }[]; headFilter: string; matchCount: number | null
 }
 const manifest = shallowRef<ShareManifest & Partial<ManifestHead> | null>(manifestHead.value ?? null)
@@ -483,6 +503,14 @@ const scopeImages = computed(() => {
   return s ? setImages(m.images, s) : m.images
 })
 
+// People: chips before the tags; selected ones AND together and with set + search + tags. ?people=
+const people = computed(() => manifest.value?.resolvedPeople ?? resolvePeople(manifest.value?.people ?? [], manifest.value?.images ?? []))
+const activePeople = ref(parseTags(route.query.people).filter(id => people.value.some(p => p.id === id)))
+watch(people, list => { activePeople.value = activePeople.value.filter(id => list.some(p => p.id === id)) })
+function togglePerson(id: string) {
+  activePeople.value = activePeople.value.includes(id) ? activePeople.value.filter(p => p !== id) : [...activePeople.value, id]
+}
+
 // Tag search: input debounced into `query`; chips in `activeTags`. The vocabulary index (minisearch)
 // is a lazy chunk, loaded on first focus/query; slug -> id sets are built once per manifest.
 const qInput = ref(typeof route.query.q === 'string' ? route.query.q : '')
@@ -499,12 +527,13 @@ const searchMod = shallowRef<typeof import('~/utils/search') | null>(null)
 const loadSearch = async () => { searchMod.value ??= await import('~/utils/search') }
 watch(query, q => { if (q) loadSearch() })
 const searcher = computed(() => (searchMod.value && tagIdx.value ? searchMod.value.createTagSearch(tagEntries(tagIdx.value.keys(), TAG_VOCAB)) : null))
-const filterKey = computed(() => (hasTags.value ? filterKeyOf(query.value, activeTags.value) : ''))
+const filterKey = computed(() => filterKeyOf(hasTags.value ? query.value : '', hasTags.value ? activeTags.value : [], activePeople.value))
 // null = no filter; undefined = index not ready yet.
 const matchIds = computed(() => {
   if (!filterKey.value) return null
-  if (!tagIdx.value || (query.value && !searcher.value)) return undefined
-  return filterIds(tagIdx.value, [...(query.value ? searcher.value!.groups(query.value) : []), ...activeTags.value.map(t => [t])])
+  if (!tagIdx.value || (query.value && hasTags.value && !searcher.value)) return undefined
+  const tags = hasTags.value ? filterIds(tagIdx.value, [...(query.value ? searcher.value!.groups(query.value) : []), ...activeTags.value.map(t => [t])]) : null
+  return andIds(tags, peopleIds(people.value, activePeople.value))
 })
 const tagStats = computed(() => (scopeImages.value && hasTags.value ? topTags(scopeImages.value, CHIPS, activeTags.value) : null))
 const chips = computed(() => (tagStats.value?.top ?? manifest.value?.chips ?? []).map(c => ({ ...c, label: tagLabel(c.slug, TAG_VOCAB) })))
@@ -540,9 +569,9 @@ const suggestion = computed(() => {
 const viewKey = computed(() => [selectedSet.value, filterKey.value].filter(Boolean).join('|') || null)
 
 watch(sets, list => { if (selectedSet.value && !list.some(s => s.id === selectedSet.value)) selectedSet.value = null })
-watch([selectedSet, query, activeTags], ([id, q, tags]) => {
+watch([selectedSet, query, activeTags, activePeople], ([id, q, tags, who]) => {
   const url = new URL(window.location.href)
-  for (const [k, v] of [['set', id], ['q', q], ['tags', tags.join(',')]] as const) {
+  for (const [k, v] of [['set', id], ['q', q], ['tags', tags.join(',')], ['people', who.join(',')]] as const) {
     if (v) url.searchParams.set(k, v)
     else url.searchParams.delete(k)
   }

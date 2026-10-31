@@ -1,6 +1,6 @@
 // Self-check for the browse-v2 row math. Run: node scripts/browse.check.ts
 import assert from 'node:assert/strict'
-import { browseHead, buildRows, columnsFor, filterIds, mergeFeedback, parseTags, resolveSets, setImages, tagEntries, tagIndex, tagLabel, toRows, topTags, type ManifestImage } from '../app/utils/browse.ts'
+import { andIds, avatarCrop, browseHead, peopleIds, resolvePeople, buildRows, columnsFor, filterIds, mergeFeedback, parseTags, resolveSets, setImages, tagEntries, tagIndex, tagLabel, toRows, topTags, type ManifestImage } from '../app/utils/browse.ts'
 import { createTagSearch } from '../app/utils/search.ts'
 import { TAG_VOCAB } from '../app/utils/tag-vocab.ts'
 
@@ -177,5 +177,37 @@ assert.ok(performance.now() - t1 < 200, `10k index+filter took ${performance.now
 t1 = performance.now()
 for (let k = 0; k < 20; k++) filterIds(bigIdx, bigTs.groups('couple dance'))
 assert.ok((performance.now() - t1) / 20 < 10)
+
+// People: unknown ids dropped, people with no visible photo hidden, named cover keeps its box,
+// fallback cover (first visible id) has none.
+const ppl = resolvePeople([
+    { id: 'bride', name: 'Anjali', cover: 1, box: [0.4, 0.2, 0.2, 0.16], ids: [1, 2, 3, 5, 999] },
+    { id: 'nani', name: 'Nani', cover: 999, box: [0.1, 0.1, 0.1, 0.1], ids: [999, 3, 5, 3] }, // cover still uploading
+    { id: 'ghost', name: 'Uploading', cover: 998, box: null, ids: [998] },
+    { id: 'none', name: 'Nobody', cover: null, box: null, ids: [] },
+], album)
+assert.deepEqual(ppl.map(p => [p.id, p.cover.id, p.box, p.ids]), [['bride', 1, [0.4, 0.2, 0.2, 0.16], [1, 2, 3, 5]], ['nani', 3, null, [3, 5]]])
+assert.deepEqual(resolvePeople([], album), []) // no people -> row hidden
+// AND across people ("Anjali and Nani together"); unknown/hidden ids ignored; none -> no filter.
+assert.deepEqual([...peopleIds(ppl, ['bride', 'nani'])!].sort(), [3, 5])
+assert.deepEqual([...peopleIds(ppl, ['bride', 'ghost', 'zzz'])!].sort(), [1, 2, 3, 5])
+assert.equal(peopleIds(ppl, ['ghost']), null)
+assert.equal(peopleIds(ppl, []), null)
+// Composes with tag filters.
+assert.deepEqual([...andIds(new Set([2, 3, 9]), peopleIds(ppl, ['nani']))!], [3])
+assert.equal(andIds(null, null), null)
+assert.deepEqual([...andIds(null, new Set([4]))!], [4])
+// Avatar crop: face box -> square of 1.8x its longer side around its centre, clamped to the image.
+// 1600x2000, box 0.4,0.2,0.2,0.16 -> 320x320 face, side 576, centre (800, 560): left 512 of 1024 free, top 272 of 1424.
+assert.deepEqual(avatarCrop([0.4, 0.2, 0.2, 0.16], 1600, 2000), { backgroundSize: '277.78% 347.22%', backgroundPosition: '50% 19.1%' })
+// Face in the corner: square pinned to the edge, never past it.
+assert.deepEqual(avatarCrop([0, 0, 0.1, 0.1], 1000, 1000).backgroundPosition, '0% 0%')
+assert.deepEqual(avatarCrop([0.95, 0.95, 0.05, 0.05], 1000, 1000).backgroundPosition, '100% 100%')
+// Face bigger than the image allows: square capped at the short side (landscape 2000x1000 -> side 1000).
+assert.deepEqual(avatarCrop([0.25, 0, 0.5, 1], 2000, 1000), { backgroundSize: '200% 100%', backgroundPosition: '50% 50%' })
+// Out-of-range box values are clamped; no box or bad size -> plain cover thumbnail.
+assert.deepEqual(avatarCrop([-1, 2, 0.1, 0.1], 1000, 1000).backgroundPosition, '0% 100%')
+assert.deepEqual(avatarCrop(null, 1600, 2000), { backgroundSize: 'cover', backgroundPosition: 'center' })
+assert.deepEqual(avatarCrop([0.4, 0.2, 0.2, 0.2], 0, 0), { backgroundSize: 'cover', backgroundPosition: 'center' })
 
 console.log('browse.check ok')
