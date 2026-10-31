@@ -1,6 +1,8 @@
 // Self-check for the browse-v2 row math. Run: node scripts/browse.check.ts
 import assert from 'node:assert/strict'
-import { browseHead, buildRows, columnsFor, mergeFeedback, resolveSets, setImages, toRows, type ManifestImage } from '../app/utils/browse.ts'
+import { browseHead, buildRows, columnsFor, filterIds, mergeFeedback, parseTags, resolveSets, setImages, tagEntries, tagIndex, tagLabel, toRows, topTags, type ManifestImage } from '../app/utils/browse.ts'
+import { createTagSearch } from '../app/utils/search.ts'
+import { TAG_VOCAB } from '../app/utils/tag-vocab.ts'
 
 assert.deepEqual(toRows([1, 2, 3, 4, 5], 2), [[1, 2], [3, 4], [5]])
 assert.deepEqual(toRows([], 3), [])
@@ -101,5 +103,69 @@ const fam = resolveSets([{ id: 'f', name: 'Family', cover: null, ids: big.filter
 const famImgs = setImages(big, fam)
 const famHead = browseHead(famImgs, 4, null)
 assert.deepEqual(ids(buildRows(famHead.images, 4, { stackBursts: true, labels: famHead.labels })).slice(0, 3), ids(buildRows(famImgs, 4, { stackBursts: true })).slice(0, 3))
+
+// Tag search: vocabulary -> slugs -> image ids.
+const tagged = [
+    img(1, { g: ['haldi', 'bride', 'rituals'] }), img(2, { g: ['ceremony', 'couple', 'sacred-fire'] }),
+    img(3, { g: ['cake', 'couple', 'reception'] }), img(4, { g: ['dance', 'friends', 'night'] }),
+    img(5, { g: ['bride', 'jewellery'] }), img(6, { g: null }), img(7, { g: ['church-wedding', 'couple'] }),
+    img(8, { g: ['floating-lanterns'] }), // unknown slug from a newer desktop app
+]
+const tidx = tagIndex(tagged)
+const ts = createTagSearch(tagEntries(tidx.keys(), TAG_VOCAB))
+const find = (q: string, tags: string[] = []) => {
+    const r = filterIds(tidx, [...ts.groups(q), ...tags.map(t => [t])])
+    return r && [...r].sort((a, b) => a - b)
+}
+assert.equal(ts.match('kalyanam')[0], 'ceremony') // romanised synonym
+assert.equal(ts.match('turmeric')[0], 'haldi') // English synonym
+assert.equal(ts.match('മഞ്ഞൾ')[0], 'haldi') // Malayalam script
+assert.equal(ts.match('शादी')[0], 'ceremony') // Hindi script
+assert.equal(ts.match('தாலி').length, 0) // thali not in this album: only present slugs are indexed
+assert.equal(ts.match('cak')[0], 'cake') // prefix
+assert.equal(ts.match('recepton')[0], 'reception') // typo (1 edit)
+assert.equal(ts.match('haldhi')[0], 'haldi')
+assert.ok(!ts.match('wedding').includes('cake')) // "wedding cake" phrase doesn't pull cake into "wedding"
+assert.deepEqual(find('wedding'), [2, 7])
+assert.deepEqual(find('kalyanam'), [2])
+assert.deepEqual(find('nach'), [4])
+assert.equal(find(''), null) // no filter
+assert.equal(find('photos of the'), null) // stop words only
+assert.deepEqual(find('lanterns'), [8]) // unknown slug searchable by its title-cased label
+assert.equal(tagLabel('floating-lanterns', TAG_VOCAB), 'Floating Lanterns')
+assert.equal(tagLabel('haldi', TAG_VOCAB), 'Haldi')
+// AND when every word matches some tag, else OR over the words that matched.
+assert.deepEqual(find('bride haldi'), [1])
+assert.deepEqual(find('couple cake'), [3])
+assert.deepEqual(find('bride xyzzy'), [1, 5])
+assert.deepEqual(find('xyzzy'), [])
+// Chips AND with each other and with the query.
+assert.deepEqual(find('', ['couple']), [2, 3, 7])
+assert.deepEqual(find('', ['couple', 'cake']), [3])
+assert.deepEqual(find('wedding', ['sacred-fire']), [2])
+assert.deepEqual(find('', ['nope']), [])
+assert.equal(ts.suggest('dancce', () => true), 'dance')
+assert.equal(ts.suggest('dancce', s => s !== 'dance'), null)
+// Chips: most frequent in scope; active ones outside the top go first, inside it keep their place.
+const tt = topTags(tagged, 2, ['night'])
+assert.deepEqual(tt.top.map(t => t.slug), ['night', 'couple', 'bride'])
+assert.deepEqual(topTags(tagged, 2, ['bride']).top.map(t => t.slug), ['couple', 'bride'])
+assert.equal(tt.counts.get('couple'), 3)
+assert.deepEqual(parseTags('a, b,,a'), ['a', 'b'])
+assert.deepEqual(parseTags(undefined), [])
+// Untagged album (every manifest today): empty index -> search UI hidden.
+assert.equal(tagIndex(album).size, 0)
+assert.equal(tagIndex(plain.map(i => ({ ...i, g: null }))).size, 0)
+// 10k images: index + filter stay cheap.
+const SL = Object.keys(TAG_VOCAB)
+const tenK = Array.from({ length: 10000 }, (_, i) => img(i, { g: [SL[i % SL.length]!, SL[(i * 7) % SL.length]!, 'couple'] }))
+let t1 = performance.now()
+const bigIdx = tagIndex(tenK)
+const bigTs = createTagSearch(tagEntries(bigIdx.keys(), TAG_VOCAB))
+assert.ok(filterIds(bigIdx, [...bigTs.groups('couple wedding'), ['couple']])!.size > 0)
+assert.ok(performance.now() - t1 < 200, `10k index+filter took ${performance.now() - t1}ms`)
+t1 = performance.now()
+for (let k = 0; k < 20; k++) filterIds(bigIdx, bigTs.groups('couple dance'))
+assert.ok((performance.now() - t1) / 20 < 10)
 
 console.log('browse.check ok')

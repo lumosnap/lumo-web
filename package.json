@@ -19,6 +19,7 @@
     "@tanstack/vue-virtual": "^3",
     "better-auth": "^1.4.1",
     "eslint": "^9.0.0",
+    "minisearch": "^7",
     "nuxt": "^4.2.1",
     "photoswipe": "^5.4.4",
     "pinia": "^3.0.4",

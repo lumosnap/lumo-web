@@ -109,9 +109,49 @@
             panel="set-panel" />
         </div>
 
-        <!-- Browse v2: set picked before the full manifest arrived (SSR only shipped the URL's set) -->
+        <!-- Browse v2: tag search (only for albums with AI tags). Filters inside the selected set. -->
+        <div v-if="isV2 && manifest && hasTags" role="search" class="mb-4 flex flex-col gap-3">
+          <div class="relative max-w-xl">
+            <label for="photo-search" class="sr-only">Search photos</label>
+            <Icon name="lucide:search" size="18" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input id="photo-search" v-model="qInput" type="search" autocomplete="off" enterkeyhint="search"
+              placeholder="Search: haldi, couple, cake…"
+              class="w-full h-11 rounded-full border border-slate-200 bg-white pl-10 pr-11 text-base text-slate-900 placeholder:text-slate-400 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 [&::-webkit-search-cancel-button]:appearance-none"
+              @focus="loadSearch" @keydown.esc="setQuery('')" />
+            <button v-if="qInput" type="button" aria-label="Clear search"
+              class="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              @click="setQuery('')">
+              <Icon name="lucide:x" size="16" />
+            </button>
+          </div>
+          <div v-if="chips.length" role="group" aria-label="Filter by tag" class="flex gap-2 overflow-x-auto [scrollbar-width:none]">
+            <button v-for="c in chips" :key="c.slug" type="button" :aria-pressed="activeTags.includes(c.slug)"
+              class="shrink-0 h-8 px-3 rounded-full text-sm font-medium border flex items-center gap-1.5 whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              :class="activeTags.includes(c.slug) ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'"
+              @click="toggleTag(c.slug)">
+              <Icon v-if="activeTags.includes(c.slug)" name="lucide:check" size="14" />
+              {{ c.label }}
+            </button>
+          </div>
+          <p aria-live="polite" class="text-sm text-slate-500 tabular-nums min-h-5">
+            {{ resultCount === null ? '' : `${resultCount} photo${resultCount === 1 ? '' : 's'}` }}
+          </p>
+        </div>
+
+        <!-- Browse v2: set/filter picked before the full manifest arrived (SSR only shipped the URL's view) -->
         <div v-if="isV2 && manifest && !gridImages" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           <div v-for="i in 10" :key="i" class="aspect-[4/5] rounded-xl bg-slate-200 animate-pulse"></div>
+        </div>
+
+        <!-- Browse v2: search/chips matched nothing in this set -->
+        <div v-else-if="isV2 && manifest && filterKey && gridImages?.length === 0" class="py-16 text-center">
+          <p class="text-lg font-semibold text-slate-900">No photos match</p>
+          <p v-if="suggestion" class="mt-2 text-sm text-slate-600">
+            Did you mean <button type="button" class="min-h-6 font-semibold text-indigo-600 underline underline-offset-2"
+              @click="setQuery(suggestion)">{{ suggestion }}</button>?
+          </p>
+          <button type="button" class="mt-5 h-9 px-4 rounded-full border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-100"
+            @click="setQuery(''); activeTags = []">Clear search</button>
         </div>
 
         <!-- Browse v2: virtualized grid over the full manifest -->
@@ -119,7 +159,7 @@
           v-bind="sets.length ? { id: 'set-panel', role: 'tabpanel', 'aria-labelledby': `set-tab-${selectedSet ?? 'all'}` } : {}">
           <BrowseGrid :token="token" :images="gridImages" :base="manifest.base" :favs="v2Favs" :comments="v2Comments"
             :counts="v2Counts" :client-name="clientName" :favorites-only="showFavoritesOnly" :stack-bursts="stackBursts"
-            :event-date="manifest.album.eventDate" :labels="manifest.labels" :set-id="selectedSet"
+            :event-date="manifest.album.eventDate" :labels="manifest.labels" :set-id="viewKey"
             :sticky-top="sets.length ? 56 : 0" @favorite="toggleFavoriteV2" @comment="openCommentSidebarV2"
             @heart="showHeartAnimation" />
         </div>
@@ -317,7 +357,8 @@ import BrowseGrid from '~/components/BrowseGrid.vue'
 import SetTabs from '~/components/SetTabs.vue'
 import type { ShareManifest } from '~/composables/useApi'
 import { useShareStore } from '~/stores/share'
-import { browseHead, mergeFeedback, resolveSets, setImages, type BrowseSet, PSWP_BASE_OPTIONS, renderLightboxButtons, thumbUrl, toShareImage, type ShareComment } from '~/utils/browse'
+import { browseHead, filterIds, mergeFeedback, parseTags, resolveSets, setImages, tagEntries, tagIndex, tagLabel, topTags, type BrowseSet, PSWP_BASE_OPTIONS, renderLightboxButtons, thumbUrl, toShareImage, type ShareComment } from '~/utils/browse'
+import { TAG_VOCAB } from '~/utils/tag-vocab'
 
 // Disable default layout for this page
 definePageMeta({
@@ -381,6 +422,9 @@ if (!isV2 && albumData.value?.data?.album.browseV2) {
 // v2 SSR: only the first rows go into the payload (LCP); the full manifest is fetched on mount
 // (CDN/browser-cached via ETag) so 10k images don't bloat the HTML.
 const V2_SSR_IMAGES = 15
+const CHIPS = 8
+// Tag search state comes from ?q= / ?tags= so SSR renders the filtered first rows.
+const filterKeyOf = (q: string, tags: string[]) => (q || tags.length ? `${q}|${tags.join(',')}` : '')
 const { data: manifestHead } = await useAsyncData(
   `manifest-${token}`,
   async () => {
@@ -390,18 +434,38 @@ const { data: manifestHead } = await useAsyncData(
     // The head is the ?set= set's first tiles (+ burst frames) with moment labels from that whole set.
     const resolved = resolveSets(m.sets ?? [], m.images)
     const head = resolved.find(s => s.id === route.query.set)
-    const { images, labels } = browseHead(head ? setImages(m.images, head) : m.images, V2_SSR_IMAGES, m.album.eventDate)
+    const scope = head ? setImages(m.images, head) : m.images
+    // Tags: chips + the ?q=/?tags= filter, so search UI and filtered rows are in the SSR HTML.
+    const idx = tagIndex(m.images)
+    const q = idx.size && typeof route.query.q === 'string' ? route.query.q.trim() : ''
+    const tags = idx.size ? parseTags(route.query.tags) : []
+    let shown = scope
+    let matchCount: number | null = null
+    if (q || tags.length) {
+      const { createTagSearch } = await import('~/utils/search')
+      const ids = filterIds(idx, [...(q ? createTagSearch(tagEntries(idx.keys(), TAG_VOCAB)).groups(q) : []), ...tags.map(t => [t])])
+      if (ids) shown = scope.filter(i => ids.has(i.id))
+      matchCount = shown.length
+    }
+    const { images, labels } = browseHead(shown, V2_SSR_IMAGES, m.album.eventDate)
     return {
       ...m, images, labels, sets: [],
       resolved: resolved.map(s => ({ ...s, ids: [] })),
       headSet: head?.id ?? null,
       total: m.images.length,
       hasBursts: m.images.some(i => i.b !== null), // whole album, so the switch is in the SSR HTML (no shift)
+      hasTags: idx.size > 0,
+      chips: idx.size ? topTags(scope, CHIPS, tags).top : [],
+      headFilter: filterKeyOf(q, tags),
+      matchCount,
     }
   },
   { immediate: isV2 }
 )
-type ManifestHead = { labels: Record<string, string>; resolved: BrowseSet[]; headSet: string | null; total: number; hasBursts: boolean }
+type ManifestHead = {
+  labels: Record<string, string>; resolved: BrowseSet[]; headSet: string | null; total: number; hasBursts: boolean
+  hasTags: boolean; chips: { slug: string; count: number }[]; headFilter: string; matchCount: number | null
+}
 const manifest = shallowRef<ShareManifest & Partial<ManifestHead> | null>(manifestHead.value ?? null)
 const stackBursts = ref(true)
 const hasBursts = computed(() => manifest.value?.hasBursts ?? !!manifest.value?.images.some(i => i.b !== null))
@@ -410,19 +474,78 @@ const allCount = computed(() => manifest.value?.total ?? manifest.value?.images.
 // Sets: chip bar + filter. Selection lives in ?set= (replaceState, so no navigation/refetch).
 const sets = computed(() => manifest.value?.resolved ?? resolveSets(manifest.value?.sets ?? [], manifest.value?.images ?? []))
 const selectedSet = ref<string | null>(manifest.value?.headSet ?? null)
-// Images of the selected set; null while only the SSR head (of another set) is here.
-const gridImages = computed(() => {
-  const m = manifest.value
+const full = computed(() => (manifest.value && !manifest.value.labels ? manifest.value : null)) // full manifest, not the SSR head
+// Images of the selected set (full manifest only).
+const scopeImages = computed(() => {
+  const m = full.value
   if (!m) return null
-  if (m.labels) return m.headSet === selectedSet.value ? m.images : null
   const s = sets.value.find(s => s.id === selectedSet.value)
   return s ? setImages(m.images, s) : m.images
 })
+
+// Tag search: input debounced into `query`; chips in `activeTags`. The vocabulary index (minisearch)
+// is a lazy chunk, loaded on first focus/query; slug -> id sets are built once per manifest.
+const qInput = ref(typeof route.query.q === 'string' ? route.query.q : '')
+const query = ref(qInput.value.trim())
+const activeTags = ref(parseTags(route.query.tags))
+let qTimer: ReturnType<typeof setTimeout> | undefined
+watch(qInput, v => {
+  clearTimeout(qTimer)
+  qTimer = setTimeout(() => { query.value = v.trim() }, 120)
+})
+const tagIdx = computed(() => (full.value ? tagIndex(full.value.images) : null))
+const hasTags = computed(() => manifest.value?.hasTags ?? (tagIdx.value?.size ?? 0) > 0)
+const searchMod = shallowRef<typeof import('~/utils/search') | null>(null)
+const loadSearch = async () => { searchMod.value ??= await import('~/utils/search') }
+watch(query, q => { if (q) loadSearch() })
+const searcher = computed(() => (searchMod.value && tagIdx.value ? searchMod.value.createTagSearch(tagEntries(tagIdx.value.keys(), TAG_VOCAB)) : null))
+const filterKey = computed(() => (hasTags.value ? filterKeyOf(query.value, activeTags.value) : ''))
+// null = no filter; undefined = index not ready yet.
+const matchIds = computed(() => {
+  if (!filterKey.value) return null
+  if (!tagIdx.value || (query.value && !searcher.value)) return undefined
+  return filterIds(tagIdx.value, [...(query.value ? searcher.value!.groups(query.value) : []), ...activeTags.value.map(t => [t])])
+})
+const tagStats = computed(() => (scopeImages.value && hasTags.value ? topTags(scopeImages.value, CHIPS, activeTags.value) : null))
+const chips = computed(() => (tagStats.value?.top ?? manifest.value?.chips ?? []).map(c => ({ ...c, label: tagLabel(c.slug, TAG_VOCAB) })))
+function toggleTag(slug: string) {
+  activeTags.value = activeTags.value.includes(slug) ? activeTags.value.filter(t => t !== slug) : [...activeTags.value, slug]
+}
+function setQuery(v: string) {
+  clearTimeout(qTimer)
+  qInput.value = v
+  query.value = v.trim()
+}
+
+// What the grid shows: the selected set, filtered by search + chips. Null while not computable yet
+// (only the SSR head of another set/filter is here, or the search index is loading).
+const gridImages = computed(() => {
+  const m = manifest.value
+  if (!m) return null
+  if (m.labels) return m.headSet === selectedSet.value && m.headFilter === filterKey.value ? m.images : null
+  const ids = matchIds.value
+  if (ids === undefined) return null
+  return ids ? scopeImages.value!.filter(i => ids.has(i.id)) : scopeImages.value
+})
+const resultCount = computed(() => {
+  if (!filterKey.value || !gridImages.value) return null
+  return manifest.value?.labels ? manifest.value.matchCount : gridImages.value.length
+})
+const suggestion = computed(() => {
+  if (resultCount.value !== 0 || !query.value || !searcher.value || !tagStats.value) return null
+  const slug = searcher.value.suggest(query.value, s => tagStats.value!.counts.has(s))
+  return slug && tagLabel(slug, TAG_VOCAB)
+})
+// Scroll position is saved per view (set + filter); a new view starts at the top.
+const viewKey = computed(() => [selectedSet.value, filterKey.value].filter(Boolean).join('|') || null)
+
 watch(sets, list => { if (selectedSet.value && !list.some(s => s.id === selectedSet.value)) selectedSet.value = null })
-watch(selectedSet, id => {
+watch([selectedSet, query, activeTags], ([id, q, tags]) => {
   const url = new URL(window.location.href)
-  if (id) url.searchParams.set('set', id)
-  else url.searchParams.delete('set')
+  for (const [k, v] of [['set', id], ['q', q], ['tags', tags.join(',')]] as const) {
+    if (v) url.searchParams.set(k, v)
+    else url.searchParams.delete(k)
+  }
   window.history.replaceState(window.history.state, '', url)
 })
 const v2Favs = reactive(new Set<number>())
@@ -1012,7 +1135,9 @@ function openCommentSidebarV2(id: number) {
 onMounted(async () => {
   if (isV2) {
     // Full manifest (SSR only shipped the first rows)
-    api.getManifest(token).then(m => { if (m) manifest.value = m })
+    // With ?q= the search chunk must land with it, or the filtered SSR rows would flash a skeleton.
+    Promise.all([api.getManifest(token), query.value && hasTags.value ? loadSearch() : null])
+      .then(([m]) => { if (m) manifest.value = m })
     const savedName = localStorage.getItem(CLIENT_NAME_KEY)
     if (savedName) {
       clientName.value = savedName

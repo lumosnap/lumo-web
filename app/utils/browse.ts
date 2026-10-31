@@ -13,6 +13,7 @@ export interface ManifestImage {
     bc: boolean
     m: string | null
     th: string | null
+    g?: string[] | null // AI tag slugs from the desktop app (see tag-vocab.ts); absent/null = untagged
 }
 
 export interface ShareComment {
@@ -182,6 +183,57 @@ export function setImages(images: ManifestImage[], set: BrowseSet) {
     const ids = new Set(set.ids)
     return images.filter(i => ids.has(i.id))
 }
+
+// ---- Tags (search + chips; the vocabulary search lives in search.ts) ----
+
+export type TagVocab = Record<string, { label: string; syn: string[] }>
+
+// Unknown slugs (newer desktop app) -> "Title cased".
+export const tagLabel = (slug: string, vocab: TagVocab) =>
+    vocab[slug]?.label ?? slug.split('-').filter(Boolean).map(w => w[0]!.toUpperCase() + w.slice(1)).join(' ')
+
+// slug -> ids of images carrying it. Built once per manifest; filtering is then Set lookups only.
+export function tagIndex(images: ManifestImage[]) {
+    const idx = new Map<string, Set<number>>()
+    for (const img of images) for (const slug of img.g ?? []) {
+        const s = idx.get(slug)
+        if (s) s.add(img.id)
+        else idx.set(slug, new Set([img.id]))
+    }
+    return idx
+}
+
+// Search entries for createTagSearch: one per slug present in the album, known or not.
+export const tagEntries = (slugs: Iterable<string>, vocab: TagVocab) =>
+    [...slugs].map(slug => ({ slug, label: tagLabel(slug, vocab), syn: vocab[slug]?.syn ?? [] }))
+
+// Ids matching every group (AND), where a group matches any of its slugs (OR). [] -> null (no filter).
+export function filterIds(idx: Map<string, Set<number>>, groups: string[][]): Set<number> | null {
+    if (!groups.length) return null
+    const sets = groups.map(g => {
+        if (g.length === 1) return idx.get(g[0]!) ?? new Set<number>()
+        const u = new Set<number>()
+        for (const slug of g) idx.get(slug)?.forEach(id => u.add(id))
+        return u
+    }).sort((a, b) => a.size - b.size)
+    const out = new Set<number>()
+    for (const id of sets[0]!) if (sets.every(s => s.has(id))) out.add(id)
+    return out
+}
+
+// Chips: the n most frequent tags in `images` (the current scope). Active chips outside that go first,
+// so they stay visible; active chips inside it keep their place (toggling never reorders).
+export function topTags(images: ManifestImage[], n: number, keep: string[] = []) {
+    const counts = new Map<string, number>()
+    for (const img of images) for (const slug of img.g ?? []) counts.set(slug, (counts.get(slug) ?? 0) + 1)
+    const top = [...counts].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).slice(0, n).map(([slug, count]) => ({ slug, count }))
+    const extra = keep.filter(slug => !top.some(t => t.slug === slug)).map(slug => ({ slug, count: counts.get(slug) ?? 0 }))
+    return { top: [...extra, ...top], counts }
+}
+
+// ?tags=a,b -> ['a', 'b'] (deduped, order kept).
+export const parseTags = (v: unknown) =>
+    [...new Set((typeof v === 'string' ? v : '').split(',').map(s => s.trim()).filter(Boolean))]
 
 export interface ShareFeedback {
     favorites: number[]

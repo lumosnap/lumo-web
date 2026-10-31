@@ -1,0 +1,73 @@
+// Search vocabulary for the AI tag slugs the desktop app writes into manifest images (`g`).
+// Per slug: display label + synonyms (English variants, Hindi / Malayalam / Tamil in native script
+// and romanised). Plain data: search indexes these words, never the images.
+// Slugs missing here still work: they show as a title-cased label.
+
+export const TAG_VOCAB: Record<string, { label: string; syn: string[] }> = {
+    // Events
+    'getting-ready': { label: 'Getting ready', syn: ['preparation', 'prep', 'makeup', 'make-up', 'dressing', 'bridal prep', 'groom prep', 'tayyari', 'तैयारी', 'shringar', 'श्रृंगार', 'orukkam', 'ഒരുക്കം', 'alankaram', 'അലങ്കാരം', 'அலங்காரம்', 'thayaar', 'தயார்'] },
+    haldi: { label: 'Haldi', syn: ['turmeric', 'pithi', 'peethi', 'ubtan', 'हल्दी', 'पीठी', 'उबटन', 'manjal', 'manjal kalyanam', 'മഞ്ഞൾ', 'மஞ்சள்', 'nalangu', 'நலங்கு'] },
+    mehendi: { label: 'Mehendi', syn: ['mehndi', 'mehandi', 'henna', 'मेहंदी', 'मेंहदी', 'mylanchi', 'mailanchi', 'മൈലാഞ്ചി', 'maruthani', 'மருதாணி'] },
+    sangeet: { label: 'Sangeet', syn: ['sangit', 'music night', 'musical', 'संगीत', 'sangeetham', 'സംഗീതം', 'சங்கீதம்', 'isai', 'இசை'] },
+    engagement: { label: 'Engagement', syn: ['betrothal', 'ring ceremony', 'roka', 'sagai', 'mangni', 'सगाई', 'मंगनी', 'रोका', 'nischayam', 'nishchayam', 'വിവാഹ നിശ്ചയം', 'നിശ്ചയം', 'nichayathartham', 'நிச்சயதார்த்தம்', 'நிச்சயம்'] },
+    baraat: { label: 'Baraat', syn: ['barat', 'groom arrival', 'groom entry', 'बारात', 'mappillai azhaippu', 'மாப்பிள்ளை அழைப்பு', 'varan', 'വരൻ'] },
+    ceremony: { label: 'Wedding ceremony', syn: ['wedding', 'marriage', 'ceremony', 'shaadi', 'shadi', 'शादी', 'vivah', 'vivaah', 'विवाह', 'byah', 'ब्याह', 'kalyanam', 'kalyaanam', 'കല്യാണം', 'கல்யாணம்', 'vivaham', 'വിവാഹം', 'thirumanam', 'திருமணம்', 'muhurtham', 'muhurtam', 'മുഹൂർത്തം', 'முகூர்த்தம்'] },
+    varmala: { label: 'Varmala', syn: ['jaimala', 'jaymala', 'garland', 'garland exchange', 'वरमाला', 'जयमाला', 'haaram', 'mala', 'maala', 'മാല', 'മാലയിടൽ', 'maalai', 'malai maatral', 'மாலை', 'மாலை மாற்றல்'] },
+    pheras: { label: 'Pheras', syn: ['phere', 'saat phere', 'seven vows', 'fera', 'फेरे', 'सात फेरे', 'saptapadi', 'सप्तपदी', 'സപ്തപദി', 'சப்தபதி'] },
+    thali: { label: 'Thali tying', syn: ['tali', 'taali', 'mangalsutra', 'मंगलसूत्र', 'minnu', 'minnukettu', 'മിന്ന്', 'മിന്നുകെട്ട്', 'താലി', 'താലികെട്ട്', 'thalikettu', 'தாலி', 'தாலி கட்டுதல்', 'mangalyam', 'மாங்கல்யம்'] },
+    nikah: { label: 'Nikah', syn: ['nikkah', 'nikaah', 'muslim wedding', 'निकाह', 'നിക്കാഹ്', 'நிக்காஹ்'] },
+    'church-wedding': { label: 'Church wedding', syn: ['christian wedding', 'holy matrimony', 'white wedding', 'vows', 'chapel', 'പള്ളി കല്യാണം', 'மனசம்மதம்'] },
+    reception: { label: 'Reception', syn: ['party', 'wedding party', 'after party', 'रिसेप्शन', 'दावत', 'സൽക്കാരം', 'salkaram', 'വിരുന്ന്', 'virunnu', 'வரவேற்பு', 'varaverpu', 'ரிசப்ஷன்'] },
+    // People
+    bride: { label: 'Bride', syn: ['dulhan', 'दुल्हन', 'vadhu', 'वधू', 'manavatti', 'മണവാട്ടി', 'vadhu', 'വധു', 'manamagal', 'மணமகள்', 'pennu', 'பெண்'] },
+    groom: { label: 'Groom', syn: ['bridegroom', 'dulha', 'दूल्हा', 'var', 'वर', 'manavalan', 'മണവാളൻ', 'varan', 'വരൻ', 'mappillai', 'manamagan', 'மாப்பிள்ளை', 'மணமகன்'] },
+    couple: { label: 'Couple', syn: ['bride and groom', 'newlyweds', 'pair', 'jodi', 'जोड़ी', 'दंपति', 'dampati', 'വധൂവരന്മാർ', 'jodi', 'ജോഡി', 'தம்பதி', 'thampathi', 'ஜோடி'] },
+    family: { label: 'Family', syn: ['parents', 'relatives', 'mother', 'father', 'parivar', 'pariwar', 'परिवार', 'kudumbam', 'കുടുംബം', 'குடும்பம்', 'amma', 'appa', 'achan', 'maa', 'papa'] },
+    'group-photo': { label: 'Group photo', syn: ['group', 'group shot', 'everyone', 'crowd', 'samooh', 'समूह', 'സംഘം', 'koottam', 'கூட்டம்', 'kuzhu', 'குழு'] },
+    kids: { label: 'Kids', syn: ['children', 'child', 'baby', 'babies', 'bachche', 'बच्चे', 'kuttikal', 'kutti', 'കുട്ടികൾ', 'kuzhandhaigal', 'kuzhanthai', 'குழந்தைகள்', 'குழந்தை'] },
+    elders: { label: 'Elders', syn: ['grandparents', 'grandma', 'grandpa', 'seniors', 'dada', 'dadi', 'nana', 'nani', 'बुजुर्ग', 'buzurg', 'muthassi', 'muthachan', 'മുത്തശ്ശി', 'മുതിർന്നവർ', 'paati', 'thatha', 'பாட்டி', 'தாத்தா', 'பெரியவர்கள்'] },
+    friends: { label: 'Friends', syn: ['friend', 'buddies', 'bridesmaids', 'groomsmen', 'squad', 'dost', 'dosti', 'दोस्त', 'yaar', 'koottukar', 'koottukaar', 'കൂട്ടുകാർ', 'സുഹൃത്തുക്കൾ', 'nanbargal', 'nanban', 'நண்பர்கள்'] },
+    guests: { label: 'Guests', syn: ['guest', 'visitors', 'attendees', 'mehman', 'mehmaan', 'मेहमान', 'athithi', 'atithi', 'अतिथि', 'അതിഥികൾ', 'virunthinar', 'விருந்தினர்'] },
+    // Shot types
+    portrait: { label: 'Portrait', syn: ['portraits', 'headshot', 'posed', 'chitra', 'तस्वीर', 'ഛായാചിത്രം', 'உருவப்படம்'] },
+    candid: { label: 'Candid', syn: ['natural', 'unposed', 'spontaneous', 'moment', 'candids'] },
+    'close-up': { label: 'Close-up', syn: ['closeup', 'close up', 'macro', 'detail shot'] },
+    details: { label: 'Details', syn: ['detail', 'detail shots', 'accessories', 'still life'] },
+    'black-and-white': { label: 'Black & white', syn: ['black and white', 'bw', 'b&w', 'monochrome', 'mono', 'greyscale', 'grayscale'] },
+    silhouette: { label: 'Silhouette', syn: ['silhouettes', 'backlit', 'shadow', 'परछाई'] },
+    aerial: { label: 'Aerial', syn: ['drone', 'top view', 'birds eye', 'overhead'] },
+    // Things
+    rings: { label: 'Rings', syn: ['ring', 'wedding ring', 'engagement ring', 'band', 'anguthi', 'angoothi', 'अंगूठी', 'mothiram', 'മോതിരം', 'mothiram', 'மோதிரம்'] },
+    jewellery: { label: 'Jewellery', syn: ['jewelry', 'jewels', 'gold', 'necklace', 'earrings', 'bangles', 'gehne', 'gahne', 'गहने', 'zevar', 'आभूषण', 'abharanam', 'aabharanam', 'ആഭരണം', 'സ്വർണം', 'ponnu', 'nagai', 'நகை', 'தங்கம்', 'valayal', 'வளையல்'] },
+    'mehendi-hands': { label: 'Mehendi hands', syn: ['henna hands', 'henna design', 'mehndi design', 'hands', 'मेहंदी हाथ', 'മൈലാഞ്ചി കൈ', 'மருதாணி கை'] },
+    'bridal-outfit': { label: 'Bridal outfit', syn: ['outfit', 'dress', 'gown', 'wedding dress', 'saree', 'sari', 'lehenga', 'lehnga', 'साड़ी', 'लहंगा', 'kasavu', 'kasavu saree', 'സാരി', 'കസവ്', 'pattu', 'pattu pudavai', 'பட்டு', 'புடவை', 'sherwani', 'शेरवानी', 'mundu', 'മുണ്ട്', 'veshti', 'வேட்டி'] },
+    flowers: { label: 'Flowers', syn: ['flower', 'floral', 'bouquet', 'garland', 'phool', 'फूल', 'gajra', 'गजरा', 'pookal', 'poo', 'പൂക്കൾ', 'പൂവ്', 'mulla', 'മുല്ല', 'malli', 'மல்லி', 'பூ', 'பூக்கள்'] },
+    decor: { label: 'Decor', syn: ['decoration', 'decorations', 'décor', 'setup', 'sajavat', 'sajawat', 'सजावट', 'alankaram', 'അലങ്കാരം', 'அலங்காரம்'] },
+    stage: { label: 'Stage', syn: ['mandap', 'mandapam', 'मंडप', 'മണ്ഡപം', 'மண்டபம்', 'manavarai', 'மணவறை', 'kathir mandapam', 'altar', 'dais'] },
+    venue: { label: 'Venue', syn: ['hall', 'location', 'auditorium', 'resort', 'banquet', 'sthal', 'स्थल', 'हॉल', 'ഹാൾ', 'ஹால்', 'kalyana mandapam', 'கல்யாண மண்டபம்'] },
+    food: { label: 'Food', syn: ['dinner', 'lunch', 'buffet', 'meal', 'khana', 'khaana', 'खाना', 'bhojan', 'भोजन', 'bhakshanam', 'ഭക്ഷണം', 'saapadu', 'sappadu', 'உணவு', 'சாப்பாடு'] },
+    sadya: { label: 'Sadya', syn: ['sadhya', 'onam sadya', 'feast', 'banana leaf', 'സദ്യ', 'വിരുന്ന്', 'virunthu', 'விருந்து', 'ilai saapadu', 'இலை சாப்பாடு', 'दावत', 'daawat'] },
+    cake: { label: 'Cake', syn: ['wedding cake', 'cake cutting', 'dessert', 'sweets', 'mithai', 'मिठाई', 'केक', 'കേക്ക്', 'கேக்', 'payasam', 'പായസം', 'பாயசம்'] },
+    drinks: { label: 'Drinks', syn: ['drink', 'beverages', 'cocktails', 'bar', 'juice', 'champagne', 'wine', 'peene', 'पेय', 'paaneeyam', 'പാനീയം', 'பானம்'] },
+    'invitation-card': { label: 'Invitation card', syn: ['invitation', 'invite', 'card', 'wedding card', 'kankotri', 'nimantran', 'निमंत्रण', 'कार्ड', 'kshanakathu', 'ക്ഷണക്കത്ത്', 'pathrikai', 'azhaippithazh', 'அழைப்பிதழ்', 'பத்திரிகை'] },
+    // Moments
+    dance: { label: 'Dance', syn: ['dancing', 'dancer', 'nach', 'naach', 'नाच', 'nritya', 'नृत्य', 'nritham', 'nrityam', 'നൃത്തം', 'thiruvathira', 'തിരുവാതിര', 'aattam', 'nadanam', 'நடனம்', 'ஆட்டம்', 'garba', 'bhangra'] },
+    laughing: { label: 'Laughing', syn: ['laugh', 'laughter', 'smile', 'smiling', 'happy', 'joy', 'hansi', 'हंसी', 'muskaan', 'मुस्कान', 'chiri', 'ചിരി', 'sirippu', 'சிரிப்பு', 'punnagai', 'புன்னகை'] },
+    hugging: { label: 'Hugging', syn: ['hug', 'embrace', 'cuddle', 'gale milna', 'गले', 'aalinganam', 'ആലിംഗനം', 'kettippidi', 'கட்டிப்பிடி', 'அணைப்பு'] },
+    kiss: { label: 'Kiss', syn: ['kissing', 'peck', 'chumban', 'चुंबन', 'umma', 'ഉമ്മ', 'chumbanam', 'ചുംബനം', 'muththam', 'முத்தம்'] },
+    toast: { label: 'Toast', syn: ['cheers', 'raising glasses', 'clink', 'champagne toast'] },
+    speech: { label: 'Speech', syn: ['speeches', 'talk', 'address', 'mic', 'bhashan', 'भाषण', 'prasangam', 'പ്രസംഗം', 'pechu', 'உரை', 'பேச்சு'] },
+    performance: { label: 'Performance', syn: ['show', 'band', 'singer', 'singing', 'music', 'live', 'program', 'programme', 'kalakar', 'कार्यक्रम', 'paripadi', 'പരിപാടി', 'nigazhchi', 'நிகழ்ச்சி', 'chenda', 'ചെണ്ട', 'nadaswaram', 'நாதஸ்வரம்'] },
+    procession: { label: 'Procession', syn: ['entry', 'entrance', 'walk', 'jaloos', 'julus', 'जुलूस', 'ghodi', 'घोड़ी', 'ezhunnallathu', 'ഘോഷയാത്ര', 'thalappoli', 'താലപ്പൊലി', 'oorvalam', 'ஊர்வலம்'] },
+    rituals: { label: 'Rituals', syn: ['ritual', 'puja', 'pooja', 'pujan', 'पूजा', 'रस्म', 'rasam', 'rasm', 'vidhi', 'विधि', 'chadangu', 'ചടങ്ങ്', 'പൂജ', 'sadangu', 'சடங்கு', 'பூஜை', 'blessing', 'blessings', 'aashirvad', 'आशीर्वाद'] },
+    'sacred-fire': { label: 'Sacred fire', syn: ['fire', 'agni', 'havan', 'hawan', 'homa', 'homam', 'yagna', 'अग्नि', 'हवन', 'ഹോമം', 'ഹോമകുണ്ഡം', 'ஹோமம்', 'அக்னி', 'nilavilakku', 'നിലവിളക്ക്', 'lamp', 'diya', 'दीया', 'vilakku', 'விளக்கு'] },
+    tears: { label: 'Tears', syn: ['crying', 'cry', 'emotional', 'emotion', 'vidaai', 'vidai', 'bidaai', 'विदाई', 'aansu', 'आंसू', 'kanneer', 'കണ്ണീർ', 'கண்ணீர்'] },
+    // Places / light
+    outdoor: { label: 'Outdoor', syn: ['outdoors', 'outside', 'open air', 'bahar', 'बाहर', 'puram', 'പുറത്ത്', 'veliye', 'வெளியே'] },
+    indoor: { label: 'Indoor', syn: ['indoors', 'inside', 'andar', 'अंदर', 'akathu', 'അകത്ത്', 'ullae', 'உள்ளே'] },
+    night: { label: 'Night', syn: ['evening', 'night shot', 'lights', 'fairy lights', 'raat', 'रात', 'shaam', 'शाम', 'raathri', 'രാത്രി', 'iravu', 'இரவு', 'maalai neram'] },
+    beach: { label: 'Beach', syn: ['sea', 'ocean', 'shore', 'coast', 'samundar', 'समुद्र', 'तट', 'kadal', 'kadappuram', 'കടൽ', 'കടപ്പുറം', 'கடல்', 'கடற்கரை', 'kadarkarai'] },
+    garden: { label: 'Garden', syn: ['lawn', 'park', 'greenery', 'bagh', 'baag', 'बाग', 'बगीचा', 'thottam', 'തോട്ടം', 'പൂന്തോട്ടം', 'தோட்டம்', 'poonga', 'பூங்கா'] },
+    temple: { label: 'Temple', syn: ['mandir', 'मंदिर', 'kshetram', 'ambalam', 'ക്ഷേത്രം', 'അമ്പലം', 'kovil', 'koil', 'கோவில்', 'கோயில்', 'guruvayur', 'gurudwara', 'shrine'] },
+    church: { label: 'Church', syn: ['chapel', 'cathedral', 'girja', 'गिरजाघर', 'palli', 'പള്ളി', 'ദേവാലയം', 'thevalayam', 'தேவாலயம்', 'சர்ச்'] },
+}

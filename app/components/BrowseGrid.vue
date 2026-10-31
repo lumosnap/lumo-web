@@ -63,7 +63,7 @@ const props = defineProps<{
   stackBursts: boolean
   eventDate: string | null
   labels?: Record<string, string> // SSR head only: moment labels computed from the full album
-  setId?: string | null // selected set: scroll position is saved per (token, set)
+  setId?: string | null // selected view (set + search filter): scroll position is saved per (token, view)
   stickyTop?: number // height of the sticky bar above the grid (set tabs), 0 without
 }>()
 
