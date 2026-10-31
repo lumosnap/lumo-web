@@ -223,12 +223,48 @@ export function avatarCrop(box: FaceBox | null, w: number, h: number, pad = 1.8)
     }
 }
 
-// Photos with ALL the given people. Unknown ids (person hidden, renamed away) are ignored; none left -> null.
-export function peopleIds(people: BrowsePerson[], selected: string[]): Set<number> | null {
+// Photos with ALL the given people ('all', "together"), or with ANY of them ('any', "either").
+// Unknown ids (person hidden, renamed away) are ignored; none left -> null.
+export function peopleIds(people: BrowsePerson[], selected: string[], mode: 'all' | 'any' = 'all'): Set<number> | null {
     const sets = selected.map(id => people.find(p => p.id === id)).filter(p => !!p).map(p => new Set(p.ids))
     if (!sets.length) return null
+    if (mode === 'any') return new Set(sets.flatMap(s => [...s]))
     sets.sort((a, b) => a.size - b.size)
     return new Set([...sets[0]!].filter(id => sets.every(s => s.has(id))))
+}
+
+// Search words that name a person: a whole word of the name, or the start (3+ letters) of one
+// ("nan" -> Nani, "krish" -> Arjun Krishnamoorthy). Lifted out of the query so the rest goes to the
+// tag search: "nani cake" -> Nani + cake. A word naming several people lifts them all.
+const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+const words = (s: string) => fold(s).split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+const JOINERS = new Set(['and', 'with', 'the', 'of', 'photos', 'pics', 'together'])
+export function queryPeople(q: string, people: { id: string; name: string }[]) {
+    const names = people.map(p => ({ id: p.id, w: words(p.name) }))
+    const ids: string[] = []
+    const rest: string[] = []
+    for (const word of words(q)) {
+        if (JOINERS.has(word)) { rest.push(word); continue }
+        const hit = names.filter(n => n.w.some(w => w === word || (word.length >= 3 && w.startsWith(word))))
+        if (hit.length) hit.forEach(n => ids.includes(n.id) || ids.push(n.id))
+        else rest.push(word)
+    }
+    return { ids, rest: rest.join(' ') }
+}
+
+// "Anjali", "Anjali and Nani", "Anjali, Nani and Rahul" ("or" for either).
+export const joinNames = (names: string[], and = 'and') =>
+    names.length < 2 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} ${and} ${names[names.length - 1]}`
+
+// image id -> people in it, in the photographer's order (lightbox "who's in this").
+export function peopleByImage(people: BrowsePerson[]) {
+    const m = new Map<number, BrowsePerson[]>()
+    for (const p of people) for (const id of p.ids) {
+        const l = m.get(id)
+        if (l) l.push(p)
+        else m.set(id, [p])
+    }
+    return m
 }
 
 // Intersection of two optional filters (null = no filter).

@@ -1,6 +1,6 @@
 // Self-check for the browse-v2 row math. Run: node scripts/browse.check.ts
 import assert from 'node:assert/strict'
-import { andIds, avatarCrop, browseHead, peopleIds, resolvePeople, buildRows, columnsFor, filterIds, mergeFeedback, parseTags, resolveSets, setImages, tagEntries, tagIndex, tagLabel, toRows, topTags, type ManifestImage } from '../app/utils/browse.ts'
+import { andIds, joinNames, peopleByImage, queryPeople, avatarCrop, browseHead, peopleIds, resolvePeople, buildRows, columnsFor, filterIds, mergeFeedback, parseTags, resolveSets, setImages, tagEntries, tagIndex, tagLabel, toRows, topTags, type ManifestImage } from '../app/utils/browse.ts'
 import { createTagSearch } from '../app/utils/search.ts'
 import { TAG_VOCAB } from '../app/utils/tag-vocab.ts'
 
@@ -193,6 +193,25 @@ assert.deepEqual([...peopleIds(ppl, ['bride', 'nani'])!].sort(), [3, 5])
 assert.deepEqual([...peopleIds(ppl, ['bride', 'ghost', 'zzz'])!].sort(), [1, 2, 3, 5])
 assert.equal(peopleIds(ppl, ['ghost']), null)
 assert.equal(peopleIds(ppl, []), null)
+// Either: union ("Nani or Anjali"), same unknown-id rules.
+assert.deepEqual([...peopleIds(ppl, ['bride', 'nani'], 'any')!].sort(), [1, 2, 3, 5])
+assert.equal(peopleIds(ppl, ['ghost'], 'any'), null)
+// Search: a word naming a person is lifted out, the rest goes to the tag search.
+const named = [{ id: 'n', name: 'Nani' }, { id: 'a', name: 'Arjun Krishnamoorthy' }, { id: 'j', name: 'Joseph uncle' }, { id: 'e', name: 'Élodie' }]
+assert.deepEqual(queryPeople('nani', named), { ids: ['n'], rest: '' })
+assert.deepEqual(queryPeople('Nani cake', named), { ids: ['n'], rest: 'cake' })
+assert.deepEqual(queryPeople('nan', named), { ids: ['n'], rest: '' }) // prefix while typing
+assert.deepEqual(queryPeople('na', named), { ids: [], rest: 'na' }) // too short to guess
+assert.deepEqual(queryPeople('krish and joseph uncle', named), { ids: ['a', 'j'], rest: 'and' })
+assert.deepEqual(queryPeople('elodie', named), { ids: ['e'], rest: '' }) // accents folded
+assert.deepEqual(queryPeople('cake dance', named), { ids: [], rest: 'cake dance' })
+assert.equal(joinNames(['Anjali']), 'Anjali')
+assert.equal(joinNames(['Anjali', 'Nani']), 'Anjali and Nani')
+assert.equal(joinNames(['Anjali', 'Nani', 'Rahul']), 'Anjali, Nani and Rahul')
+assert.equal(joinNames(['Anjali', 'Nani'], 'or'), 'Anjali or Nani')
+const onImg = peopleByImage(ppl)
+assert.deepEqual(onImg.get(3)?.map(p => p.id), ppl.filter(p => p.ids.includes(3)).map(p => p.id))
+assert.equal(onImg.get(4242), undefined)
 // Composes with tag filters.
 assert.deepEqual([...andIds(new Set([2, 3, 9]), peopleIds(ppl, ['nani']))!], [3])
 assert.equal(andIds(null, null), null)

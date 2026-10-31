@@ -47,8 +47,8 @@ import 'photoswipe/style.css'
 import BrowseTile from '~/components/BrowseTile.vue'
 import MomentScrubber from '~/components/MomentScrubber.vue'
 import {
-  buildRows, columnsFor, fileName, imageUrl, PSWP_BASE_OPTIONS, renderLightboxButtons, thumbUrl,
-  type ManifestImage, type ShareComment, type Tile
+  avatarCrop, buildRows, columnsFor, fileName, imageUrl, peopleByImage, PSWP_BASE_OPTIONS, renderLightboxButtons, thumbUrl,
+  type BrowsePerson, type ManifestImage, type ShareComment, type Tile
 } from '~/utils/browse'
 
 const props = defineProps<{
@@ -65,9 +65,10 @@ const props = defineProps<{
   labels?: Record<string, string> // SSR head only: moment labels computed from the full album
   setId?: string | null // selected view (set + search filter): scroll position is saved per (token, view)
   stickyTop?: number // height of the sticky bar above the grid (set tabs), 0 without
+  people?: BrowsePerson[] // named people (full manifest): lightbox shows who is in the open photo
 }>()
 
-const emit = defineEmits<{ favorite: [id: number]; comment: [id: number]; heart: [x: number, y: number] }>()
+const emit = defineEmits<{ favorite: [id: number]; comment: [id: number]; heart: [x: number, y: number]; person: [id: string] }>()
 
 const SSR_HIGH = 5 // first row at xl
 const GAP = 16 // gap-4
@@ -189,9 +190,38 @@ function openTile(t: Tile) {
   lightbox?.loadAndOpen(t.frames ? t.frames.indexOf(t.img) : t.index)
 }
 
+// Lightbox "who's in this": a face per named person in the open photo; tap -> close and show their photos.
+// Built with DOM nodes, not an HTML string: names are typed by the photographer.
+const onImage = computed(() => peopleByImage(props.people ?? []))
+let peopleEl: HTMLElement | null = null
+function renderPeople(img: ManifestImage | undefined) {
+  if (!peopleEl) return
+  const list = (img && onImage.value.get(img.id)) ?? []
+  peopleEl.replaceChildren(...list.map(p => {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.className = 'pswp__person'
+    b.setAttribute('aria-label', `Show photos of ${p.name}`)
+    const face = document.createElement('span')
+    face.className = 'pswp__person-face'
+    face.setAttribute('aria-hidden', 'true')
+    face.textContent = p.name.slice(0, 1).toUpperCase()
+    const pic = document.createElement('span')
+    Object.assign(pic.style, { backgroundImage: `url("${thumbUrl(props.base, p.cover)}")`, ...avatarCrop(p.box, p.cover.w, p.cover.h) })
+    face.append(pic)
+    const name = document.createElement('span')
+    name.textContent = p.name
+    b.append(face, name)
+    b.addEventListener('click', () => { lightbox?.pswp?.close(); emit('person', p.id) })
+    return b
+  }))
+  peopleEl.hidden = !list.length
+}
+
 function updateLightboxUI() {
   if (!lightbox?.pswp) return
   const img = items()[lightbox.pswp.currIndex]
+  renderPeople(img)
   if (!img) return
   const comments = props.comments.get(img.id) ?? []
   const favorited = props.favs.has(img.id)
@@ -258,6 +288,17 @@ function initLightbox() {
         if (img) emit('comment', img.id)
       }
     })
+
+    lightbox!.pswp!.ui!.registerElement({
+      name: 'people',
+      appendTo: 'root',
+      className: 'pswp__people pswp__hide-on-close',
+      onInit: (el) => {
+        peopleEl = el
+        el.setAttribute('role', 'group')
+        el.setAttribute('aria-label', 'In this photo')
+      },
+    })
   })
 
   lightbox.on('change', () => {
@@ -270,7 +311,7 @@ function initLightbox() {
     updateLightboxUI()
   })
   lightbox.on('close', () => scrollToImage(burst.value?.index ?? currIndex.value))
-  lightbox.on('destroy', () => { currIndex.value = -1; burst.value = null })
+  lightbox.on('destroy', () => { currIndex.value = -1; burst.value = null; peopleEl = null })
 
   // Double-tap to favorite (same thresholds as v1)
   lightbox.on('afterInit', () => {
@@ -313,6 +354,9 @@ onMounted(() => {
   mounted.value = true
   resizeObserver = new ResizeObserver(measure)
   resizeObserver.observe(root.value!)
+  // Filters above the grid open and close (search panel, summary line): the grid's page offset moves.
+  const main = root.value!.closest('main')
+  if (main) resizeObserver.observe(main)
   window.addEventListener('resize', measure)
   window.addEventListener('scroll', saveScroll, { passive: true })
   restoreScroll()
@@ -330,3 +374,15 @@ onUnmounted(() => {
   lightbox = null
 })
 </script>
+
+<style>
+/* Lightbox "in this photo": bottom-left, over the photo, under PhotoSwipe's own fade (hide-on-close). */
+.pswp__people { position: absolute; left: 12px; bottom: max(12px, env(safe-area-inset-bottom)); right: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+.pswp__people[hidden] { display: none; }
+.pswp__person { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px 0 4px; border-radius: 9999px; background: rgb(15 23 42 / 0.7); color: #fff; font-size: 14px; font-weight: 500; cursor: pointer; max-width: 100%; }
+.pswp__person:hover { background: rgb(15 23 42 / 0.9); }
+.pswp__person:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
+.pswp__person > span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pswp__person-face { position: relative; flex: none; width: 28px; height: 28px; border-radius: 9999px; overflow: hidden; background: #e2e8f0; color: #475569; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.pswp__person-face > span { position: absolute; inset: 0; background-repeat: no-repeat; }
+</style>

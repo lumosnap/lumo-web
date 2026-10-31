@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="report-kind" content="design-decisions">
+<title>Design decisions: LumoSnap client gallery</title>
+<!-- Link the product's own web font here, if it has one. No other web font. -->
+<!--
+  Written with the human-touch skill. How to write this page: references/report.md.
+  The page reads like a product landing page, top to bottom, as one story:
+    hero (the answer, the product, up to four numbers) → the short version (every chapter's claim)
+    → chapters, each one claim with one visual, ending in a bridge line into the next
+    → the session (the turn: what review changed, then the proof)
+    → For you to decide, the closing ask → Assumed.
+  Each chapter: an eyebrow (the number and the key word), a headline that states the claim, a lede line,
+  one dominant visual of its own kind, one to three lines of so-what, the reference folded in one details element,
+  and a bridge sentence that hands the reader to the next chapter.
+  Keep the structure: coverage.py reads the h2/h3 headings (the key word sits first, inside .key, then the claim),
+  the list items whose bold label ends in a colon, and the table rows, folded or not. Guidance lives in comments;
+  comments never count as filled. One file: inline CSS, one script (the motion loop at the end), no web font except the product's own.
+  Interaction is radios, :has(), :hover and details only. Captures sit beside this file, linked by relative path.
+  Quote attributes, close every element, escape & < >.
+  Write every word of this page in ASD-STE100, about 80% strict; see "Every word in Simplified Technical English" in references/report.md.
+-->
+<style>
+/* Report theme: the page wears the product it reports on, so every project gets its own report. Fill these from the chosen direction
+   (the same values as dir-1 under "Product values" at the end); everything else derives from them, the greys included.
+   --brand: the product's accent, used for fills and strokes only, never for text. --brand-on: text on it, from the product.
+   --font / --display: the product's body and heading faces (link its web font above, if it has one). --mono: its code face, if any.
+   --r-s / --r-m: the product's small and large radius. --tint: how far the greys lean toward the brand's hue (0 = pure grey, about .08 = clearly toward the brand, cool or warm).
+   --hl: the verdict's highlighter, the brand by default; set it to a second product colour if the brand is dark.
+   Red (--flag) stays the one colour that means "needs you": if the product's accent is red, set --flag to a hue the product does not use. */
+:root{--brand:oklch(0.51 0.23 277);--brand-on:#fff;--font:system-ui,sans-serif;--display:var(--font);--mono:ui-monospace,"SF Mono",Menlo,monospace;--r-s:9999px;--r-m:16px;--tint:.06;
+--accent:var(--brand);--accent-on:var(--brand-on);--accent-line:var(--accent);
+--bg:oklch(0.985 0 0);--fg:oklch(0.2 0 0);--mute:oklch(0.46 0 0);--faint:oklch(0.64 0 0);--line:oklch(0.9 0 0);--card:oklch(0.955 0 0);--band:oklch(0.965 0 0);--flag:oklch(0.5 0.19 27);--measure:62ch;
+--t-xs:.75rem;--t-s:.875rem;--t-m:1rem;--t-l:1.125rem;--t-xl:1.3rem}
+/* Light by default; the Dark checkbox switches, no script. A dark-first product: add checked to the switch, so the report opens in its scheme. */
+:root:has(#dark:checked){color-scheme:dark;--bg:oklch(0.17 0 0);--fg:oklch(0.93 0 0);--mute:oklch(0.72 0 0);--faint:oklch(0.55 0 0);--line:oklch(0.3 0 0);--card:oklch(0.22 0 0);--band:oklch(0.2 0 0);--flag:oklch(0.72 0.15 25)}
+/* The greys take the brand's hue; in dark, the accent is lifted so it still reads (a neutral ink to near-white, a vivid hue to at least 0.72). Engines without relative colour keep the plain greys above. */
+@supports (color:oklch(from red l c h)){
+/* --accent-line: strokes and bars, darkened in light so a pale accent (a yellow) still reads as a line */
+:root{--accent-line:oklch(from var(--brand) min(l,0.7) c h);--bg:oklch(from var(--brand) 0.985 calc(c*var(--tint)) h);--fg:oklch(from var(--brand) 0.2 calc(c*var(--tint)) h);--mute:oklch(from var(--brand) 0.46 calc(c*var(--tint)) h);--faint:oklch(from var(--brand) 0.64 calc(c*var(--tint)) h);--line:oklch(from var(--brand) 0.9 calc(c*var(--tint)) h);--card:oklch(from var(--brand) 0.955 calc(c*var(--tint)) h);--band:oklch(from var(--brand) 0.965 calc(c*var(--tint)) h)}
+:root:has(#dark:checked){--bg:oklch(from var(--brand) 0.17 calc(c*var(--tint)) h);--fg:oklch(from var(--brand) 0.93 calc(c*var(--tint)) h);--mute:oklch(from var(--brand) 0.72 calc(c*var(--tint)) h);--faint:oklch(from var(--brand) 0.55 calc(c*var(--tint)) h);--line:oklch(from var(--brand) 0.3 calc(c*var(--tint)) h);--card:oklch(from var(--brand) 0.22 calc(c*var(--tint)) h);--band:oklch(from var(--brand) 0.2 calc(c*var(--tint)) h);--accent:oklch(from var(--brand) max(l,calc(0.92 - min(c,0.2))) c h);--accent-on:oklch(0.17 0 0);--accent-line:var(--accent)}
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 var(--font);overflow-x:hidden;counter-reset:ch}
+main{max-width:72rem;margin:0 auto;padding:0 1.25rem 4rem}
+p,li{max-width:var(--measure)}
+a{color:inherit;text-underline-offset:.15em}
+:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+:target{scroll-margin-top:5rem}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.note,figcaption,caption{color:var(--mute);font-size:var(--t-s)}
+.flag,.fail{color:var(--flag);font-weight:600}
+.mono{font-family:var(--mono)}
+code{font-family:var(--mono);font-size:.9em}
+
+/* Sticky bar: where you are, what needs you, the theme switch */
+.bar{position:sticky;top:0;z-index:5;background:color-mix(in oklch,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar>div{max-width:72rem;margin:0 auto;padding:.55rem 1.25rem;display:flex;align-items:center;gap:1.25rem}
+.bar .name{font-weight:650;white-space:nowrap}
+.bar nav{flex:1;overflow-x:auto;scrollbar-width:none;white-space:nowrap;font-size:var(--t-s)}
+.bar nav a{display:inline-block;padding:.35rem .5rem;color:var(--mute);text-decoration:none;border-radius:var(--r-s)}
+.bar nav a:hover{color:var(--fg);background:var(--card)}
+.needs{white-space:nowrap;font-size:var(--t-s);font-weight:600;color:var(--flag);text-decoration:none;border:1px solid currentColor;border-radius:99px;padding:.25rem .7rem}
+.theme{display:inline-flex;align-items:center;gap:.35rem;font-size:var(--t-s);color:var(--mute);cursor:pointer;white-space:nowrap}
+.theme input{margin:0;accent-color:var(--fg)}
+@media (max-width:52rem){.bar nav{display:none}.bar>div{justify-content:space-between}.bar .name .note{display:none}}
+
+/* Hero: the answer first, the product under it, up to four numbers */
+.hero{padding:clamp(3rem,8vw,6rem) 0 2rem}
+.hero h1{font:600 var(--t-s)/1.4 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--mute);margin:0 0 1.25rem}
+.verdict{font-family:var(--display);font-size:clamp(2.1rem,5.2vw,4rem);line-height:1.04;letter-spacing:-.03em;font-weight:750;max-width:16em;margin:0 0 1.25rem}
+.verdict mark{background:linear-gradient(transparent 58%,color-mix(in oklch,var(--hl,var(--accent)) 45%,transparent) 58% 92%,transparent 92%);color:inherit;padding:0 .05em}
+.dek{font-size:clamp(1.1rem,1.6vw,1.3rem);color:var(--mute);max-width:38em;margin:0 0 2rem}
+.ctas{display:flex;flex-wrap:wrap;gap:.75rem;margin:0 0 3rem}
+.btn{display:inline-flex;align-items:center;gap:.5rem;min-height:2.75rem;padding:0 1.15rem;border-radius:var(--r-s);font-weight:600;text-decoration:none;border:1px solid var(--fg)}
+.btn.primary{background:var(--accent);color:var(--accent-on);border-color:var(--accent)}
+.btn.primary b{background:var(--flag);color:#fff;border-radius:99px;min-width:1.5rem;height:1.5rem;display:inline-grid;place-items:center;font-size:var(--t-s)}
+.shot-hero{margin:0}
+.shot-hero img{display:block;width:100%;height:auto;border-radius:var(--r-m);border:1px solid var(--line);box-shadow:0 1px 2px oklch(0 0 0/.06),0 24px 60px -24px oklch(0 0 0/.25)}
+.shot-hero figcaption{margin-top:.75rem}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(13rem,100%),1fr));gap:1.5rem 2rem;margin:3rem 0 1rem;padding:1.5rem 0 0;border-top:1px solid var(--line)}
+.stats div{display:flex;flex-direction:column-reverse;justify-content:flex-end}
+.stats dd{margin:0;font-size:clamp(2.2rem,4vw,3.2rem);font-weight:750;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.stats dt{color:var(--mute);font-size:var(--t-s);margin-top:.4rem;max-width:16em}
+.stats .open dd{color:var(--flag)}
+
+/* The short version: every chapter's claim; read alone it tells the story */
+.short{margin:4rem 0 0}
+.short h2{font:600 var(--t-s)/1.4 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--mute);margin:0 0 1rem}
+.short>ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(20rem,100%),1fr));gap:0 2.5rem;counter-reset:s}
+.short>ol>li{counter-increment:s;max-width:none;border-top:1px solid var(--line)}
+.short>ol>li>a{display:grid;grid-template-columns:2.2rem 1fr;gap:.25rem;padding:.85rem 0;text-decoration:none}
+.short>ol>li>a::before{content:counter(s,decimal-leading-zero);font:600 var(--t-s)/1.6 var(--mono);color:var(--faint)}
+.short>ol>li>a:hover span{text-decoration:underline}
+.short ol ol{list-style:none;margin:-.4rem 0 .8rem 2.2rem;padding:0}
+.short ol ol li{font-size:var(--t-s)}
+.short ol ol a{display:block;padding:.15rem 0;color:var(--mute)}
+
+/* Chapters: number + key word as the eyebrow, the claim as the headline, a bridge into the next */
+.chapter,.session{counter-increment:ch;padding:clamp(4rem,9vw,7rem) 0 0;scroll-margin-top:3rem}
+.chapter>h2,.session>h2,h3{font-family:var(--display)}
+.chapter>h2,.session>h2{font-size:clamp(1.75rem,3.6vw,2.9rem);line-height:1.08;letter-spacing:-.025em;font-weight:750;max-width:20em;margin:0 0 1.25rem}
+h2 .key{display:block;font:600 var(--t-s)/1.4 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-bottom:1rem}
+h2 .key::before{content:counter(ch,decimal-leading-zero);display:inline-block;margin-right:.75rem;padding:.1rem .4rem;border:1px solid currentColor;border-radius:var(--r-s)}
+.lede{font-size:clamp(1.1rem,1.5vw,1.25rem);color:var(--mute);max-width:40em;margin:0 0 2.5rem}
+.sowhat{font-size:var(--t-l);max-width:58ch;margin:2rem 0 0;padding-left:1rem;border-left:3px solid var(--accent-line)}
+.bridge{margin:clamp(3rem,6vw,4.5rem) 0 0;display:flex;flex-wrap:wrap;gap:.25rem 1rem;align-items:baseline;font-size:var(--t-l);max-width:none}
+.bridge::before{content:"";flex:0 0 2.5rem;border-top:1px solid var(--faint);transform:translateY(-.3em)}
+.bridge a{font-weight:600}
+/* Full-bleed bands alternate the rhythm, no extra wrappers */
+.band{background:var(--band);box-shadow:0 0 0 100vmax var(--band);clip-path:inset(0 -100vmax);padding-bottom:clamp(4rem,9vw,7rem);margin-top:clamp(4rem,9vw,7rem)}
+details{margin:2rem 0 0;border-top:1px solid var(--line);padding-top:.5rem}
+summary{cursor:pointer;color:var(--mute);font-size:var(--t-s);font-weight:600;padding:.5rem 0;min-height:2rem}
+summary:hover{color:var(--fg)}
+details[open]>summary{margin-bottom:1rem}
+h3{font-size:clamp(1.3rem,2.2vw,1.65rem);line-height:1.2;letter-spacing:-.015em;margin:clamp(3.5rem,7vw,5rem) 0 1rem;max-width:26em}
+h3 .key{display:block;font:600 var(--t-xs)/1.4 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-bottom:.5rem}
+details h3{font-size:var(--t-l);margin:1.5rem 0 .5rem}
+
+/* Flows: each core flow as a row of steps with arrows; the shape it beat beside it, dashed. Stacks with down arrows when narrow. */
+.flows{display:grid;gap:2.5rem}
+.flowmap{margin:0}
+.flowmap figcaption{margin:0 0 .75rem;color:var(--fg);font-size:var(--t-m)}
+.flow{list-style:none;margin:0;padding:0 2rem 0 0;display:flex;flex-wrap:wrap;gap:1rem 2.25rem;align-items:stretch}
+.flow>li{position:relative;max-width:none;flex:0 1 12rem;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-m);padding:.75rem .9rem;font-size:var(--t-s);display:flex;flex-direction:column;gap:.25rem}
+.flow>li:not(:last-child)::after{content:"→";position:absolute;right:-1.7rem;top:50%;transform:translateY(-50%);color:var(--mute);font-size:1.1rem}
+.flow i{font:600 var(--t-xs)/1.4 var(--mono);font-style:normal;letter-spacing:.05em;text-transform:uppercase;color:var(--mute)}
+.flow b{font-size:var(--t-m);line-height:1.3}
+.flow span{color:var(--mute)}
+.flow .fork{border-color:var(--fg)}
+.flow .end{border:2px solid var(--accent-line);padding:calc(.75rem - 1px) calc(.9rem - 1px)}
+.flowmap.was figcaption{color:var(--mute)}
+.flowmap.was .flow>li{background:transparent;border:1px dashed var(--faint);color:var(--mute)}
+.flowmap.was .flow .cut b{text-decoration:line-through;text-decoration-color:var(--flag)}
+@media (max-width:40rem){.flow{flex-direction:column;gap:1.75rem;padding:0}.flow>li{flex:none}.flow>li:not(:last-child)::after{content:"↓";right:auto;left:1rem;top:auto;bottom:-1.6rem;transform:none}}
+/* Report motion: anywhere the content is a change over time, a glyph (.act) acts it out. See "Motion in the report" in references/report.md.
+   Every glyph sits on a scene (.scene), the one surface for motion in every chapter: the top of a flow step, a before and after pair (.pair), the top of a Life card, a motion specimen (.specimens). Same fill, corner and label everywhere, so motion is part of the page, not added to it.
+   .plays on the element whose scenes run together (a flow, a pair, a card, the specimen row). The script at the end of the page plays it in a loop while it is on screen and stops it when it is not. Without the script, with reduced motion and in print: the end state, still.
+   Each glyph is drawn for this product (inline SVG); its keyframes live under "Product values". --n: an index from 0 for glyphs that play one after another (a flow's steps, before then after); set it on the glyph or any parent. On any element inside .act: --a, its keyframes name (an element without it stays still); --at, a delay inside its beat; --d and --e, its own duration and easing (a specimen uses the product's real values). --h on .act: its height, 2rem by default; larger where the thing shown needs room to read. */
+@property --a{syntax:"*";inherits:false}
+.plays{--step:.9s}
+.act{display:block;height:var(--h,2rem);color:var(--fg)}
+.act svg{height:100%;width:auto;overflow:visible}
+.act *{transform-box:fill-box;transform-origin:center}
+.plays.on .act *{animation:var(--a,none) var(--d,var(--step)) var(--e,cubic-bezier(.2,.7,.3,1)) calc(var(--n,0) * var(--step) + var(--at,0s)) both}
+.scene{position:relative;display:grid;place-items:center;min-height:var(--scene,6rem);padding:1.6rem 1rem 1rem;background:var(--card);border-radius:var(--r-m)}
+.scene>.tag{position:absolute;left:.65rem;top:.55rem;font:600 var(--t-xs)/1 var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--mute)}
+.flow .scene{--scene:4.5rem;margin:-.75rem -.9rem .4rem;padding:.75rem;border-radius:calc(var(--r-m) - 1px) calc(var(--r-m) - 1px) 0 0;border-bottom:1px solid var(--line)}
+.flow .end .scene{margin:calc(-.75rem + 1px) calc(-.9rem + 1px) .4rem}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(15rem,100%),1fr));gap:1rem;margin:1.5rem 0}
+.pair figure{margin:0}
+.pair figcaption{margin-top:.5rem;font-size:var(--t-s);color:var(--mute)}
+.pair .was .scene{background:transparent;border:1px dashed var(--faint)}
+.pair .act{--h:7rem}
+.scene.duo{grid-template-columns:1fr 1fr;gap:1rem}
+.scene.duo>.tag+.tag{left:calc(50% + .5rem)}
+.life .scene{margin:-1.25rem -1.25rem 1rem;border-radius:var(--r-m) var(--r-m) 0 0;background:color-mix(in oklch,var(--bg) 60%,var(--card))}
+.specimens{list-style:none;padding:0;margin:1rem 0 1.5rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(13rem,100%),1fr));gap:1rem}
+.specimens li{max-width:none}
+.specimens b{display:block;margin-top:.5rem}
+.specimens span:not(.act,.act *){color:var(--mute);font-size:var(--t-s)}
+@media (prefers-reduced-motion:reduce),print{.plays .act *{animation:none!important}}
+
+/* Brief: a person card */
+.pull{list-style:none;padding:0;margin:0 0 2.5rem;font-size:clamp(1.4rem,2.8vw,2.1rem);line-height:1.25;letter-spacing:-.015em;max-width:24em}
+.pull strong{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.pull li{max-width:none}.pull li::before{content:"“"}.pull li::after{content:"”"}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(15rem,100%),1fr));gap:1.5rem 2rem;padding:0;list-style:none;margin:0}
+.fields li{max-width:none}
+.fields strong{display:block;font:600 var(--t-xs)/1.4 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-bottom:.35rem}
+.fields ul{padding-left:1.1rem}
+.fields.key{grid-template-columns:repeat(auto-fit,minmax(min(14rem,100%),1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r-m);overflow:hidden}
+.fields.key li{background:var(--bg);padding:1.25rem;font-size:var(--t-l);line-height:1.4}
+
+/* Direction: try each look on the same content (radios, no script). Per-direction values: see "Product values" at the end. */
+.dirs{display:grid;grid-template-columns:minmax(0,1fr) minmax(15rem,20rem);gap:1.25rem;align-items:start}
+@media (max-width:52rem){.dirs{grid-template-columns:1fr}}
+.dirs>input{position:absolute;opacity:0;pointer-events:none}
+.choices{display:grid;gap:.5rem;margin:0;padding:0;border:0;min-width:0}
+.choices legend{font-size:var(--t-s);color:var(--mute);margin-bottom:.5rem;padding:0}
+.choice{display:grid;grid-template-columns:3rem 1fr;gap:.75rem;align-items:center;padding:.6rem;border:1px dashed var(--faint);border-radius:var(--r-m);cursor:pointer;background:var(--bg)}
+.choice:hover{border-style:solid}
+.choice i{display:grid;place-items:center;height:2.25rem;border-radius:var(--sr);background:var(--sb);color:var(--sf);font:600 .9rem/1 var(--sfont);font-style:normal;box-shadow:inset 0 -5px 0 var(--sa),0 0 0 1px var(--line)}
+.choice b{display:block;font-size:var(--t-m)}
+.choice small{color:var(--mute);font-size:var(--t-xs)}
+.choice .tag{font:600 var(--t-xs) var(--mono);letter-spacing:.04em;margin-left:.4rem;color:var(--mute)}
+.dirs:has(#dir-1:focus-visible) [for="dir-1"],.dirs:has(#dir-2:focus-visible) [for="dir-2"],.dirs:has(#dir-3:focus-visible) [for="dir-3"],.dirs:has(#dir-4:focus-visible) [for="dir-4"]{outline:2px solid var(--fg);outline-offset:2px}
+.dirs:has(#dir-1:checked) [for="dir-1"],.dirs:has(#dir-2:checked) [for="dir-2"],.dirs:has(#dir-3:checked) [for="dir-3"],.dirs:has(#dir-4:checked) [for="dir-4"]{border:2px solid var(--accent-line);padding:calc(.6rem - 1px)}
+.preview{margin:0}
+.app{background:var(--t-bg);color:var(--t-fg);font-family:var(--t-font);border-radius:var(--r-m);border:1px solid var(--line);overflow:hidden;transition:background-color .26s ease-out,color .26s ease-out}
+.app header{display:flex;gap:1.25rem;align-items:center;padding:.7rem 1rem;border-bottom:1px solid var(--t-line);font-size:var(--t-s)}
+.app header b{margin-right:auto}
+.app .body{padding:1.25rem 1rem 1.5rem}
+.app .t{font-size:clamp(1.3rem,2.4vw,1.7rem);font-weight:600;line-height:1.15;margin:0}
+.app .m{color:var(--t-mute);font-size:var(--t-s);margin:.25rem 0 1rem}
+.app .row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1.25rem}
+.app .go{display:inline-block;background:var(--t-accent);color:var(--t-on);border-radius:var(--t-radius);padding:.5rem 1rem;font-weight:600;font-size:var(--t-s)}
+.why{display:none;margin:.75rem 0 0;font-size:var(--t-s);color:var(--mute)}
+.why b{color:var(--fg)}
+.dirs:has(#dir-1:checked) .why.w1,.dirs:has(#dir-2:checked) .why.w2,.dirs:has(#dir-3:checked) .why.w3,.dirs:has(#dir-4:checked) .why.w4{display:block}
+@media (prefers-reduced-motion:reduce){.app{transition:none}}
+/* A region cropped out of a capture, at any scale: --img, the region's --x/--y/--w/--h and the capture's --iw in source px, --s the scale */
+.ph{--s:.6;display:block;flex:none;width:calc(var(--w)*1px*var(--s));height:calc(var(--h)*1px*var(--s));background:var(--img) no-repeat calc(var(--x)*-1px*var(--s)) calc(var(--y)*-1px*var(--s))/calc(var(--iw)*1px*var(--s)) auto}
+
+/* Borrowed from the product's world: source → where it lives in the UI */
+.desk{list-style:none;padding:0;margin:3.5rem 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(16rem,100%),1fr));gap:1rem}
+.desk li{max-width:none;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-m);padding:1.25rem;display:flex;flex-direction:column;gap:.6rem}
+.desk .art{height:6.5rem;display:grid;place-items:center;background:var(--t-bg,var(--card));border-radius:var(--r-s);color:var(--t-fg,var(--fg));margin-bottom:.4rem;overflow:hidden}
+.desk .from{font:600 var(--t-xs)/1.4 var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--mute)}
+.desk b{font-size:var(--t-l);line-height:1.25}
+.desk span:last-child{color:var(--mute);font-size:var(--t-s)}
+
+/* Design language: a style board, drawn in the product's values */
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(20rem,100%),1fr));gap:1rem}
+.board>figure{margin:0;background:var(--card);border-radius:var(--r-m);padding:1.5rem}
+.board .wide{grid-column:1/-1}
+.specimen{font-family:var(--f);font-size:var(--size);font-weight:var(--w,400);line-height:1.1;display:block;overflow-wrap:anywhere;margin-bottom:.5rem}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(9.5rem,100%),1fr));gap:.5rem;margin-bottom:.75rem}
+.chip{border-radius:var(--r-s);background:var(--bg);color:var(--fg);padding:0 0 .6rem;display:flex;flex-direction:column;overflow:hidden;font-size:var(--t-xs);line-height:1.35;border:1px solid var(--line)}
+.chip b{font-size:var(--t-s)}
+.chip>b,.chip>span{padding:0 .6rem}
+.chip .on{display:block;background:var(--s);color:var(--c);font:600 1.5rem/1 var(--t-font,var(--font));padding:1.1rem .6rem;margin-bottom:.5rem;border-bottom:1px solid var(--line)}
+.space{display:inline-block;height:.6rem;width:var(--s);background:var(--fg);vertical-align:middle;margin-right:.3rem}
+.radius{display:inline-block;width:2.5rem;height:2.5rem;border:3px solid var(--fg);border-right:0;border-bottom:0;border-top-left-radius:var(--r);vertical-align:middle;margin-right:.75rem}
+.ctl{display:inline-grid;place-items:center;margin:0 .4rem .6rem 0}
+.voice{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(18rem,100%),1fr));gap:1rem 2rem;margin:0 0 2rem}
+.voice div{border-top:2px solid var(--accent-line);padding-top:.75rem}
+.voice div.not{border-top-style:dashed;border-color:var(--faint)}
+.voice dt{font:600 var(--t-xs)/1.4 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-bottom:.5rem}
+.voice dd{margin:0 0 .5rem;font-family:var(--t-font,var(--font));font-size:var(--t-l)}
+.voice .not dd{color:var(--mute);text-decoration:line-through;text-decoration-color:var(--faint)}
+
+/* Captures: hover a note and its pin lights up, and the other way round (up to four pins per capture) */
+.annotated{display:grid;grid-template-columns:minmax(0,3fr) minmax(15rem,1fr);gap:2rem;align-items:start;margin:0}
+.annotated+.annotated{margin-top:3.5rem}
+@media (max-width:56rem){.annotated{grid-template-columns:1fr}}
+.shot{position:relative;display:block}
+.shot img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:var(--r-s)}
+.pin{position:absolute;left:var(--x);top:var(--y);transform:translate(-50%,-50%);width:1.75rem;height:1.75rem;border-radius:50%;background:var(--accent);color:var(--accent-on);font:700 var(--t-s)/1.75rem var(--font);text-align:center;text-decoration:none;box-shadow:0 0 0 3px var(--bg);transition:transform .12s ease-out}
+.annotated figcaption>p{margin-top:0}
+.legend{margin:0;padding:0;list-style:none;counter-reset:pin var(--start,0)}
+.legend li{counter-increment:pin;display:grid;grid-template-columns:2rem 1fr;gap:.25rem;padding:.6rem .5rem;margin:0 -.5rem;border-radius:var(--r-s);color:var(--fg);font-size:var(--t-m)}
+.legend li::before{content:counter(pin);font-weight:700}
+.legend a{color:var(--mute);font:var(--t-xs) var(--mono)}
+.annotated:has(.pin:nth-of-type(1):hover) .legend li:nth-child(1),.annotated:has(.legend li:nth-child(1):hover) .legend li:nth-child(1),
+.annotated:has(.pin:nth-of-type(2):hover) .legend li:nth-child(2),.annotated:has(.legend li:nth-child(2):hover) .legend li:nth-child(2),
+.annotated:has(.pin:nth-of-type(3):hover) .legend li:nth-child(3),.annotated:has(.legend li:nth-child(3):hover) .legend li:nth-child(3),
+.annotated:has(.pin:nth-of-type(4):hover) .legend li:nth-child(4),.annotated:has(.legend li:nth-child(4):hover) .legend li:nth-child(4){background:var(--bg)}
+.annotated:has(.legend li:nth-child(1):hover) .pin:nth-of-type(1),.annotated:has(.legend li:nth-child(2):hover) .pin:nth-of-type(2),
+.annotated:has(.legend li:nth-child(3):hover) .pin:nth-of-type(3),.annotated:has(.legend li:nth-child(4):hover) .pin:nth-of-type(4),.pin:hover{transform:translate(-50%,-50%) scale(1.3);background:var(--flag);color:#fff}
+@media (prefers-reduced-motion:reduce){.pin{transition:none}}
+
+/* Session: the turn, the proof, the feel */
+.kicker{max-width:none;font:600 var(--t-xs)/1.4 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--mute);margin:0 0 1rem}
+.call{margin:1.5rem 0 2.5rem}
+.judge{font-size:var(--t-m);margin:0 0 1rem}
+.options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(15rem,100%),1fr));gap:1rem}
+.opt{margin:0;border:1px dashed var(--faint);border-radius:var(--r-m);padding:.75rem;background:var(--bg)}
+.opt.picked{border:2px solid var(--accent-line)}
+.opt .stage{background:var(--t-bg,var(--card));border-radius:var(--r-s);min-height:8rem;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;overflow:hidden;padding:.75rem}
+.opt .stage img{display:block;max-width:100%;height:auto}
+.opt figcaption{margin-top:.75rem}
+.pick{font:600 var(--t-xs) var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--fg);margin-left:.35rem}
+.badge{font:600 var(--t-xs) var(--mono);letter-spacing:.04em;border:1px solid currentColor;border-radius:var(--r-s);padding:.1rem .35rem;color:var(--mute);white-space:nowrap}
+.counts,.deltas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(14rem,100%),1fr));gap:1rem 2rem;margin:0}
+.counts div,.deltas div{border-top:2px solid var(--accent-line);padding-top:.75rem;display:flex;flex-direction:column-reverse;justify-content:flex-end}
+.counts dd,.deltas dd{margin:0;font-size:clamp(2rem,4vw,3rem);font-weight:750;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.counts dt,.deltas dt{color:var(--mute);font-size:var(--t-s);margin-top:.5rem}
+.counts .open{border-color:var(--flag)}.counts .open dd{color:var(--flag)}
+.deltas dd s{color:var(--faint);font-weight:400;text-decoration-thickness:2px}
+
+/* Decisions: the bars are the index; press one to see its rows (rows carry data-l = layer number) */
+.layers{border:0;margin:0 0 1rem;padding:0;max-width:44rem;min-width:0}
+.layers legend{font-size:var(--t-s);color:var(--mute);padding:0;margin-bottom:.5rem}
+.layers input{position:absolute;opacity:0;pointer-events:none}
+.layers label{display:grid;grid-template-columns:minmax(0,11rem) 1fr 2.5rem;align-items:center;gap:.75rem;padding:.4rem .5rem;margin:0 -.5rem;border-radius:var(--r-s);font-size:var(--t-s);cursor:pointer}
+.layers label::after{content:"";order:1;height:.65rem;width:calc(var(--n) * 4.5%);min-width:3px;background:var(--accent-line);border-radius:1px}
+.layers label b{order:2;text-align:right;font-variant-numeric:tabular-nums}
+.layers label:hover,.layers label:has(:checked){background:var(--card)}
+.layers label:has(:checked){font-weight:600}
+.layers label:has(:focus-visible){outline:2px solid var(--fg)}
+.layers label.all{border-top:1px solid var(--line);border-radius:0 0 var(--r-s) var(--r-s);margin-top:.25rem}
+.layers label.all::after{visibility:hidden}
+.decisions .hint{color:var(--mute);font-size:var(--t-s);margin:.5rem 0 0}
+.decisions tbody tr{display:none}
+.decisions:has(input:checked) .hint{display:none}
+.decisions:has(#l-all:checked) tbody tr,.decisions:has(#l-1:checked) tr[data-l="1"],.decisions:has(#l-2:checked) tr[data-l="2"],.decisions:has(#l-3:checked) tr[data-l="3"],.decisions:has(#l-4:checked) tr[data-l="4"],.decisions:has(#l-5:checked) tr[data-l="5"],.decisions:has(#l-6:checked) tr[data-l="6"],.decisions tbody tr:target{display:table-row}
+.decisions table{display:none}
+.decisions:has(input:checked) table,.decisions:has(tr:target) table{display:table}
+
+/* Life: two or three moments as cards */
+.life{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(16rem,100%),1fr));gap:1rem}
+.life li{background:var(--card);border-radius:var(--r-m);padding:1.25rem;max-width:none}
+.life strong{display:block;font-size:var(--t-l);margin-bottom:.35rem}
+
+/* For you to decide: the closing ask, the one inverted band on the page */
+.ask{background:var(--fg);color:var(--bg);box-shadow:0 0 0 100vmax var(--fg);clip-path:inset(0 -100vmax);padding-bottom:clamp(4rem,8vw,6rem);margin-top:clamp(4rem,9vw,7rem);--line:color-mix(in oklch,var(--bg) 22%,var(--fg));--mute:color-mix(in oklch,var(--bg) 70%,var(--fg));--card:color-mix(in oklch,var(--bg) 9%,var(--fg));--flag:oklch(0.75 0.15 25)}
+:root:has(#dark:checked) .ask{--flag:oklch(0.5 0.19 27)}
+.ask h2 .key{color:var(--flag)}
+.cards{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(19rem,100%),1fr));gap:1rem;counter-reset:card}
+.cards>li{counter-increment:card;background:var(--card);border-radius:var(--r-m);padding:1.25rem;max-width:none;display:flex;flex-direction:column}
+.cards>li::before{content:counter(card);font:750 2rem/1 var(--display);margin-bottom:.75rem;color:var(--flag)}
+.cards b{display:block;font-size:var(--t-l);line-height:1.25;margin-bottom:.4rem}
+.cards a{color:var(--mute);font:var(--t-xs) var(--mono)}
+.cards>li>span:not(.alt){margin-bottom:.9rem}
+.cards .alt{display:block;margin-top:auto;padding-top:.75rem;border-top:1px solid var(--line);color:var(--mute)}
+.cards .alt::before{content:"Or: ";font-weight:600;color:var(--bg)}
+.owed{margin:0;padding:0;list-style:none;columns:2 22rem;column-gap:2.5rem}
+.owed li{padding:.6rem 0 .6rem 1.4rem;border-top:1px solid var(--line);break-inside:avoid;position:relative}
+.owed li::before{content:"○";position:absolute;left:0;color:var(--flag);font-weight:700}
+.ask h3{margin-top:3rem}
+
+/* Tables: reference, folded */
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;margin:.5rem 0;font-size:var(--t-s)}
+th,td{text-align:left;vertical-align:top;padding:.6rem .75rem .6rem 0;border-bottom:1px solid var(--line)}
+thead th{font-size:var(--t-xs);color:var(--mute);font-weight:600;position:sticky;top:0;background:var(--bg)}
+.band thead th{background:var(--band)}
+td.rejected{color:var(--mute)}
+tr[id]{scroll-margin-top:4rem}
+tr:target{outline:0;background:color-mix(in oklch,var(--flag) 12%,var(--bg))}
+.id{font:600 var(--t-xs) var(--mono);color:var(--mute);display:block}
+.superseded{text-decoration:line-through;color:var(--mute)}
+/* Motion: the duration drawn; hover or focus a row to play it */
+td:has(.dur){min-width:12rem}
+.dur{display:inline-block;height:.45rem;width:calc(var(--ms) * .2px);background:var(--accent-line);vertical-align:middle;margin-right:.4rem}
+.demo{display:inline-block;width:2rem;height:.75rem;position:relative;vertical-align:middle;margin-right:.4rem}
+.demo::after{content:"";position:absolute;left:0;top:.125rem;width:.5rem;height:.5rem;border-radius:50%;background:var(--fg);animation:run calc(var(--ms) * 1ms) var(--ease,ease) infinite alternate paused}
+tr:is(:hover,:focus-within,:focus) .demo::after{animation-play-state:running}
+.dur.loop{background:repeating-linear-gradient(90deg,var(--fg) 0 6px,transparent 6px 10px);width:3rem}
+.motion td:first-child,.motion th:first-child{position:sticky;left:0;background:var(--bg)}
+@keyframes run{to{left:1.5rem}}
+@media (prefers-reduced-motion:reduce){.demo::after{animation:none}}
+.foot{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:.5rem 2rem;color:var(--mute);font-size:var(--t-s)}
+
+/* Print opens every fold and shows every decision row; ::details-content is the no-script way (Chromium 131+, Safari 18.4+). Older engines print folds closed. */
+/* Icons: one stroke set, drawn with CSS masks in the text colour, so they follow the theme, dark mode and print.
+   An icon always sits beside its word and means one thing on the whole page (see "Icons" in references/report.md).
+   Chapters and their nav links get theirs from the section id; a new chapter falls back to a dot.
+   Elsewhere add a class: <h3 class="i-scale">, <div class="i-fix"> in .stats or .counts, or <span class="ic i-flag"></span> inline. */
+:root{--ic-user:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21a8 8 0 0 1 16 0'/%3E%3C/svg%3E");--ic-route:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='6' cy='19' r='3'/%3E%3Ccircle cx='18' cy='5' r='3'/%3E%3Cpath d='M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15'/%3E%3C/svg%3E");--ic-compass:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m16 8-2 6-6 2 2-6z'/%3E%3C/svg%3E");--ic-palette:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 22a10 10 0 1 1 10-10c0 2.8-2.2 4-4 4h-2a2 2 0 0 0-1.5 3.3A1.6 1.6 0 0 1 12 22z'/%3E%3Ccircle cx='7.5' cy='11.5' r='1'/%3E%3Ccircle cx='10.5' cy='7.5' r='1'/%3E%3Ccircle cx='15.5' cy='8.5' r='1'/%3E%3C/svg%3E");--ic-search:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");--ic-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-5-5L5 21'/%3E%3C/svg%3E");--ic-history:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 3-6.7L3 8'/%3E%3Cpath d='M3 3v5h5M12 7v5l3 2'/%3E%3C/svg%3E");--ic-flag:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 22V4s1-1 4-1 5 2 8 2 4-1 4-1v11s-1 1-4 1-5-2-8-2-4 1-4 1'/%3E%3C/svg%3E");--ic-help:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01'/%3E%3C/svg%3E");--ic-scale:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3v18M7 21h10M3 7h18M6 7l-3 7a3 3 0 0 0 6 0zM18 7l-3 7a3 3 0 0 0 6 0z'/%3E%3C/svg%3E");--ic-ruler:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 17 17 3l4 4L7 21z'/%3E%3Cpath d='m7.5 12.5 2 2m1-5 2 2m1-5 2 2'/%3E%3C/svg%3E");--ic-list:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 7 2 2 4-4M3 17l2 2 4-4M13 6h8M13 12h8M13 18h8'/%3E%3C/svg%3E");--ic-spark:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 17v4M17 19h4'/%3E%3C/svg%3E");--ic-motion:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12h-4l-3 9L9 3l-3 9H2'/%3E%3C/svg%3E");--ic-voice:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/%3E%3C/svg%3E");--ic-screen:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='3' width='20' height='14' rx='2'/%3E%3Cpath d='M8 21h8M12 17v4'/%3E%3C/svg%3E");--ic-choice:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2 22 12 12 22 2 12z'/%3E%3C/svg%3E");--ic-check:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");--ic-x:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E");--ic-alert:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 8v4M12 16h.01'/%3E%3C/svg%3E");--ic-fix:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z'/%3E%3C/svg%3E");--ic-keep:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z'/%3E%3C/svg%3E");--ic-dot:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E")}
+.i-user{--i:var(--ic-user)}
+.i-route{--i:var(--ic-route)}
+.i-compass{--i:var(--ic-compass)}
+.i-palette{--i:var(--ic-palette)}
+.i-search{--i:var(--ic-search)}
+.i-image{--i:var(--ic-image)}
+.i-history{--i:var(--ic-history)}
+.i-flag{--i:var(--ic-flag)}
+.i-help{--i:var(--ic-help)}
+.i-scale{--i:var(--ic-scale)}
+.i-ruler{--i:var(--ic-ruler)}
+.i-list{--i:var(--ic-list)}
+.i-spark{--i:var(--ic-spark)}
+.i-motion{--i:var(--ic-motion)}
+.i-voice{--i:var(--ic-voice)}
+.i-screen{--i:var(--ic-screen)}
+.i-choice{--i:var(--ic-choice)}
+.i-check{--i:var(--ic-check)}
+.i-x{--i:var(--ic-x)}
+.i-alert{--i:var(--ic-alert)}
+.i-fix{--i:var(--ic-fix)}
+.i-keep{--i:var(--ic-keep)}
+.i-dot{--i:var(--ic-dot)}
+#brief,.bar a[href="#brief"]{--i:var(--ic-user)}
+#flows,.bar a[href="#flows"]{--i:var(--ic-route)}
+#direction,.bar a[href="#direction"]{--i:var(--ic-compass)}
+#language,.bar a[href="#language"]{--i:var(--ic-palette)}
+#audit,.bar a[href="#audit"]{--i:var(--ic-search)}
+#captures,.bar a[href="#captures"]{--i:var(--ic-image)}
+#decide,.bar a[href="#decide"]{--i:var(--ic-flag)}
+#assumed,.bar a[href="#assumed"]{--i:var(--ic-help)}
+[id^="session-"],.bar a[href^="#session-"]{--i:var(--ic-history)}
+.ic,h2 .key::after,h3[class*="i-"] .key::after,.bar nav a::before,.stats [class*="i-"] dt::before,.counts [class*="i-"] dt::before,.counts .open dt::before,.stats .open dt::before,.flow i::before,.owed li::before,.pick::before,.choice .tag::before,.voice dt::before{content:"";display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;flex:none;background:currentColor;-webkit-mask:var(--i,var(--ic-dot)) center/contain no-repeat;mask:var(--i,var(--ic-dot)) center/contain no-repeat;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+h2 .key,h3 .key{display:flex;align-items:center;gap:.5rem}h2 .key::before{order:-2;margin-right:.25rem}h2 .key::after,h3 .key::after{order:-1}
+.bar nav a::before{margin-right:.35rem;opacity:.7}.stats dt::before,.counts dt::before{margin-right:.4rem}.flow i::before{margin-right:.35rem}.pick::before,.choice .tag::before{width:1em;height:1em;margin-right:.2rem}
+.flow li{--i:var(--ic-screen)}.flow .fork{--i:var(--ic-choice)}.flow .end{--i:var(--ic-flag)}.pick,.choice .tag,.voice div{--i:var(--ic-check)}.voice .not{--i:var(--ic-x)}.owed li{--i:var(--ic-alert)}.counts .open dt::before,.stats .open dt::before{color:var(--flag)}.counts .open,.stats .open{--i:var(--ic-alert)}
+@media print{:root,:root:has(#dark:checked){color-scheme:light;--accent:var(--brand);--accent-on:var(--brand-on);--accent-line:var(--brand);--bg:#fff;--fg:oklch(0.2 0 0);--mute:oklch(0.4 0 0);--faint:oklch(0.6 0 0);--line:oklch(0.85 0 0);--card:oklch(0.96 0 0);--band:#fff}
+.bar,.ctas,.bridge,.choices,.layers,.hint{display:none}.ask{background:#fff;color:var(--fg);box-shadow:none;--flag:oklch(0.5 0.19 27);--card:oklch(0.96 0 0);--mute:oklch(0.4 0 0);--line:oklch(0.85 0 0)}.cards .alt::before{color:var(--fg)}
+details::details-content{content-visibility:visible;display:block}summary{list-style:none;color:var(--fg)}summary::-webkit-details-marker{display:none}
+.decisions table{display:table}.decisions tbody tr{display:table-row}.chapter,.session{padding-top:2.5rem}.band{padding-bottom:0}h2,h3{break-after:avoid}figure,tr,.cards>li{break-inside:avoid}thead th{position:static}.demo{display:none}}
+
+/* Product values: with the Report theme at the top, the only product-specific CSS. Fill these from the directions sampled, real values only.
+   .preview takes the chosen direction's values (dir-1); each rule below restyles the preview when another direction is picked.
+   --t-bg, --t-fg, --t-mute, --t-line, --t-accent, --t-on (text on the accent), --t-font, --t-radius. Delete rules for directions you did not sample. */
+.preview{--t-bg:#ffffff;--t-fg:#111111;--t-mute:#666666;--t-line:#e5e5e5;--t-accent:#111111;--t-on:#ffffff;--t-font:system-ui;--t-radius:4px}
+.dirs:has(#dir-2:checked) .preview{--t-bg:#ffffff;--t-fg:#111111;--t-mute:#666666;--t-line:#e5e5e5;--t-accent:#111111;--t-on:#ffffff;--t-font:system-ui;--t-radius:4px}
+.dirs:has(#dir-3:checked) .preview{--t-bg:#ffffff;--t-fg:#111111;--t-mute:#666666;--t-line:#e5e5e5;--t-accent:#111111;--t-on:#ffffff;--t-font:system-ui;--t-radius:4px}
+.dirs:has(#dir-4:checked) .preview{--t-bg:#ffffff;--t-fg:#111111;--t-mute:#666666;--t-line:#e5e5e5;--t-accent:#111111;--t-on:#ffffff;--t-font:system-ui;--t-radius:4px}
+/* Flow life: one @keyframes per glyph motion, written from its start state; the element's own styles are its end state. Delete these if no flow acts. */
+@keyframes act-pop{from{transform:scale(.6);opacity:0}}
+@keyframes act-draw{from{stroke-dashoffset:1}}
+</style>
+</head>
+<body>
+<!-- The bar: chapter links by their key word, the count that needs the owner, the Dark switch. Keep the links in step with the chapters below; drop ones you deleted. -->
+<div class="bar"><div>
+<span class="name">LumoSnap gallery <span class="note">· design decisions</span></span>
+<nav aria-label="Chapters"><a href="#brief">Brief</a><a href="#flows">Flows</a><a href="#direction">Direction</a><a href="#language">Design language</a><a href="#captures">In the product</a><a href="#session-2026-10-31">What changed</a><a href="#assumed">Assumed</a></nav>
+<a class="needs" href="#decide">3 need you</a>
+<label class="theme"><input type="checkbox" id="dark"> Dark</label>
+</div></div>
+<main>
+
+<header class="hero" id="top">
+<h1>Design decisions: LumoSnap client gallery</h1>
+<p class="verdict">People get their own row of faces above a search that waits behind a button: <mark>who is a face, what is a word</mark>.</p>
+<p class="dek">People and tags used the same pill in one row, so the 7 faces pushed every tag off a phone screen. We separated them by shape and by place. This beat "people as a tab" and "people only in search".</p>
+<div class="ctas"><a class="btn primary" href="#decide"><b>3</b> choices need your call</a><a class="btn" href="#brief">Read the story ↓</a></div>
+<figure class="shot-hero"><img src="captures/after-390-two.png" alt="Phone view: a row of faces with two faces picked, then the summary line with Together and Either" width="390" height="844"><figcaption>390 px, two people picked. The search stays closed until the client asks for it.</figcaption></figure>
+<dl class="stats">
+<div class="i-list"><dt>decisions, each with its reason and the default it beat</dt><dd>16</dd></div>
+<div class="i-compass"><dt>directions tried on the same content</dt><dd>3</dd></div>
+<div class="i-search"><dt>critique findings, 5 closed</dt><dd>5</dd></div>
+<div class="open"><dt>choices waiting for you</dt><dd>3</dd></div>
+</dl>
+<p class="note">Latest session <time datetime="2026-10-31">2026-10-31</time>. Coverage: <a href="design-coverage.html">design-coverage.html</a></p>
+<nav class="short" aria-labelledby="short-h">
+<h2 id="short-h">The short version</h2>
+<ol>
+<li><a href="#brief"><span>Brief: a family member on a phone, in the evening, looking for photos of a person they love</span></a></li>
+<li><a href="#flows"><span>Flows: tap a face, or type a name, and the grid shows that person; two faces show them together</span></a></li>
+<li><a href="#direction"><span>Direction: a row of faces apart from the tags, not people as a tab, because who and what are different questions</span></a></li>
+<li><a href="#language"><span>Design language: the existing slate and indigo look, kept; faces add one new shape, the 56 px circle</span></a></li>
+<li><a href="#captures"><span>Captures: at 390 px the rest state has 2 rows above the grid, not 4</span></a></li>
+<li><a href="#session-2026-10-31"><span>Session 2026-10-31: people moved out of the tag row; search moved behind a button</span></a>
+<ol><li><a href="#c-1">Close calls: faces row picked over a People tab</a></li><li><a href="#critique-2026-10-31">Critique caught: 5 fixed, 0 kept, 0 open</a></li><li><a href="#measured-2026-10-31">Measured: rows above the grid at rest, 4 to 2</a></li><li><a href="#decisions-2026-10-31">Decisions: 16, most in structure and states</a></li></ol></li>
+<li><a href="#decide"><span>For you to decide: 3 choices, 2 things owed</span></a></li>
+<li><a href="#assumed"><span>Assumed: 3, the riskiest is the photographer's people order</span></a></li>
+</ol>
+</nav>
+</header>
+
+<section class="chapter" id="brief">
+<h2><span class="key">Brief<span class="vh">:</span></span> a family member on a phone, in the evening, looking for photos of a person they love</h2>
+<ul class="pull">
+<li><strong>Character:</strong> the family album passed around after the wedding, where everyone first looks for their own face and then for Nani's</li>
+</ul>
+<ul class="fields key">
+<li><strong>For:</strong> the couple and their family: parents, siblings, grandparents. Most use a phone at 390 px.</li>
+<li><strong>Job:</strong> find photos of me, my mum, or us together in 5,000 to 10,000 photos, then heart the good ones.</li>
+<li><strong>Moment:</strong> relaxed but eager, scrolling a very large album. Not a technical audience.</li>
+<li><strong>Feel:</strong> calm and uncluttered. The faces are theirs; the interface stays quiet.</li>
+</ul>
+<details>
+<summary>The rest of the brief</summary>
+<ul class="fields">
+<li><strong>Who sets the look:</strong> Existing, at Revamp: the slate and indigo look stays; the structure of the filters is open.</li>
+<li><strong>Scope:</strong> flow: people in the v2 gallery (filter row, search, summary line, empty state, lightbox). The v1 gallery is not changed.</li>
+<li><strong>Screens:</strong> 360 px to 2560 px, phones first. Source: the code (viewport meta, md breakpoints) and the requester.</li>
+<li><strong>Genre:</strong> photo gallery. Conventions kept: faces as circles with a name under them (Apple Photos, Google Photos), search with chips, a lightbox.</li>
+<li><strong>Richness:</strong> low. The photos are the content; the filters must use few rows on a phone.</li>
+<li><strong>Identity:</strong> existing: slate greys, indigo 600 for "on", round pills, a serif italic album title.</li>
+<li><strong>Core copy:</strong> "Anjali and Nani · 812 photos", "Together", "Either", "No photos of Rahul and Meera together in Ceremony", "Show Rahul or Meera · 1125".</li>
+<li><strong>First value:</strong> one tap on a face shows that person's photos. No typing.</li>
+<li><strong>Signature moment:</strong> the tap on a face. It gets the largest target and the clearest selected state.</li>
+<li><strong>Delight piece:</strong> none, because the photos already carry the feeling; the interface should not compete.</li>
+<li><strong>Ending:</strong> the client hearts a photo. A face in the lightbox leads to more photos of that person.</li>
+<li><strong>Flow shape:</strong> one page. Filters apply at once; there are no steps.</li>
+<li><strong>Map:</strong> an album has sets (chapters), people (named faces) and tags; a photo can be in many of each. Filters AND across kinds. Every flow hands off to the lightbox, where a face leads back to the grid.</li>
+<li><strong>Fixed:</strong> Nuxt, Tailwind, PhotoSwipe, the manifest format, URL state (?people=, ?q=, ?tags=).</li>
+<li><strong>Constraints:</strong> do not add a stacked row on a phone. SSR output must match the client output.</li>
+</ul>
+</details>
+<p class="bridge">The family looks for faces, not for words. <a href="#flows">So a face is the shortest path →</a></p>
+</section>
+
+<section class="chapter band" id="flows">
+<h2><span class="key">Flows<span class="vh">:</span></span> tap a face, or type a name, and the grid shows that person; two faces show them together</h2>
+<p class="lede">There are three ways in. All of them end in the same filtered grid.</p>
+<div class="flows">
+<figure class="flowmap">
+<figcaption><b>Find a person</b> one page, from the album to that person's photos</figcaption>
+<ol class="flow">
+<li><i>screen</i><b>Faces row</b><span>tap Nani, or type "nani" in search, or tap her face in the lightbox</span></li>
+<li class="fork"><i>choice</i><b>A second face?</b><span>yes → Together (default) or Either; no → only Nani</span></li>
+<li class="fork"><i>choice</i><b>Any photos?</b><span>yes → grid; no → <a href="#d-11">"Show Rahul or Meera · 1125"</a></span></li>
+<li class="end"><i>ending</i><b>Heart a photo</b><span>the lightbox shows who is in it; a face leads to more of them</span></li>
+</ol>
+</figure>
+<figure class="flowmap was">
+<figcaption><b>Not:</b> faces as small pills in the tag row, because 7 faces pushed every tag off the screen and looked like tags</figcaption>
+<ol class="flow">
+<li><i>screen</i><b>Search box</b></li>
+<li class="cut"><i>screen</i><b>One row: people, a 1 px line, then tags</b></li>
+<li class="end"><i>ending</i><b>"No photos match"</b></li>
+</ol>
+</figure>
+</div>
+<p class="sowhat">The client finds a person with one tap. The faces row costs about 80 px of height on a phone.</p>
+<p class="bridge">The shape is set. <a href="#direction">Next, why faces and not a tab →</a></p>
+</section>
+
+<section class="chapter" id="direction">
+<h2><span class="key">Direction<span class="vh">:</span></span> a row of faces apart from the tags, not people as a tab, because who and what are different questions</h2>
+<p class="lede">We tried 3 directions on the same 7 people and 8 tags, inside the existing look.</p>
+<ul class="fields">
+<li><strong>A, chosen, faces row:</strong> 56 px circles with the first name under them, above the search. A different shape and place from the tags.</li>
+<li><strong>B, People tab:</strong> a "People" item in the set tabs. Lost because sets are chapters of the day; a person is in every chapter. A tab would hide the sets.</li>
+<li><strong>C, people only in search:</strong> type a name to filter. Lost because the family does not know which names the photographer used. Kept as a second way in.</li>
+</ul>
+<details>
+<summary>Direction details</summary>
+<ul class="fields">
+<li><strong>Default to beat:</strong> people as pills in the chip row, with the same shape and the same selected colour as tags.</li>
+<li><strong>Chosen:</strong> A, because a face is found faster than a word, and the row answers "who" before "what".</li>
+<li><strong>Motif:</strong> the circle. Faces are round; tags and sets stay pills.</li>
+<li><strong>Placements:</strong> the faces row, the dashed ring when a typed name matches, and the pills in the lightbox.</li>
+<li><strong>Style tile:</strong> the first 390 px capture was the tile. It showed that names truncate, so the row shows first names.</li>
+</ul>
+</details>
+<p class="bridge">The direction changes structure, not colour. <a href="#language">The values stay the existing ones →</a></p>
+</section>
+
+<section class="chapter band" id="language">
+<h2><span class="key">Design language<span class="vh">:</span></span> the existing slate and indigo look, kept; faces add one new shape, the 56 px circle</h2>
+<p class="lede">Indigo 600 means "this filter is on" everywhere: tag chips, face rings and the search button.</p>
+<details>
+<summary>Token table: values, sources and reasons</summary>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Token</th><th scope="col">Value</th><th scope="col">Source</th><th scope="col">Because</th></tr></thead>
+<tbody>
+<tr><th scope="row">Voice</th><td>see Voice below</td><td>existing</td><td>plain words for a family</td></tr>
+<tr><th scope="row">Type</th><td>system sans; names 13 px; summary 14 px; empty title 18 px</td><td>existing, 13 px decided</td><td>names at 12 px were small for evening reading</td></tr>
+<tr><th scope="row">Space and density</th><td>12 px between filter rows; 4 px between faces</td><td>existing gap-3</td><td>the 72 px face buttons carry their own space</td></tr>
+<tr><th scope="row">Colour roles</th><td>slate 50 page, white controls, indigo 600 "on", slate 900 the selected set</td><td>existing</td><td>one meaning per colour</td></tr>
+<tr><th scope="row">Shape and depth</th><td>circles for people, pills for tags and sets, no shadows</td><td>decided</td><td>the shape tells who from what</td></tr>
+<tr><th scope="row">Motif</th><td>the circle</td><td>decided</td><td>faces are round in every photo app the family knows</td></tr>
+<tr><th scope="row">Controls</th><td>face 72 × 82 px; chip 32 px; toggle 28 px; search button 36 px</td><td>existing sizes, face decided</td><td>all at least 24 px</td></tr>
+<tr><th scope="row">Mechanics</th><td>Tailwind utilities in the template; one plain style block in BrowseGrid.vue for the PhotoSwipe nodes</td><td>existing</td><td>PhotoSwipe nodes are made in script, so utilities do not reach them reliably</td></tr>
+<tr><th scope="row">Motion</th><td>none for filters; colour and ring changes only</td><td>decided</td><td>filters are frequent; the grid changes at once</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<h3 class="i-voice"><span class="key">Voice</span> plain, names first, counts after</h3>
+<dl class="voice">
+<div><dt>Sounds like</dt><dd>No photos of Rahul and Meera together in Ceremony</dd></div>
+<div class="not"><dt>Not</dt><dd>No photos match</dd></div>
+</dl>
+<ul class="fields">
+<li><strong>For:</strong> family members, not photographers. Names, not ids or "filters".</li>
+<li><strong>This, not that:</strong> "Together / Either", not "AND / OR"; "Show Rahul or Meera · 1125", not "Broaden filter".</li>
+<li><strong>Terms:</strong> a named face → person (not "face", "cluster"); tag → shown by its label only.</li>
+<li><strong>Address, length, capitals:</strong> no address; short; sentence case.</li>
+<li><strong>Tone shifts:</strong> the empty state names the people and the set, then offers the way out.</li>
+</ul>
+<p class="bridge">The values are the same. <a href="#captures">The renders show what moved →</a></p>
+</section>
+
+<section class="chapter" id="captures">
+<h2><span class="key">Captures<span class="vh">:</span></span> at 390 px the rest state has 2 rows above the grid, not 4</h2>
+<p class="lede">Before on the left, after on the right. Mock album: 10,000 photos, 7 people, 8 sets.</p>
+<figure class="annotated">
+<span class="shot"><img src="captures/before-390-rest.png" alt="Before: people pills fill the chip row; no tags visible" width="390" height="844" loading="lazy"></span>
+<figcaption><p>Before, 390 px: 7 people in the chip row hide all 8 tags. <a href="#d-1">d-1</a></p></figcaption>
+</figure>
+<figure class="annotated">
+<span class="shot"><img src="captures/after-390-rest.png" alt="After: set tabs with a search button, then the faces row, then the grid" width="390" height="844" loading="lazy"></span>
+<figcaption><p>After, 390 px: set tabs with the search button, faces, then the grid. <a href="#d-13">d-13</a></p></figcaption>
+</figure>
+<figure class="annotated">
+<span class="shot"><img src="captures/before-390-q-nani.png" alt="Before: search nani shows 336 unrelated photos" width="390" height="844" loading="lazy"></span>
+<figcaption><p>Before: "nani" matched tags by spelling and showed 336 wrong photos. <a href="#d-5">d-5</a></p></figcaption>
+</figure>
+<figure class="annotated">
+<span class="shot"><img src="captures/after-390-q-nani-cake.png" alt="After: nani sadya, Nani face has a dashed ring, Nani · 250 photos" width="390" height="844" loading="lazy"></span>
+<figcaption><p>After: "nani sadya" is Nani and the Sadya tag; her face shows a dashed ring. <a href="#d-6">d-6</a></p></figcaption>
+</figure>
+<figure class="annotated">
+<span class="shot"><img src="captures/after-390-zero.png" alt="After: zero together, with a button to show either" width="390" height="844" loading="lazy"></span>
+<figcaption><p>After: nothing together, so the empty state offers either, with its count. <a href="#d-11">d-11</a></p></figcaption>
+</figure>
+<figure class="annotated">
+<span class="shot"><img src="captures/after-390-lightbox.png" alt="Lightbox with three people pills at the bottom" width="390" height="844" loading="lazy"></span>
+<figcaption><p>Lightbox: who is in this photo; a tap shows that person. <a href="#d-12">d-12</a></p></figcaption>
+</figure>
+<p class="bridge">The first version had faults that review found. <a href="#session-2026-10-31">What review changed →</a></p>
+</section>
+
+<section class="chapter" id="audit">
+<h2><span class="key">Audit<span class="vh">:</span></span> people and tags shared one shape, one colour and one row</h2>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Element</th><th scope="col">Variant</th><th scope="col">States checked</th><th scope="col">Where</th><th scope="col">Unit (anchor)</th><th scope="col">Matches system?</th><th scope="col">Finding</th><th scope="col">Action</th></tr></thead>
+<tbody>
+<tr><td>Person filter</td><td>pill, 24 px avatar</td><td>rest, on, hover, focus</td><td>chip row</td><td>avatar</td><td>no</td><td>same shape and on-colour as tags; face too small to know</td><td>moved to faces row (d-1)</td></tr>
+<tr><td>Tag chip</td><td>pill</td><td>rest, on, hover, focus</td><td>chip row</td><td>label</td><td>yes</td><td>hidden off-screen by people at 390 px</td><td>kept, in the search panel (d-13)</td></tr>
+<tr><td>Divider</td><td>1 px line</td><td>rest</td><td>chip row</td><td>none</td><td>no</td><td>lost when scrolled; the only cue between kinds</td><td>removed</td></tr>
+<tr><td>Search field</td><td>pill, 44 px</td><td>empty, typed, focus, clear</td><td>above chips</td><td>field</td><td>yes</td><td>names fuzzy-matched tags</td><td>names lift to people (d-5)</td></tr>
+<tr><td>Count line</td><td>text</td><td>idle, filtered, loading</td><td>under chips</td><td>count</td><td>partly</td><td>20 px reserved at rest</td><td>summary line only when filtered (d-8)</td></tr>
+<tr><td>Empty state</td><td>title + button</td><td>zero</td><td>grid</td><td>title</td><td>partly</td><td>no reason, no way out but clearing</td><td>names + either (d-11)</td></tr>
+<tr><td>Lightbox buttons</td><td>icon buttons</td><td>rest, hover</td><td>PhotoSwipe bar</td><td>icon</td><td>no</td><td>transition: all</td><td>opacity and transform only</td></tr>
+<tr><td>Set tab</td><td>pill, cover</td><td>rest, on, focus, keys</td><td>sticky row</td><td>label</td><td>yes</td><td>none</td><td>kept; row now holds the search button</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section id="sessions">
+<article class="session" id="session-2026-10-31">
+<h2><span class="key">Session 2026-10-31<span class="vh">:</span></span> people moved out of the tag row; search moved behind a button</h2>
+<p class="kicker">Revamp · the owner said people chips compete with tags</p>
+<p class="lede">The first version gave people a faces row. The critique found 5 faults; we fixed all 5. Then the owner asked for search behind a button, and the rest state went from 4 rows to 2.</p>
+
+<h3 class="i-list"><span class="key">Chunks</span> 4, each compared with the baseline</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Chunk</th><th scope="col">Files</th><th scope="col">By</th><th scope="col">Contract</th><th scope="col">Parity</th></tr></thead>
+<tbody>
+<tr><td>People logic</td><td>app/utils/browse.ts, scripts/browse.check.ts</td><td>coordinator</td><td>peopleIds AND unchanged; ?people= unchanged</td><td>old asserts pass; new asserts for either, queryPeople, joinNames, peopleByImage</td></tr>
+<tr><td>Filter block</td><td>app/pages/share/[token].vue</td><td>coordinator</td><td>?set ?q ?tags ?people restore the same view after reload; SSR rows match</td><td>same; 0 hydration warnings on 7 URLs; ?q=nani now gives Nani (difference on purpose)</td></tr>
+<tr><td>Search toggle</td><td>app/pages/share/[token].vue</td><td>coordinator</td><td>search reachable, filters never hidden</td><td>hidden at rest (owner request); open with ?q= or ?tags=</td></tr>
+<tr><td>Lightbox people</td><td>app/components/BrowseGrid.vue</td><td>coordinator</td><td>heart, notes, double-tap, burst frames unchanged</td><td>same; pills added</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-scale"><span class="key">Close calls</span> faces row picked over a People tab</h3>
+<div class="call" id="c-1">
+<p class="judge"><b>Where do people live?</b> Judge at 390 px, rest state.</p>
+<div class="options">
+<figure class="opt picked"><div class="stage"><img src="captures/after-390-rest.png" alt="Faces row" width="195" height="422"></div><figcaption><span class="badge">1A</span> Faces row<span class="pick">picked</span><br>One tap to a person in any set. Costs 80 px.</figcaption></figure>
+<figure class="opt"><div class="stage">A "People" tab beside the sets</div><figcaption><span class="badge">1B</span> People tab<br>A person is in every set, so a tab would hide the set the client is in.</figcaption></figure>
+</div>
+</div>
+
+<h3 class="i-search" id="critique-2026-10-31"><span class="key">Critique caught</span> 5 fixed, 0 kept, 0 open</h3>
+<dl class="counts">
+<div class="i-fix"><dt>fixed, each linked to the row it changed</dt><dd>5</dd></div>
+<div class="i-keep"><dt>kept, with the evidence for keeping</dt><dd>0</dd></div>
+<div class="open"><dt>open</dt><dd>0</dd></div>
+</dl>
+<p class="sowhat">A typed name filtered by a person, but the face did not show it. Now the face gets a dashed ring.</p>
+<details>
+<summary>Every finding and its outcome</summary>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Found</th><th scope="col">By</th><th scope="col">Outcome</th></tr></thead>
+<tbody>
+<tr><td>A typed name match is not shown on the face</td><td>fresh reviewer</td><td>fixed: dashed ring and indigo name (<a href="#d-6">d-6</a>)</td></tr>
+<tr><td>"0 photos" repeats the empty title</td><td>fresh reviewer</td><td>fixed: the count hides at 0 (<a href="#d-10">d-10</a>)</td></tr>
+<tr><td>Long names truncate; 12 px is small</td><td>fresh reviewer</td><td>fixed: first name at 13 px, full name as label (<a href="#d-3">d-3</a>)</td></tr>
+<tr><td>The solid indigo "Together" is louder than the faces</td><td>fresh reviewer</td><td>fixed: white segment on a slate track (<a href="#d-9">d-9</a>)</td></tr>
+<tr><td>Lightbox pills not proven with 3 people</td><td>fresh reviewer</td><td>fixed: captured with 3 people, devtools hidden (<a href="#d-12">d-12</a>)</td></tr>
+<tr><td>A "Clear" link in the summary wrapped to its own row at 390 px</td><td>look step</td><td>removed (<a href="#d-15">d-15</a>)</td></tr>
+<tr><td>.pswp__button had transition: all</td><td>check.py</td><td>fixed: opacity and transform only</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+
+<h3 class="i-ruler" id="measured-2026-10-31"><span class="key">Measured</span> rows above the grid at rest, 4 to 2</h3>
+<dl class="deltas">
+<div><dt>rows above the grid at rest, 390 px, album with sets</dt><dd><s>4</s> → 2</dd></div>
+<div><dt>tag chips visible at rest, 390 px</dt><dd><s>0</s> → 3 or 4 when search is open</dd></div>
+<div><dt>photos for "nani"</dt><dd><s>336 wrong</s> → 1062 of Nani</dd></div>
+</dl>
+<details>
+<summary>Every measure</summary>
+<table class="delta">
+<thead><tr><th scope="col">Measure</th><th scope="col">Before</th><th scope="col">After</th><th scope="col">Change</th></tr></thead>
+<tbody>
+<tr><td>Face size</td><td>24 px</td><td>56 px</td><td>+32 px</td></tr>
+<tr><td>Faces fully in view at 390 px</td><td>3</td><td>5</td><td>+2</td></tr>
+<tr><td>Hydration warnings, 7 test URLs</td><td>0</td><td>0</td><td>none</td></tr>
+</tbody>
+</table>
+</details>
+
+<h3 class="i-list" id="decisions-2026-10-31"><span class="key">Decisions</span> 16, most in structure and states</h3>
+<div class="decisions">
+<fieldset class="layers">
+<legend>Press a layer to see its decisions</legend>
+<label style="--n:6"><input type="radio" name="layer" id="l-1">1 Bare structure <b>6</b></label>
+<label style="--n:1"><input type="radio" name="layer" id="l-2">2 Direction <b>1</b></label>
+<label style="--n:2"><input type="radio" name="layer" id="l-3">3 Type and space <b>2</b></label>
+<label style="--n:2"><input type="radio" name="layer" id="l-4">4 Colour and surface <b>2</b></label>
+<label style="--n:4"><input type="radio" name="layer" id="l-5">5 Use over time <b>4</b></label>
+<label style="--n:1"><input type="radio" name="layer" id="l-6">6 Motion and detail <b>1</b></label>
+<label class="all"><input type="radio" name="layer" id="l-all" checked>All, in order <b>16</b></label>
+</fieldset>
+<p class="hint">Each row: the decision, why, and the default it rejected.</p>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Element</th><th scope="col">Decision</th><th scope="col">Because (content, user or moment)</th><th scope="col">Rejected default or kept convention</th><th scope="col">Layer</th></tr></thead>
+<tbody>
+<tr id="d-1" data-l="1"><td><span class="id">d-1</span> People</td><td>A faces row of their own, above search</td><td>Job: "find me"; at 390 px 7 people hid every tag</td><td class="rejected">people pills first in the tag row</td><td>1 Bare structure</td></tr>
+<tr id="d-2" data-l="2"><td><span class="id">d-2</span> People</td><td>Circles with the name under them; tags stay pills</td><td>who and what are different questions, so they get different shapes</td><td class="rejected">one pill shape for all filters</td><td>2 Direction</td></tr>
+<tr id="d-3" data-l="3"><td><span class="id">d-3</span> Face name</td><td>First name, 13 px; full name as label and tooltip</td><td>"Arjun Kris…" truncated; evening reading</td><td class="rejected">full name, 12 px, truncated</td><td>3 Type and space</td></tr>
+<tr id="d-4" data-l="1"><td><span class="id">d-4</span> Faces row</td><td>Only people with photos in the selected set; a picked face stays</td><td>Meera in Ceremony led to "No photos match"</td><td class="rejected">all people in every set</td><td>1 Bare structure</td></tr>
+<tr id="d-5" data-l="1"><td><span class="id">d-5</span> Search</td><td>A word that names a person (whole word, or 3+ letters of one) filters by that person; the rest searches tags</td><td>"nani" matched tags by spelling and showed wrong photos</td><td class="rejected">a separate "people" suggestion list</td><td>1 Bare structure</td></tr>
+<tr id="d-6" data-l="4"><td><span class="id">d-6</span> Typed match</td><td>Dashed indigo ring on that face, no check</td><td>the face must agree with the summary, but a tap must not be needed to undo it</td><td class="rejected">no mark on the face</td><td>4 Colour and surface</td></tr>
+<tr id="d-7" data-l="1"><td><span class="id">d-7</span> Two people</td><td>Together by default; Either in a 2-part toggle, ?either=1</td><td>"photos of us together" is the common ask; either is the fallback</td><td class="rejected">AND only</td><td>1 Bare structure</td></tr>
+<tr id="d-8" data-l="3"><td><span class="id">d-8</span> Summary line</td><td>Shows only while a filter is on: names, count, toggle</td><td>the old count line took 20 px at rest for nothing</td><td class="rejected">a count line that is always there</td><td>3 Type and space</td></tr>
+<tr id="d-9" data-l="4"><td><span class="id">d-9</span> Toggle</td><td>White segment, indigo text, on a slate track</td><td>the faces must stay the loudest indigo</td><td class="rejected">solid indigo segment</td><td>4 Colour and surface</td></tr>
+<tr id="d-10" data-l="5"><td><span class="id">d-10</span> Summary at 0</td><td>The count hides; names and toggle stay</td><td>the empty title says it once</td><td class="rejected">"0 photos" above "No photos of …"</td><td>5 Use over time</td></tr>
+<tr id="d-11" data-l="5"><td><span class="id">d-11</span> Empty state</td><td>Names the people and set; offers "Show Rahul or Meera · 1125"</td><td>a dead end loses the family; the count shows the way out is real</td><td class="rejected">"No photos match" and "Clear filters" only</td><td>5 Use over time</td></tr>
+<tr id="d-12" data-l="1"><td><span class="id">d-12</span> Lightbox</td><td>Pills for each named person in the photo; a tap closes and shows that person</td><td>"who is that?" is asked in the lightbox; it is also a path to more photos</td><td class="rejected">no people in the lightbox</td><td>1 Bare structure</td></tr>
+<tr id="d-13" data-l="1"><td><span class="id">d-13</span> Search</td><td>Behind a 36 px button at the end of the sticky set row; the panel holds the field and the tag chips</td><td>owner request; the rest state goes from 4 rows to 2</td><td class="rejected">search always open</td><td>1 Bare structure</td></tr>
+<tr id="d-14" data-l="5"><td><span class="id">d-14</span> Search panel</td><td>Open from SSR with ?q= or ?tags=; the button focuses the field while a search is on; Esc clears, then closes; no sets → always open</td><td>an active filter must never hide; with no set row there is no place for the button</td><td class="rejected">a toggle that hides an active search</td><td>5 Use over time</td></tr>
+<tr id="d-15" data-l="6"><td><span class="id">d-15</span> Summary</td><td>No "Clear" link</td><td>it wrapped to a new row at 390 px; faces unpick with a tap, search has its x, the empty state has "Clear filters"</td><td class="rejected">a Clear link on the line</td><td>6 Motion and detail</td></tr>
+<tr id="d-16" data-l="5"><td><span class="id">d-16</span> Face image</td><td>The initial letter sits under the photo crop</td><td>it shows while the thumbnail loads and when it fails</td><td class="rejected">a grey circle</td><td>5 Use over time</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<h3 class="i-spark"><span class="key">Life</span> 1 place, the face that answers</h3>
+<ol class="life">
+<li><div class="scene" aria-hidden="true"><span class="act" style="--h:4rem">dashed ring</span></div><strong>Typed name</strong>The face gets a dashed ring as the client types "nan". It tells them the gallery knows Nani. Often.</li>
+</ol>
+
+<h3 class="i-alert"><span class="key">App-wide states</span> 5 designed for people</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">State</th><th scope="col">What the person sees</th><th scope="col">The way back</th></tr></thead>
+<tbody>
+<tr><td>Manifest still loading</td><td>SSR faces from the page payload; a tap shows the grid skeleton until the full list comes</td><td>none needed</td></tr>
+<tr><td>Face image fails</td><td>the initial letter in a grey circle</td><td>none needed</td></tr>
+<tr><td>Person with few photos</td><td>the face shows; the summary says "Meera · 2 photos"</td><td>tap the face again</td></tr>
+<tr><td>Filter gives zero</td><td>"No photos of Rahul and Meera together in Ceremony"</td><td>"Show Rahul or Meera · 1125", "Clear filters"</td></tr>
+<tr><td>No people in the album</td><td>no faces row; search and tags as before</td><td>none needed</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-motion"><span class="key">Motion map</span> still: filters change at once</h3>
+<div class="scroll">
+<table class="motion">
+<thead><tr><th scope="col">Moment</th><th scope="col">Tier (none, micro, transition, moment)</th><th scope="col">How often</th><th scope="col">Trigger, feedback, loops</th><th scope="col">Reduced-motion version</th><th scope="col">How much it matters</th><th scope="col">Why</th></tr></thead>
+<tbody>
+<tr><td>Face picked</td><td>micro</td><td>often</td><td>tap; ring and check show at once (shadow transition 150 ms)</td><td>same</td><td>high</td><td>the signature moment must answer at once</td></tr>
+<tr><td>Search opened</td><td>none</td><td>sometimes</td><td>tap; the panel shows and the field gets focus</td><td>same</td><td>medium</td><td>a height animation would move the virtual grid each frame</td></tr>
+<tr><td>Together / Either</td><td>none</td><td>rarely</td><td>tap; colour swap</td><td>same</td><td>low</td><td>a frequent control stays instant</td></tr>
+<tr><td>Lightbox people</td><td>transition</td><td>often</td><td>fade with the PhotoSwipe controls</td><td>PhotoSwipe's own rule</td><td>medium</td><td>they belong to the lightbox controls</td></tr>
+</tbody>
+</table>
+</div>
+
+<details>
+<summary>Look notes and what was removed</summary>
+<h3>Look notes</h3>
+<p class="note">390 px headless Playwright and 1280 px in Chrome and Playwright. render_check.py stopped with an IndexError; a guarded copy ran. Its errors are on the name prompt (not in scope) and the page has no lang (not in scope).</p>
+<h3>Removed</h3>
+<p class="note">The 1 px line between people and tags. The always-there count line. The "Clear" link on the summary line.</p>
+</details>
+</article>
+</section>
+
+<section class="chapter ask" id="decide">
+<h2><span class="key">For you to decide<span class="vh">:</span></span> 3 choices, 2 things owed</h2>
+<p class="lede">You can reverse each one.</p>
+<ol class="cards">
+<li><b>Search stays closed with only ?people=</b><span>The faces row and summary already show a people filter. Opening search for it adds 2 rows for nothing. <a href="#d-14">d-14</a></span><span class="alt">Or: open it for ?people= too, if you want every filter in one place.</span></li>
+<li><b>Albums with no sets keep search open</b><span>There is no sticky row to hold the button. <a href="#d-14">d-14</a></span><span class="alt">Or: put the button at the end of the faces row, if you want search hidden everywhere.</span></li>
+<li><b>Typed names win over tags</b><span>"can" goes to a person named Candace, not to "candid". <a href="#d-5">d-5</a></span><span class="alt">Or: lift a name only on a whole-word match, if your tags often share a start with names.</span></li>
+</ol>
+<h3>Still owed</h3>
+<ul class="owed">
+<li>Check on a real album with real faces: the crops of the mock faces are drawn, not photographed.</li>
+<li>The page has no lang attribute (all pages). Set it in nuxt.config app.head.</li>
+</ul>
+</section>
+
+<section class="chapter" id="assumed">
+<h2><span class="key">Assumed, please correct<span class="vh">:</span></span> 3, the riskiest is the photographer's people order</h2>
+<p class="lede">We assumed these because nobody could answer.</p>
+<ul class="fields">
+<li><strong>Order:</strong> faces keep the photographer's order (bride and groom first), not the photo count.</li>
+<li><strong>Lightbox tap:</strong> a face replaces the filter with that person; it does not add to it.</li>
+<li><strong>Names:</strong> the first word of a name is enough under a face ("Joseph" for "Joseph uncle").</li>
+</ul>
+</section>
+
+<footer class="foot"><span>LumoSnap gallery · design decisions · latest session 2026-10-31</span><a href="design-coverage.html">Coverage report</a><a href="#top">Back to top ↑</a></footer>
+</main>
+<script>
+/* Report motion: plays each .plays in a loop while it is on screen and stops it off screen. Without this script the glyphs show their end state. */
+if(!matchMedia("(prefers-reduced-motion: reduce)").matches&&"IntersectionObserver" in window){
+const hold=1500,timers=new Map();
+const io=new IntersectionObserver(es=>{for(const e of es){const el=e.target;
+if(!e.isIntersecting){clearTimeout(timers.get(el));timers.delete(el);el.classList.remove("on");continue}
+if(timers.has(el))continue;
+const loop=()=>{el.classList.remove("on");void el.offsetWidth;el.classList.add("on");
+const end=Math.max(0,...el.getAnimations({subtree:true}).map(a=>a.effect.getComputedTiming().endTime).filter(Number.isFinite));
+timers.set(el,setTimeout(loop,end+hold))};loop()}},{threshold:.3});
+document.querySelectorAll(".plays").forEach(el=>io.observe(el))}
+</script>
+</body>
+</html>
