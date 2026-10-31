@@ -12,6 +12,8 @@ interface Change {
 export const useShareStore = defineStore('share', () => {
     const pendingChanges = ref<Change[]>([])
     const isFlushing = ref(false)
+    // Sent but not yet confirmed; a concurrent feedback read may or may not include them.
+    let inFlight: Change[] = []
     const api = useApi()
 
     function addChange(imageId: number, action: ChangeAction, notes?: string) {
@@ -48,6 +50,7 @@ export const useShareStore = defineStore('share', () => {
         // so new user actions can accumulate independently while the request is in flight.
         const changesToSend = [...pendingChanges.value]
         pendingChanges.value = []
+        inFlight = changesToSend
 
         try {
             // Format for API: remove timestamp
@@ -66,8 +69,14 @@ export const useShareStore = defineStore('share', () => {
             const message = e instanceof Error ? e.message : String(e)
             console.error('Failed to flush changes, re-queued for retry:', message)
         } finally {
+            inFlight = []
             isFlushing.value = false
         }
+    }
+
+    // Everything the server may not reflect yet, oldest first. Overlay this on any server reload.
+    function unsyncedChanges(): Change[] {
+        return [...inFlight, ...pendingChanges.value]
     }
 
     let flushInterval: ReturnType<typeof setInterval> | null = null
@@ -92,6 +101,7 @@ export const useShareStore = defineStore('share', () => {
         pendingChanges,
         addChange,
         flushChanges,
+        unsyncedChanges,
         startPeriodicFlush,
         stopPeriodicFlush
     }

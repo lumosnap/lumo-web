@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden flex flex-col">
+  <div class="bg-slate-50 font-sans text-slate-900 flex flex-col" :class="isV2 ? 'min-h-screen' : 'h-screen overflow-hidden'">
     <!-- Loading State (Skeleton) -->
     <div v-if="loading" class="flex-1 flex flex-col md:flex-row overflow-hidden animate-fade-in">
       <!-- Left Sidebar Skeleton -->
@@ -49,11 +49,13 @@
     </div>
 
     <!-- Main Content Area (Split View) -->
-    <div v-else-if="albumInfo" class="flex-1 flex flex-col md:flex-row overflow-hidden animate-fade-in">
+    <div v-else-if="albumInfo" class="flex-1 flex flex-col md:flex-row animate-fade-in"
+      :class="isV2 ? '' : 'overflow-hidden'">
 
-      <!-- Left Sidebar -->
+      <!-- Left Sidebar (v2: page scrolls on window, so the sidebar sticks) -->
       <aside
-        class="w-full md:w-80 lg:w-96 border-b md:border-b-0 md:border-r border-slate-200 bg-white p-6 flex flex-col gap-6 shrink-0 overflow-y-auto z-10 shadow-sm md:shadow-none">
+        class="w-full md:w-80 lg:w-96 border-b md:border-b-0 md:border-r border-slate-200 bg-white p-6 flex flex-col gap-6 shrink-0 overflow-y-auto z-10 shadow-sm md:shadow-none"
+        :class="isV2 ? 'md:sticky md:top-0 md:h-screen md:self-start' : ''">
         <!-- Album Info -->
         <div>
           <div class="flex items-center justify-between mb-2">
@@ -79,18 +81,47 @@
               ? 'bg-rose-50 text-rose-600 border-rose-100 ring-2 ring-rose-100'
               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'">
             <Icon name="lucide:heart" size="16" :fill="showFavoritesOnly ? 'currentColor' : 'none'" />
-            <span>{{ showFavoritesOnly ? 'Show All Images' : `Show Favorites (${albumInfo?.favoritedPhotosCount || 0})`
+            <span>{{ showFavoritesOnly ? 'Show All Images' : `Show Favorites (${(isV2 ? v2Favs.size : albumInfo?.favoritedPhotosCount) || 0})`
               }}</span>
           </button>
+
+          <!-- v2: stack burst frames into one tile (only for albums with bursts) -->
+          <label v-if="hasBursts" class="mt-3 flex items-center justify-between gap-3 text-sm font-medium text-slate-600 px-1 cursor-pointer">
+            <span class="flex items-center gap-2"><Icon name="lucide:layers" size="16" />Stack bursts</span>
+            <input v-model="stackBursts" type="checkbox" role="switch" class="w-5 h-5 accent-indigo-600 cursor-pointer" />
+          </label>
         </div>
       </aside>
 
       <!-- Right Grid Area -->
-      <main class="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 relative" ref="scrollContainer" @scroll="handleScroll">
+      <main class="flex-1 bg-slate-50 p-4 md:p-8 relative" :class="isV2 ? 'min-w-0' : 'overflow-y-auto'"
+        ref="scrollContainer" @scroll="handleScroll">
 
         <!-- Grid Loading State -->
         <div v-if="gridLoading" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           <div v-for="i in 10" :key="i" class="aspect-[4/5] rounded-xl bg-slate-200 animate-pulse"></div>
+        </div>
+
+        <!-- Browse v2: set tabs (only when the album has sets), sticky over the grid -->
+        <div v-if="isV2 && manifest && sets.length"
+          class="sticky top-0 z-30 -mx-4 md:-mx-8 -mt-4 md:-mt-8 mb-4 px-4 md:px-8 bg-slate-50/95 backdrop-blur-sm">
+          <SetTabs v-model="selectedSet" :sets="sets" :total="allCount" :base="manifest.base"
+            panel="set-panel" />
+        </div>
+
+        <!-- Browse v2: set picked before the full manifest arrived (SSR only shipped the URL's set) -->
+        <div v-if="isV2 && manifest && !gridImages" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div v-for="i in 10" :key="i" class="aspect-[4/5] rounded-xl bg-slate-200 animate-pulse"></div>
+        </div>
+
+        <!-- Browse v2: virtualized grid over the full manifest -->
+        <div v-else-if="isV2 && manifest && gridImages && (showFavoritesOnly ? gridImages.some(i => v2Favs.has(i.id)) : gridImages.length > 0)"
+          v-bind="sets.length ? { id: 'set-panel', role: 'tabpanel', 'aria-labelledby': `set-tab-${selectedSet ?? 'all'}` } : {}">
+          <BrowseGrid :token="token" :images="gridImages" :base="manifest.base" :favs="v2Favs" :comments="v2Comments"
+            :counts="v2Counts" :client-name="clientName" :favorites-only="showFavoritesOnly" :stack-bursts="stackBursts"
+            :event-date="manifest.album.eventDate" :labels="manifest.labels" :set-id="selectedSet"
+            :sticky-top="sets.length ? 56 : 0" @favorite="toggleFavoriteV2" @comment="openCommentSidebarV2"
+            @heart="showHeartAnimation" />
         </div>
 
         <!-- Empty State -->
@@ -282,7 +313,11 @@ import { animals } from '~/utils/animalNames'
 import PhotoSwipeLightbox from 'photoswipe/lightbox'
 import 'photoswipe/style.css'
 import CommentSidebar from '~/components/CommentSidebar.vue'
+import BrowseGrid from '~/components/BrowseGrid.vue'
+import SetTabs from '~/components/SetTabs.vue'
+import type { ShareManifest } from '~/composables/useApi'
 import { useShareStore } from '~/stores/share'
+import { browseHead, mergeFeedback, resolveSets, setImages, type BrowseSet, PSWP_BASE_OPTIONS, renderLightboxButtons, thumbUrl, toShareImage, type ShareComment } from '~/utils/browse'
 
 // Disable default layout for this page
 definePageMeta({
@@ -295,6 +330,10 @@ const route = useRoute()
 const api = useApi()
 const shareStore = useShareStore()
 const token = route.params.token as string
+
+// Browse v2 (virtualized grid over the manifest) is opt-in via ?browse=v2, or via an album-level
+// browseV2 flag that redirects here (see below). Default path is untouched: one share fetch, no manifest.
+const isV2 = route.query.browse === 'v2'
 
 // Periodic flush starts in onMounted, after clientName loads.
 
@@ -327,13 +366,77 @@ const { data: albumData } = await useAsyncData(
   {
     // Don't watch route or other reactive refs automatically unless specified
     // We handle client-side updates manually
+    immediate: !isV2
   }
 )
 
+// Album-level opt-in: if the share response carries album.browseV2, hop to ?browse=v2.
+// Zero cost for albums without the flag.
+if (!isV2 && albumData.value?.data?.album.browseV2) {
+  const query = new URLSearchParams(route.query as Record<string, string>)
+  query.set('browse', 'v2')
+  await navigateTo(`${route.path}?${query}`, { replace: true, external: true })
+}
+
+// v2 SSR: only the first rows go into the payload (LCP); the full manifest is fetched on mount
+// (CDN/browser-cached via ETag) so 10k images don't bloat the HTML.
+const V2_SSR_IMAGES = 15
+const { data: manifestHead } = await useAsyncData(
+  `manifest-${token}`,
+  async () => {
+    const m = await api.getManifest(token)
+    if (!m) return null
+    // Sets resolved here (chips render from SSR, ids stripped: the full manifest brings them).
+    // The head is the ?set= set's first tiles (+ burst frames) with moment labels from that whole set.
+    const resolved = resolveSets(m.sets ?? [], m.images)
+    const head = resolved.find(s => s.id === route.query.set)
+    const { images, labels } = browseHead(head ? setImages(m.images, head) : m.images, V2_SSR_IMAGES, m.album.eventDate)
+    return {
+      ...m, images, labels, sets: [],
+      resolved: resolved.map(s => ({ ...s, ids: [] })),
+      headSet: head?.id ?? null,
+      total: m.images.length,
+      hasBursts: m.images.some(i => i.b !== null), // whole album, so the switch is in the SSR HTML (no shift)
+    }
+  },
+  { immediate: isV2 }
+)
+type ManifestHead = { labels: Record<string, string>; resolved: BrowseSet[]; headSet: string | null; total: number; hasBursts: boolean }
+const manifest = shallowRef<ShareManifest & Partial<ManifestHead> | null>(manifestHead.value ?? null)
+const stackBursts = ref(true)
+const hasBursts = computed(() => manifest.value?.hasBursts ?? !!manifest.value?.images.some(i => i.b !== null))
+const allCount = computed(() => manifest.value?.total ?? manifest.value?.images.length ?? 0)
+
+// Sets: chip bar + filter. Selection lives in ?set= (replaceState, so no navigation/refetch).
+const sets = computed(() => manifest.value?.resolved ?? resolveSets(manifest.value?.sets ?? [], manifest.value?.images ?? []))
+const selectedSet = ref<string | null>(manifest.value?.headSet ?? null)
+// Images of the selected set; null while only the SSR head (of another set) is here.
+const gridImages = computed(() => {
+  const m = manifest.value
+  if (!m) return null
+  if (m.labels) return m.headSet === selectedSet.value ? m.images : null
+  const s = sets.value.find(s => s.id === selectedSet.value)
+  return s ? setImages(m.images, s) : m.images
+})
+watch(sets, list => { if (selectedSet.value && !list.some(s => s.id === selectedSet.value)) selectedSet.value = null })
+watch(selectedSet, id => {
+  const url = new URL(window.location.href)
+  if (id) url.searchParams.set('set', id)
+  else url.searchParams.delete('set')
+  window.history.replaceState(window.history.state, '', url)
+})
+const v2Favs = reactive(new Set<number>())
+const v2Comments = reactive(new Map<number, ShareComment[]>())
+const v2Counts = reactive(new Map<number, number>()) // favorites per image, all clients
+
 // Initialize state from SSR data
 const loading = ref(false)
-const error = ref(!albumData.value?.success)
-const albumInfo = ref<AlbumData['album'] | null>(albumData.value?.data?.album || null)
+const error = ref(isV2 ? !manifest.value : !albumData.value?.success)
+const albumInfo = ref<AlbumData['album'] | null>(
+  isV2
+    ? (manifest.value && { ...manifest.value.album, shareLinkToken: token, favoritedPhotosCount: 0, ownerName: manifest.value.album.ownerName ?? '' })
+    : albumData.value?.data?.album || null
+)
 const images = ref<ImageData[]>(albumData.value?.data?.images || [])
 const pagination = ref<AlbumData['pagination'] | null>(albumData.value?.data?.pagination || null)
 
@@ -360,6 +463,24 @@ if (images.value.length > 0) {
         rel: 'preload',
         as: 'image' as const,
         href: img.thumbnailUrl || img.url
+      }))
+    ]
+  })
+}
+
+// v2: preconnect to the image base + preload the first row
+if (isV2 && manifest.value?.images.length) {
+  const { base, images: head } = manifest.value
+  let imageDomain = ''
+  try { imageDomain = new URL(base, useRuntimeConfig().public.apiBase).origin } catch (e) { /* ignore */ }
+  useHead({
+    link: [
+      ...(imageDomain ? [{ rel: 'preconnect', href: imageDomain, crossorigin: 'anonymous' as const }] : []),
+      ...head.slice(0, 5).map(img => ({
+        rel: 'preload',
+        as: 'image' as const,
+        href: thumbUrl(base, img),
+        fetchpriority: 'high' as const
       }))
     ]
   })
@@ -413,6 +534,7 @@ function selectAnimal(viewIndex: number) {
 // Methods
 async function toggleShowFavorites() {
   showFavoritesOnly.value = !showFavoritesOnly.value
+  if (isV2) return // BrowseGrid filters client-side
   gridLoading.value = true
 
   // Destroy lightbox as the gallery element will be removed
@@ -568,6 +690,21 @@ async function handleSubmitComment(note: string) {
 
   if (!currentCommentImage.value) return
 
+  if (isV2) {
+    const id = currentCommentImage.value.id
+    shareStore.addChange(id, 'comment', note)
+    if (!v2Favs.has(id)) {
+      v2Favs.add(id) // Implicit favorite, as in v1
+      v2Counts.set(id, (v2Counts.get(id) ?? 0) + 1)
+      shareStore.addChange(id, 'favorite')
+    }
+    // One comment per user per image — replace existing.
+    const others = (v2Comments.get(id) ?? []).filter(c => c.clientName !== clientName.value)
+    v2Comments.set(id, [...others, { clientName: clientName.value, notes: note, createdAt: new Date().toISOString() }])
+    openCommentSidebarV2(id)
+    return
+  }
+
   commentLoading.value = true
   const image = currentCommentImage.value
 
@@ -624,57 +761,13 @@ function updateLightboxUI() {
   const image = images.value[currIndex]
   if (!image) return
 
-  const isPending = pendingFavorites.value.has(image.id)
-
-  // Update Favorite Button
-  const heartIcon = document.querySelector('.pswp-favorite-icon')
-  if (heartIcon) {
-    const isFavorited = !!image.userFavorite
-    const count = image.favoriteCount || 0
-
-    let html = ''
-    if (isFavorited) {
-      html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart text-rose-500 ${isPending ? 'animate-pulse' : ''}"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
-    } else {
-      html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart text-white ${isPending ? 'animate-pulse' : ''}"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
-    }
-
-    if (count > 0) {
-      html += `<span class="text-xs font-bold text-white ml-1.5 shadow-sm">${count}</span>`
-    }
-
-    heartIcon.innerHTML = html
-
-    // Add or remove pending state class to the button
-    const favButton = document.querySelector('.pswp__button--favorite-button')
-    if (favButton) {
-      if (isPending) {
-        favButton.classList.add('opacity-70', 'cursor-wait')
-      } else {
-        favButton.classList.remove('opacity-70', 'cursor-wait')
-      }
-    }
-  }
-
-  // Update Comment Button
-  const commentIcon = document.querySelector('.pswp-comment-icon')
-  if (commentIcon) {
-    const hasUserNote = image.userFavorite && image.userFavorite.notes
-    const count = image.notesCount || 0
-
-    let html = ''
-    if (hasUserNote) {
-      html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square text-indigo-400"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`
-    } else {
-      html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square text-white"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`
-    }
-
-    if (count > 0) {
-      html += `<span class="text-xs font-bold text-white ml-1.5 shadow-sm">${count}</span>`
-    }
-
-    commentIcon.innerHTML = html
-  }
+  renderLightboxButtons({
+    favorited: !!image.userFavorite,
+    favCount: image.favoriteCount || 0,
+    pending: pendingFavorites.value.has(image.id),
+    hasNote: !!image.userFavorite?.notes,
+    noteCount: image.notesCount || 0
+  })
 }
 
 async function fetchAlbum(page = 1, isBackground = false) {
@@ -735,7 +828,8 @@ async function saveName() {
   shareStore.startPeriodicFlush(token, clientName.value)
 
   // Refetch data with new name to sync favorites
-  await fetchAlbum(1, true)
+  if (isV2) await loadFeedback()
+  else await fetchAlbum(1, true)
 }
 
 function closeCommentSidebar() {
@@ -773,21 +867,11 @@ function showHeartAnimation(x: number, y: number) {
 
 function initLightbox() {
   lightbox = new PhotoSwipeLightbox({
+    ...PSWP_BASE_OPTIONS,
     // Keep gallery/children for DOM click interception
     gallery: '#gallery',
     children: 'a',
     pswpModule: () => import('photoswipe'),
-    padding: { top: 0, bottom: 0, left: 0, right: 0 }, // Edge to edge
-    bgOpacity: 0.95,
-    showHideOpacity: true,
-    trapFocus: false, // Allow focus on our custom modal
-    doubleTapAction: false, // Disable default double-tap zoom - we'll use custom double-tap to favorite
-    pinchToClose: true, // Keep pinch to close gesture
-    arrowPrev: false, // Disable arrow navigation
-    arrowNext: false, // Disable arrow navigation
-    closeSVG: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><!-- Icon from Lucide by Lucide Contributors - https://github.com/lucide-icons/lucide/blob/main/LICENSE --><path fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"/></svg>',
-    zoomSVG: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-maximize-2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>',
-    preload: [4, 8],
   })
 
   // Filter to tell PhotoSwipe how many items we have (dynamic)
@@ -888,10 +972,58 @@ function openCommentSidebar(image: ImageData) {
   showCommentSidebar.value = true
 }
 
+// Browse v2: favorites/comments live in v2Favs/v2Comments/v2Counts (loaded from /feedback); writes
+// still go through shareStore's batched queue. Unsynced changes are replayed over the server state
+// (read after the response lands) so a reload can't undo a heart or comment made meanwhile.
+async function loadFeedback() {
+  const fb = await api.getFeedback(token, clientName.value)
+  if (!fb) return
+  const m = mergeFeedback(fb, shareStore.unsyncedChanges(), clientName.value)
+  v2Favs.clear()
+  m.favs.forEach(id => v2Favs.add(id))
+  v2Counts.clear()
+  m.counts.forEach((n, id) => v2Counts.set(id, n))
+  v2Comments.clear()
+  m.comments.forEach((list, id) => v2Comments.set(id, list))
+}
+
+function toggleFavoriteV2(id: number) {
+  if (!clientName.value) {
+    showNameModal.value = true
+    return
+  }
+  const had = v2Favs.has(id)
+  if (had) v2Favs.delete(id)
+  else v2Favs.add(id)
+  v2Counts.set(id, Math.max(0, (v2Counts.get(id) ?? 0) + (had ? -1 : 1)))
+  shareStore.addChange(id, had ? 'unfavorite' : 'favorite')
+}
+
+function openCommentSidebarV2(id: number) {
+  const img = manifest.value?.images.find(i => i.id === id)
+  if (!img || !manifest.value) return
+  currentCommentImage.value = toShareImage(img, manifest.value.base, v2Favs.has(id), v2Counts.get(id) ?? 0, v2Comments.get(id) ?? [], clientName.value)
+  showCommentSidebar.value = true
+}
+
 
 
 // Load data on mount
 onMounted(async () => {
+  if (isV2) {
+    // Full manifest (SSR only shipped the first rows)
+    api.getManifest(token).then(m => { if (m) manifest.value = m })
+    const savedName = localStorage.getItem(CLIENT_NAME_KEY)
+    if (savedName) {
+      clientName.value = savedName
+      shareStore.startPeriodicFlush(token, savedName)
+      loadFeedback()
+    } else {
+      showNameModal.value = true
+    }
+    return // BrowseGrid owns its lightbox
+  }
+
   // Client-side hydration and updates
   const savedName = localStorage.getItem(CLIENT_NAME_KEY)
   if (savedName) {

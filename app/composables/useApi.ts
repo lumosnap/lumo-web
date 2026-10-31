@@ -1,5 +1,14 @@
 import type { NitroFetchOptions } from 'nitropack'
 import type { ChangeAction } from '~/stores/share'
+import type { ManifestImage, ManifestSet, ShareFeedback } from '~/utils/browse'
+
+export interface ShareManifest {
+    v: 1
+    album: { id: string; title: string; eventDate: string | null; totalImages: number; ownerName: string | null; browseV2: boolean }
+    base: string
+    images: ManifestImage[]
+    sets?: ManifestSet[] // photographer-defined groups; ids may reference images still uploading
+}
 
 // API composable for public routes
 export function useApi() {
@@ -50,6 +59,7 @@ export function useApi() {
                 shareLinkToken: string
                 favoritedPhotosCount: number
                 ownerName: string
+                browseV2?: boolean
             }
             images: Array<{
                 id: number
@@ -79,6 +89,19 @@ export function useApi() {
                 hasPrevPage: boolean
             }
         }>(`/api/v1/share/${token}?${params.toString()}`)
+    }
+
+    // Browse v2: full image manifest (bare JSON body, CDN-cacheable). Null on failure.
+    async function getManifest(token: string) {
+        return $fetch<ShareManifest>(`/api/v1/share/${token}/manifest`, { baseURL: baseUrl }).catch(() => null)
+    }
+
+    // Browse v2: this client's favorites + all comments. Null on failure.
+    async function getFeedback(token: string, clientName: string) {
+        return $fetch<ShareFeedback>(`/api/v1/share/${token}/feedback`, {
+            baseURL: baseUrl,
+            query: { clientName },
+        }).catch(() => null)
     }
 
     // Create favorite
@@ -175,6 +198,8 @@ export function useApi() {
 
     return {
         getAlbum,
+        getManifest,
+        getFeedback,
         createFavorite,
         deleteFavorite,
         updateFavoriteNotes,
