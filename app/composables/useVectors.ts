@@ -4,6 +4,16 @@ import type { VectorReply, VectorRequest } from '~/workers/vectors.worker'
 let worker: Worker | null = null
 let seq = 0
 const pending = new Map<number, (r: VectorReply) => void>()
+let sentLive: number[] | null = null // the worker keeps `live`; sent again only when the manifest changes
+
+// Ends the worker and answers what it still owed; the next call starts a fresh one.
+function stop() {
+    worker?.terminate()
+    worker = null
+    sentLive = null
+    pending.forEach(r => r({ ok: false, error: 'load' }))
+    pending.clear()
+}
 
 function call(req: VectorRequest): Promise<VectorReply> {
     if (!worker) {
@@ -13,8 +23,10 @@ function call(req: VectorRequest): Promise<VectorReply> {
             pending.get(e.data.id)?.(e.data.reply)
             pending.delete(e.data.id)
         }
-        worker.onerror = () => { pending.forEach(r => r({ ok: false, error: 'load' })); pending.clear() }
+        worker.onerror = stop // the script did not load: a later call tries again
     }
+    if (req.live === sentLive) delete req.live
+    else sentLive = req.live ?? null
     const id = ++seq
     return new Promise(resolve => {
         pending.set(id, resolve)
@@ -29,4 +41,5 @@ export const useVectors = () => ({
     similarTo: (url: string, live: number[], imageId: number, k: number, allowed?: number[]) => call({ op: 'similarTo', url, live, imageId, k, allowed }),
     nearest: (url: string, live: number[], vec: Float32Array, k: number, allowed?: number[]) => call({ op: 'nearest', url, live, vec, k, allowed }),
     phrase: (url: string, live: number[], slugs: string[], allowed?: number[], exclude?: number[]) => call({ op: 'phrase', url, live, slugs, allowed, exclude }),
+    dispose: stop, // page unmount
 })

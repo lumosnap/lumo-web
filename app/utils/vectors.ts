@@ -32,6 +32,7 @@ export function parseLSV1(buf: ArrayBuffer, live?: Iterable<number>): VectorFile
     const model = String.fromCharCode(...new Uint8Array(buf, 12, 16)).replace(/\0+$/, '')
     const idsOff = HEADER + 8 * dims
     const codesOff = idsOff + 4 * count
+    if (dims === 0) throw new Error('LSV1: no dimensions')
     if (buf.byteLength < codesOff + count * dims) throw new Error('LSV1: file truncated')
     const ids = new Uint32Array(buf, idsOff, count)
     const f = {
@@ -40,6 +41,7 @@ export function parseLSV1(buf: ArrayBuffer, live?: Iterable<number>): VectorFile
         scale: new Float32Array(buf, HEADER + 4 * dims, dims),
         codes: new Int8Array(buf, codesOff, count * dims),
     }
+    if (!f.mean.every(Number.isFinite) || !f.scale.every(Number.isFinite)) throw new Error('LSV1: bad mean or scale')
     return keepIds(f, live)
 }
 
