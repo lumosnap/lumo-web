@@ -26,7 +26,7 @@ export const imageUrl = (base: string, img: ManifestImage) => `${base}/${img.f}`
 export const thumbUrl = (base: string, img: ManifestImage) => (img.t ? `${base}/${img.t}` : imageUrl(base, img))
 export const fileName = (img: ManifestImage) => img.f.split('/').pop() || img.f
 
-// Same breakpoints as the v1 grid: grid-cols-2 md:3 lg:4 xl:5 (Tailwind defaults).
+// Same breakpoints as the CSS grids: grid-cols-2 md:3 lg:4 xl:5 (Tailwind defaults).
 export function columnsFor(viewportWidth: number) {
     if (viewportWidth >= 1280) return 5
     if (viewportWidth >= 1024) return 4
@@ -355,10 +355,14 @@ export function mergeFeedback(fb: ShareFeedback, changes: UnsyncedChange[], clie
         if (ch.action === 'comment') {
             const others = (comments.get(id) ?? []).filter(c => c.clientName !== clientName)
             comments.set(id, [...others, { clientName, notes: ch.notes ?? null, createdAt: new Date().toISOString() }])
-        } else if ((ch.action === 'favorite') !== favs.has(id)) {
-            if (ch.action === 'favorite') favs.add(id)
-            else favs.delete(id)
-            counts.set(id, Math.max(0, (counts.get(id) ?? 0) + (ch.action === 'favorite' ? 1 : -1)))
+        } else {
+            // The client's note lives on their favorite: un-hearting deletes it server-side
+            if (ch.action === 'unfavorite') comments.set(id, (comments.get(id) ?? []).filter(c => c.clientName !== clientName))
+            if ((ch.action === 'favorite') !== favs.has(id)) {
+                if (ch.action === 'favorite') favs.add(id)
+                else favs.delete(id)
+                counts.set(id, Math.max(0, (counts.get(id) ?? 0) + (ch.action === 'favorite' ? 1 : -1)))
+            }
         }
     }
     return { favs, counts, comments }
@@ -404,14 +408,14 @@ export const PSWP_BASE_OPTIONS = {
 }
 
 // Repaints the custom favorite/notes buttons in the open PhotoSwipe UI.
-export function renderLightboxButtons(s: { favorited: boolean; favCount: number; pending: boolean; hasNote: boolean; noteCount: number }) {
+export function renderLightboxButtons(s: { favorited: boolean; favCount: number; hasNote: boolean; noteCount: number }) {
     const heartIcon = document.querySelector('.pswp-favorite-icon')
     if (heartIcon) {
         let html = ''
         if (s.favorited) {
-            html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart text-rose-500 ${s.pending ? 'animate-pulse' : ''}"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
+            html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart text-rose-500"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
         } else {
-            html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart text-white ${s.pending ? 'animate-pulse' : ''}"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
+            html = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart text-white"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
         }
 
         if (s.favCount > 0) {
@@ -419,16 +423,6 @@ export function renderLightboxButtons(s: { favorited: boolean; favCount: number;
         }
 
         heartIcon.innerHTML = html
-
-        // Add or remove pending state class to the button
-        const favButton = document.querySelector('.pswp__button--favorite-button')
-        if (favButton) {
-            if (s.pending) {
-                favButton.classList.add('opacity-70', 'cursor-wait')
-            } else {
-                favButton.classList.remove('opacity-70', 'cursor-wait')
-            }
-        }
     }
 
     const commentIcon = document.querySelector('.pswp-comment-icon')

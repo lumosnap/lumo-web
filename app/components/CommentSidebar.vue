@@ -86,9 +86,8 @@
               <button type="submit" aria-label="Send note"
                 class="absolute right-1.5 bottom-1.5 w-9 h-9 rounded-full flex items-center justify-center transition-colors"
                 :class="isValid ? 'bg-ink text-card hover:bg-ink-2' : 'bg-inset-2 text-ink-3 cursor-not-allowed'"
-                :disabled="!isValid || loading">
-                <Icon v-if="loading" name="lucide:loader-2" size="16" class="animate-spin" />
-                <Icon v-else name="lucide:arrow-up" size="18" />
+                :disabled="!isValid">
+                <Icon name="lucide:arrow-up" size="18" />
               </button>
             </form>
           </div>
@@ -123,7 +122,6 @@ const props = defineProps<{
   isOpen: boolean
   image: ShareImage | null
   clientName: string
-  loading?: boolean
 }>()
 
 const emit = defineEmits(['close', 'submit'])
@@ -207,7 +205,7 @@ function handleKeydown(e: KeyboardEvent) {
 }
 
 function handleSubmit() {
-  if (!isValid.value || props.loading) return
+  if (!isValid.value) return
   
   emit('submit', newComment.value)
   

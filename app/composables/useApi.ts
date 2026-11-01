@@ -4,7 +4,7 @@ import type { ManifestImage, ManifestPerson, ManifestSet, ShareFeedback } from '
 
 export interface ShareManifest {
     v: 1
-    album: { id: string; title: string; eventDate: string | null; totalImages: number; ownerName: string | null; browseV2: boolean }
+    album: { id: string; title: string; eventDate: string | null; totalImages: number; ownerName: string | null }
     base: string
     images: ManifestImage[]
     sets?: ManifestSet[] // photographer-defined groups; ids may reference images still uploading
@@ -44,58 +44,12 @@ export function useApi() {
         }
     }
 
-    // Get album by share token
-    async function getAlbum(token: string, page: number = 1, clientName?: string, favoritesOnly?: boolean, limit?: number) {
-        const params = new URLSearchParams()
-        params.append('page', page.toString())
-        if (clientName) params.append('clientName', clientName)
-        if (favoritesOnly) params.append('favorites', 'true')
-        if (limit) params.append('limit', limit.toString())
-
-        return fetchApi<{
-            album: {
-                id: string
-                title: string
-                eventDate: string | null
-                totalImages: number
-                shareLinkToken: string
-                favoritedPhotosCount: number
-                ownerName: string
-                browseV2?: boolean
-            }
-            images: Array<{
-                id: number
-                originalFilename: string
-                width: number
-                height: number
-                createdAt: string
-                url: string
-                thumbnailUrl: string
-                favoriteCount: number
-                comments: Array<{
-                    clientName: string
-                    notes: string | null
-                    createdAt: string
-                }>
-                userFavorite: {
-                    id: number
-                    notes: string | null
-                    createdAt: string
-                } | null
-            }>
-            pagination: {
-                currentPage: number
-                totalPages: number
-                totalImages: number
-                hasNextPage: boolean
-                hasPrevPage: boolean
-            }
-        }>(`/api/v1/share/${token}?${params.toString()}`)
-    }
-
-    // Browse v2: full image manifest (bare JSON body, CDN-cacheable). Null on failure.
+    // Full image manifest (bare JSON body, CDN-cacheable). status 404: no such album (expired, revoked);
+    // anything else (0: offline) is worth a retry.
     async function getManifest(token: string) {
-        return $fetch<ShareManifest>(`/api/v1/share/${token}/manifest`, { baseURL: baseUrl }).catch(() => null)
+        return $fetch<ShareManifest>(`/api/v1/share/${token}/manifest`, { baseURL: baseUrl }).then(
+            data => ({ ok: true as const, data }),
+            (e: { status?: number }) => ({ ok: false as const, status: e.status ?? 0 }))
     }
 
     // Browse v2: this client's favorites + all comments. Null on failure.
@@ -106,58 +60,21 @@ export function useApi() {
         }).catch(() => null)
     }
 
-    // Create favorite
-    async function createFavorite(token: string, imageId: number, clientName: string, notes?: string) {
-        return fetchApi<{
-            id: number
-            albumId: string
-            imageId: number
-            clientName: string
-            notes: string | null
-            createdAt: string
-        }>(`/api/v1/share/${token}/favorites`, {
-            method: 'POST',
-            body: JSON.stringify({ imageId, clientName, notes }),
-        })
-    }
-
-    // Update favorite notes
-    async function updateFavoriteNotes(token: string, favoriteId: number, clientName: string, notes: string) {
-        return fetchApi<{
-            id: number
-            albumId: string
-            imageId: number
-            clientName: string
-            notes: string | null
-            createdAt: string
-        }>(`/api/v1/share/${token}/favorites/${favoriteId}/notes`, {
-            method: 'PATCH',
-            body: JSON.stringify({ clientName, notes }),
-        })
-    }
-
-    // Batch update favorites/comments
-    async function batchFavorites(token: string, clientName: string, changes: Array<{ imageId: number; action: ChangeAction; notes?: string }>) {
-        return fetchApi<{
-            success: boolean
-            message: string
-            results: Array<{
-                imageId: number
-                success: boolean
-                message?: string
-            }>
-        }>(`/api/v1/share/${token}/favorites/batch`, {
-            method: 'PATCH',
-            body: JSON.stringify({ clientName, changes }),
-        })
-    }
-
-    // Delete favorite
-    async function deleteFavorite(token: string, favoriteId: number, clientName: string) {
-        return fetchApi<void>(`/api/v1/share/${token}/favorites/${favoriteId}`, {
-            method: 'DELETE',
-            body: JSON.stringify({ clientName }),
-        })
+    // Batch update favorites/comments. status 0: the request did not get through (offline). results[i] answers
+    // changes[i]. keepalive: the request outlives the page (the tab is hidden or closed).
+    async function batchFavorites(token: string, clientName: string, changes: Array<{ imageId: number; action: ChangeAction; notes?: string }>, keepalive = false) {
+        try {
+            const res = await fetch(`${baseUrl}/api/v1/share/${token}/favorites/batch`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientName, changes }),
+                keepalive,
+            })
+            const body = await res.json().catch(() => null) as { results?: Array<{ imageId: number; success: boolean; message?: string }> } | null
+            return { status: res.status, results: body?.results ?? [] }
+        } catch {
+            return { status: 0, results: [] }
+        }
     }
 
     // Get photographer public details
@@ -199,12 +116,8 @@ export function useApi() {
     }
 
     return {
-        getAlbum,
         getManifest,
         getFeedback,
-        createFavorite,
-        deleteFavorite,
-        updateFavoriteNotes,
         batchFavorites,
         getPhotographer,
         createBooking,

@@ -86,7 +86,7 @@ const root = ref<HTMLElement | null>(null)
 // that path rendered and eagerly loaded the whole set (a 3 s freeze on 1,250 photos).
 const mounted = ref(import.meta.client && !useNuxtApp().isHydrating)
 
-// Favorites-only is a snapshot taken when the filter flips (like v1's refetch),
+// Favorites-only is a snapshot taken when the filter flips,
 // so un-hearting inside the filtered view doesn't reshuffle the grid.
 const snap = (imgs: ManifestImage[], only: boolean) => {
   const favs = toRaw(props.favs)
@@ -115,7 +115,7 @@ const virt = useWindowVirtualizer(computed(() => ({
   scrollMargin: margin.value,
   scrollPaddingStart: stickyTop.value,
 })))
-watch(tileH, () => virt.value.measure())
+watch([tileH, margin], () => virt.value.measure()) // row starts are cached with the old offsets
 const virtualRows = computed(() => virt.value.getVirtualItems().map(v => ({ v, row: layout.value.rows[v.index]! })))
 const measureEl = (el: unknown) => virt.value.measureElement(el as HTMLElement | null)
 
@@ -172,15 +172,15 @@ watch(() => props.setId, () => {
 async function restoreScroll() {
   if (restored || props.favoritesOnly) return
   const saved = JSON.parse(sessionStorage.getItem(scrollKey()) || 'null') as { id: number; off: number } | null
-  if (!saved) {
-    restored = true
+  const index = saved ? layout.value.visible.findIndex(img => img.id === saved.id) : -1
+  if (index === -1 && saved && props.labels) return // SSR head: the full manifest may still bring it
+  restored = true
+  // No saved place, or its photo is not in this view (deleted, filtered out): the view's top
+  if (!saved || index === -1) {
     const top = margin.value - stickyTop.value
     if (mounted.value && window.scrollY > top) window.scrollTo({ top, behavior: 'instant' })
     return
   }
-  const index = layout.value.visible.findIndex(img => img.id === saved.id)
-  if (index === -1) return // full manifest may not be here yet
-  restored = true
   await nextTick()
   const start = virt.value.measurementsCache[layout.value.rowOf[index]!]?.start
   if (start !== undefined) window.scrollTo({ top: start + saved.off, behavior: 'instant' })
@@ -241,7 +241,6 @@ function updateLightboxUI() {
   renderLightboxButtons({
     favorited,
     favCount: props.counts.get(img.id) ?? 0,
-    pending: false,
     hasNote: comments.some(c => c.clientName === props.clientName && !!c.notes?.trim()),
     noteCount: comments.filter(c => c.notes?.trim()).length,
   })
@@ -340,7 +339,7 @@ function initLightbox() {
   lightbox.on('close', () => scrollToImage(burst.value?.index ?? currIndex.value))
   lightbox.on('destroy', () => { currIndex.value = -1; burst.value = null; peopleEl = null; likeEl = null })
 
-  // Double-tap to favorite (same thresholds as v1)
+  // Double-tap to favorite
   lightbox.on('afterInit', () => {
     let lastTime = 0
     let last = { x: 0, y: 0 }
