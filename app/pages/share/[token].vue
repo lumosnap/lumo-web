@@ -590,7 +590,9 @@ const filtered = computed(() => {
 
 // ---- Album vectors (manifest.vectors, LSV1): "More like this" and search by meaning, in a worker.
 // No vectors (null: not built yet) -> both stay off and everything works as before.
-const vectors = computed(() => manifest.value?.vectors ?? null)
+// ponytail: off until the storage CDN sends CORS for the file (or the worker serves it); then set true.
+const VECTORS_ON = false
+const vectors = computed(() => (VECTORS_ON ? (manifest.value?.vectors ?? null) : null))
 const vecApi = useVectors()
 const byId = computed(() => (full.value ? new Map(full.value.images.map(i => [i.id, i])) : null))
 const liveIds = computed(() => full.value?.images.map(i => i.id) ?? []) // the file may still hold deleted photos
