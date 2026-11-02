@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="report-kind" content="design-decisions">
+<title>Design decisions: LumoSnap share gallery</title>
+<!-- Link the product's own web font here, if it has one. No other web font. -->
+<!--
+  Written with the human-touch skill. How to write this page: references/report.md.
+  The page reads like a product landing page, top to bottom, as one story:
+    hero (the answer, the product, up to four numbers) → the short version (every chapter's claim)
+    → chapters, each one claim with one visual, ending in a bridge line into the next
+    → the session (the turn: what review changed, then the proof)
+    → For you to decide, the closing ask → Assumed.
+  Each chapter: an eyebrow (the number and the key word), a headline that states the claim, a lede line,
+  one dominant visual of its own kind, one to three lines of so-what, the reference folded in one details element,
+  and a bridge sentence that hands the reader to the next chapter.
+  Keep the structure: coverage.py reads the h2/h3 headings (the key word sits first, inside .key, then the claim),
+  the list items whose bold label ends in a colon, and the table rows, folded or not. Guidance lives in comments;
+  comments never count as filled. One file: inline CSS, one script (the motion loop at the end), no web font except the product's own.
+  Interaction is radios, :has(), :hover and details only. Captures sit beside this file, linked by relative path.
+  Quote attributes, close every element, escape & < >.
+  Write every word of this page in ASD-STE100, about 80% strict; see "Every word in Simplified Technical English" in references/report.md.
+-->
+<style>
+/* Report theme: the page wears the product it reports on, so every project gets its own report. Fill these from the chosen direction
+   (the same values as dir-1 under "Product values" at the end); everything else derives from them, the greys included.
+   --brand: the product's accent, used for fills and strokes only, never for text. --brand-on: text on it, from the product.
+   --font / --display: the product's body and heading faces (link its web font above, if it has one). --mono: its code face, if any.
+   --r-s / --r-m: the product's small and large radius. --tint: how far the greys lean toward the brand's hue (0 = pure grey, about .08 = clearly toward the brand, cool or warm).
+   --hl: the verdict's highlighter, the brand by default; set it to a second product colour if the brand is dark.
+   Red (--flag) stays the one colour that means "needs you": if the product's accent is red, set --flag to a hue the product does not use. */
+:root{--brand:oklch(0.2 0 0);--brand-on:#fff;--font:system-ui,sans-serif;--display:var(--font);--mono:ui-monospace,"SF Mono",Menlo,monospace;--r-s:4px;--r-m:8px;--tint:.05;
+--accent:var(--brand);--accent-on:var(--brand-on);--accent-line:var(--accent);
+--bg:oklch(0.985 0 0);--fg:oklch(0.2 0 0);--mute:oklch(0.46 0 0);--faint:oklch(0.64 0 0);--line:oklch(0.9 0 0);--card:oklch(0.955 0 0);--band:oklch(0.965 0 0);--flag:oklch(0.5 0.19 27);--measure:62ch;
+--t-xs:.75rem;--t-s:.875rem;--t-m:1rem;--t-l:1.125rem;--t-xl:1.3rem}
+/* Light by default; the Dark checkbox switches, no script. A dark-first product: add checked to the switch, so the report opens in its scheme. */
+:root:has(#dark:checked){color-scheme:dark;--bg:oklch(0.17 0 0);--fg:oklch(0.93 0 0);--mute:oklch(0.72 0 0);--faint:oklch(0.55 0 0);--line:oklch(0.3 0 0);--card:oklch(0.22 0 0);--band:oklch(0.2 0 0);--flag:oklch(0.72 0.15 25)}
+/* The greys take the brand's hue; in dark, the accent is lifted so it still reads (a neutral ink to near-white, a vivid hue to at least 0.72). Engines without relative colour keep the plain greys above. */
+@supports (color:oklch(from red l c h)){
+/* --accent-line: strokes and bars, darkened in light so a pale accent (a yellow) still reads as a line */
+:root{--accent-line:oklch(from var(--brand) min(l,0.7) c h);--bg:oklch(from var(--brand) 0.985 calc(c*var(--tint)) h);--fg:oklch(from var(--brand) 0.2 calc(c*var(--tint)) h);--mute:oklch(from var(--brand) 0.46 calc(c*var(--tint)) h);--faint:oklch(from var(--brand) 0.64 calc(c*var(--tint)) h);--line:oklch(from var(--brand) 0.9 calc(c*var(--tint)) h);--card:oklch(from var(--brand) 0.955 calc(c*var(--tint)) h);--band:oklch(from var(--brand) 0.965 calc(c*var(--tint)) h)}
+:root:has(#dark:checked){--bg:oklch(from var(--brand) 0.17 calc(c*var(--tint)) h);--fg:oklch(from var(--brand) 0.93 calc(c*var(--tint)) h);--mute:oklch(from var(--brand) 0.72 calc(c*var(--tint)) h);--faint:oklch(from var(--brand) 0.55 calc(c*var(--tint)) h);--line:oklch(from var(--brand) 0.3 calc(c*var(--tint)) h);--card:oklch(from var(--brand) 0.22 calc(c*var(--tint)) h);--band:oklch(from var(--brand) 0.2 calc(c*var(--tint)) h);--accent:oklch(from var(--brand) max(l,calc(0.92 - min(c,0.2))) c h);--accent-on:oklch(0.17 0 0);--accent-line:var(--accent)}
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 var(--font);overflow-x:hidden;counter-reset:ch}
+main{max-width:72rem;margin:0 auto;padding:0 1.25rem 4rem}
+p,li{max-width:var(--measure)}
+a{color:inherit;text-underline-offset:.15em}
+:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+:target{scroll-margin-top:5rem}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.note,figcaption,caption{color:var(--mute);font-size:var(--t-s)}
+.flag,.fail{color:var(--flag);font-weight:600}
+.mono{font-family:var(--mono)}
+code{font-family:var(--mono);font-size:.9em}
+
+/* Sticky bar: where you are, what needs you, the theme switch */
+.bar{position:sticky;top:0;z-index:5;background:color-mix(in oklch,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar>div{max-width:72rem;margin:0 auto;padding:.55rem 1.25rem;display:flex;align-items:center;gap:1.25rem}
+.bar .name{font-weight:650;white-space:nowrap}
+.bar nav{flex:1;overflow-x:auto;scrollbar-width:none;white-space:nowrap;font-size:var(--t-s)}
+.bar nav a{display:inline-block;padding:.35rem .5rem;color:var(--mute);text-decoration:none;border-radius:var(--r-s)}
+.bar nav a:hover{color:var(--fg);background:var(--card)}
+.needs{white-space:nowrap;font-size:var(--t-s);font-weight:600;color:var(--flag);text-decoration:none;border:1px solid currentColor;border-radius:99px;padding:.25rem .7rem}
+.theme{display:inline-flex;align-items:center;gap:.35rem;font-size:var(--t-s);color:var(--mute);cursor:pointer;white-space:nowrap}
+.theme input{margin:0;accent-color:var(--fg)}
+@media (max-width:52rem){.bar nav{display:none}.bar>div{justify-content:space-between}.bar .name .note{display:none}}
+
+/* Hero: the answer first, the product under it, up to four numbers */
+.hero{padding:clamp(3rem,8vw,6rem) 0 2rem}
+.hero h1{font:600 var(--t-s)/1.4 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--mute);margin:0 0 1.25rem}
+.verdict{font-family:var(--display);font-size:clamp(2.1rem,5.2vw,4rem);line-height:1.04;letter-spacing:-.03em;font-weight:750;max-width:16em;margin:0 0 1.25rem}
+.verdict mark{background:linear-gradient(transparent 58%,color-mix(in oklch,var(--hl,var(--accent)) 45%,transparent) 58% 92%,transparent 92%);color:inherit;padding:0 .05em}
+.dek{font-size:clamp(1.1rem,1.6vw,1.3rem);color:var(--mute);max-width:38em;margin:0 0 2rem}
+.ctas{display:flex;flex-wrap:wrap;gap:.75rem;margin:0 0 3rem}
+.btn{display:inline-flex;align-items:center;gap:.5rem;min-height:2.75rem;padding:0 1.15rem;border-radius:var(--r-s);font-weight:600;text-decoration:none;border:1px solid var(--fg)}
+.btn.primary{background:var(--accent);color:var(--accent-on);border-color:var(--accent)}
+.btn.primary b{background:var(--flag);color:#fff;border-radius:99px;min-width:1.5rem;height:1.5rem;display:inline-grid;place-items:center;font-size:var(--t-s)}
+.shot-hero{margin:0}
+.shot-hero img{display:block;width:100%;height:auto;border-radius:var(--r-m);border:1px solid var(--line);box-shadow:0 1px 2px oklch(0 0 0/.06),0 24px 60px -24px oklch(0 0 0/.25)}
+.shot-hero figcaption{margin-top:.75rem}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(13rem,100%),1fr));gap:1.5rem 2rem;margin:3rem 0 1rem;padding:1.5rem 0 0;border-top:1px solid var(--line)}
+.stats div{display:flex;flex-direction:column-reverse;justify-content:flex-end}
+.stats dd{margin:0;font-size:clamp(2.2rem,4vw,3.2rem);font-weight:750;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.stats dt{color:var(--mute);font-size:var(--t-s);margin-top:.4rem;max-width:16em}
+.stats .open dd{color:var(--flag)}
+
+/* The short version: every chapter's claim; read alone it tells the story */
+.short{margin:4rem 0 0}
+.short h2{font:600 var(--t-s)/1.4 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--mute);margin:0 0 1rem}
+.short>ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(20rem,100%),1fr));gap:0 2.5rem;counter-reset:s}
+.short>ol>li{counter-increment:s;max-width:none;border-top:1px solid var(--line)}
+.short>ol>li>a{display:grid;grid-template-columns:2.2rem 1fr;gap:.25rem;padding:.85rem 0;text-decoration:none}
+.short>ol>li>a::before{content:counter(s,decimal-leading-zero);font:600 var(--t-s)/1.6 var(--mono);color:var(--faint)}
+.short>ol>li>a:hover span{text-decoration:underline}
+.short ol ol{list-style:none;margin:-.4rem 0 .8rem 2.2rem;padding:0}
+.short ol ol li{font-size:var(--t-s)}
+.short ol ol a{display:block;padding:.15rem 0;color:var(--mute)}
+
+/* Chapters: number + key word as the eyebrow, the claim as the headline, a bridge into the next */
+.chapter,.session{counter-increment:ch;padding:clamp(4rem,9vw,7rem) 0 0;scroll-margin-top:3rem}
+.chapter>h2,.session>h2,h3{font-family:var(--display)}
+.chapter>h2,.session>h2{font-size:clamp(1.75rem,3.6vw,2.9rem);line-height:1.08;letter-spacing:-.025em;font-weight:750;max-width:20em;margin:0 0 1.25rem}
+h2 .key{display:block;font:600 var(--t-s)/1.4 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-bottom:1rem}
+h2 .key::before{content:counter(ch,decimal-leading-zero);display:inline-block;margin-right:.75rem;padding:.1rem .4rem;border:1px solid currentColor;border-radius:var(--r-s)}
+.lede{font-size:clamp(1.1rem,1.5vw,1.25rem);color:var(--mute);max-width:40em;margin:0 0 2.5rem}
+.sowhat{font-size:var(--t-l);max-width:58ch;margin:2rem 0 0;padding-left:1rem;border-left:3px solid var(--accent-line)}
+.bridge{margin:clamp(3rem,6vw,4.5rem) 0 0;display:flex;flex-wrap:wrap;gap:.25rem 1rem;align-items:baseline;font-size:var(--t-l);max-width:none}
+.bridge::before{content:"";flex:0 0 2.5rem;border-top:1px solid var(--faint);transform:translateY(-.3em)}
+.bridge a{font-weight:600}
+/* Full-bleed bands alternate the rhythm, no extra wrappers */
+.band{background:var(--band);box-shadow:0 0 0 100vmax var(--band);clip-path:inset(0 -100vmax);padding-bottom:clamp(4rem,9vw,7rem);margin-top:clamp(4rem,9vw,7rem)}
+details{margin:2rem 0 0;border-top:1px solid var(--line);padding-top:.5rem}
+summary{cursor:pointer;color:var(--mute);font-size:var(--t-s);font-weight:600;padding:.5rem 0;min-height:2rem}
+summary:hover{color:var(--fg)}
+details[open]>summary{margin-bottom:1rem}
+h3{font-size:clamp(1.3rem,2.2vw,1.65rem);line-height:1.2;letter-spacing:-.015em;margin:clamp(3.5rem,7vw,5rem) 0 1rem;max-width:26em}
+h3 .key{display:block;font:600 var(--t-xs)/1.4 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-bottom:.5rem}
+details h3{font-size:var(--t-l);margin:1.5rem 0 .5rem}
+
+/* Flows: each core flow as a row of steps with arrows; the shape it beat beside it, dashed. Stacks with down arrows when narrow. */
+.flows{display:grid;gap:2.5rem}
+.flowmap{margin:0}
+.flowmap figcaption{margin:0 0 .75rem;color:var(--fg);font-size:var(--t-m)}
+.flow{list-style:none;margin:0;padding:0 2rem 0 0;display:flex;flex-wrap:wrap;gap:1rem 2.25rem;align-items:stretch}
+.flow>li{position:relative;max-width:none;flex:0 1 12rem;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-m);padding:.75rem .9rem;font-size:var(--t-s);display:flex;flex-direction:column;gap:.25rem}
+.flow>li:not(:last-child)::after{content:"→";position:absolute;right:-1.7rem;top:50%;transform:translateY(-50%);color:var(--mute);font-size:1.1rem}
+.flow i{font:600 var(--t-xs)/1.4 var(--mono);font-style:normal;letter-spacing:.05em;text-transform:uppercase;color:var(--mute)}
+.flow b{font-size:var(--t-m);line-height:1.3}
+.flow span{color:var(--mute)}
+.flow .fork{border-color:var(--fg)}
+.flow .end{border:2px solid var(--accent-line);padding:calc(.75rem - 1px) calc(.9rem - 1px)}
+.flowmap.was figcaption{color:var(--mute)}
+.flowmap.was .flow>li{background:transparent;border:1px dashed var(--faint);color:var(--mute)}
+.flowmap.was .flow .cut b{text-decoration:line-through;text-decoration-color:var(--flag)}
+@media (max-width:40rem){.flow{flex-direction:column;gap:1.75rem;padding:0}.flow>li{flex:none}.flow>li:not(:last-child)::after{content:"↓";right:auto;left:1rem;top:auto;bottom:-1.6rem;transform:none}}
+/* Report motion: anywhere the content is a change over time, a glyph (.act) acts it out. See "Motion in the report" in references/report.md.
+   Every glyph sits on a scene (.scene), the one surface for motion in every chapter: the top of a flow step, a before and after pair (.pair), the top of a Life card, a motion specimen (.specimens). Same fill, corner and label everywhere, so motion is part of the page, not added to it.
+   .plays on the element whose scenes run together (a flow, a pair, a card, the specimen row). The script at the end of the page plays it in a loop while it is on screen and stops it when it is not. Without the script, with reduced motion and in print: the end state, still.
+   Each glyph is drawn for this product (inline SVG); its keyframes live under "Product values". --n: an index from 0 for glyphs that play one after another (a flow's steps, before then after); set it on the glyph or any parent. On any element inside .act: --a, its keyframes name (an element without it stays still); --at, a delay inside its beat; --d and --e, its own duration and easing (a specimen uses the product's real values). --h on .act: its height, 2rem by default; larger where the thing shown needs room to read. */
+@property --a{syntax:"*";inherits:false}
+.plays{--step:.9s}
+.act{display:block;height:var(--h,2rem);color:var(--fg)}
+.act svg{height:100%;width:auto;overflow:visible}
+.act *{transform-box:fill-box;transform-origin:center}
+.plays.on .act *{animation:var(--a,none) var(--d,var(--step)) var(--e,cubic-bezier(.2,.7,.3,1)) calc(var(--n,0) * var(--step) + var(--at,0s)) both}
+.scene{position:relative;display:grid;place-items:center;min-height:var(--scene,6rem);padding:1.6rem 1rem 1rem;background:var(--card);border-radius:var(--r-m)}
+.scene>.tag{position:absolute;left:.65rem;top:.55rem;font:600 var(--t-xs)/1 var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--mute)}
+.flow .scene{--scene:4.5rem;margin:-.75rem -.9rem .4rem;padding:.75rem;border-radius:calc(var(--r-m) - 1px) calc(var(--r-m) - 1px) 0 0;border-bottom:1px solid var(--line)}
+.flow .end .scene{margin:calc(-.75rem + 1px) calc(-.9rem + 1px) .4rem}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(15rem,100%),1fr));gap:1rem;margin:1.5rem 0}
+.pair figure{margin:0}
+.pair figcaption{margin-top:.5rem;font-size:var(--t-s);color:var(--mute)}
+.pair .was .scene{background:transparent;border:1px dashed var(--faint)}
+.pair .act{--h:7rem}
+.scene.duo{grid-template-columns:1fr 1fr;gap:1rem}
+.scene.duo>.tag+.tag{left:calc(50% + .5rem)}
+.life .scene{margin:-1.25rem -1.25rem 1rem;border-radius:var(--r-m) var(--r-m) 0 0;background:color-mix(in oklch,var(--bg) 60%,var(--card))}
+.specimens{list-style:none;padding:0;margin:1rem 0 1.5rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(13rem,100%),1fr));gap:1rem}
+.specimens li{max-width:none}
+.specimens b{display:block;margin-top:.5rem}
+.specimens span:not(.act,.act *){color:var(--mute);font-size:var(--t-s)}
+@media (prefers-reduced-motion:reduce),print{.plays .act *{animation:none!important}}
+
+/* Brief: a person card */
+.pull{list-style:none;padding:0;margin:0 0 2.5rem;font-size:clamp(1.4rem,2.8vw,2.1rem);line-height:1.25;letter-spacing:-.015em;max-width:24em}
+.pull strong{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.pull li{max-width:none}.pull li::before{content:"“"}.pull li::after{content:"”"}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(15rem,100%),1fr));gap:1.5rem 2rem;padding:0;list-style:none;margin:0}
+.fields li{max-width:none}
+.fields strong{display:block;font:600 var(--t-xs)/1.4 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-bottom:.35rem}
+.fields ul{padding-left:1.1rem}
+.fields.key{grid-template-columns:repeat(auto-fit,minmax(min(14rem,100%),1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r-m);overflow:hidden}
+.fields.key li{background:var(--bg);padding:1.25rem;font-size:var(--t-l);line-height:1.4}
+
+/* Direction: try each look on the same content (radios, no script). Per-direction values: see "Product values" at the end. */
+.dirs{display:grid;grid-template-columns:minmax(0,1fr) minmax(15rem,20rem);gap:1.25rem;align-items:start}
+@media (max-width:52rem){.dirs{grid-template-columns:1fr}}
+.dirs>input{position:absolute;opacity:0;pointer-events:none}
+.choices{display:grid;gap:.5rem;margin:0;padding:0;border:0;min-width:0}
+.choices legend{font-size:var(--t-s);color:var(--mute);margin-bottom:.5rem;padding:0}
+.choice{display:grid;grid-template-columns:3rem 1fr;gap:.75rem;align-items:center;padding:.6rem;border:1px dashed var(--faint);border-radius:var(--r-m);cursor:pointer;background:var(--bg)}
+.choice:hover{border-style:solid}
+.choice i{display:grid;place-items:center;height:2.25rem;border-radius:var(--sr);background:var(--sb);color:var(--sf);font:600 .9rem/1 var(--sfont);font-style:normal;box-shadow:inset 0 -5px 0 var(--sa),0 0 0 1px var(--line)}
+.choice b{display:block;font-size:var(--t-m)}
+.choice small{color:var(--mute);font-size:var(--t-xs)}
+.choice .tag{font:600 var(--t-xs) var(--mono);letter-spacing:.04em;margin-left:.4rem;color:var(--mute)}
+.dirs:has(#dir-1:focus-visible) [for="dir-1"],.dirs:has(#dir-2:focus-visible) [for="dir-2"],.dirs:has(#dir-3:focus-visible) [for="dir-3"],.dirs:has(#dir-4:focus-visible) [for="dir-4"]{outline:2px solid var(--fg);outline-offset:2px}
+.dirs:has(#dir-1:checked) [for="dir-1"],.dirs:has(#dir-2:checked) [for="dir-2"],.dirs:has(#dir-3:checked) [for="dir-3"],.dirs:has(#dir-4:checked) [for="dir-4"]{border:2px solid var(--accent-line);padding:calc(.6rem - 1px)}
+.preview{margin:0}
+.app{background:var(--t-bg);color:var(--t-fg);font-family:var(--t-font);border-radius:var(--r-m);border:1px solid var(--line);overflow:hidden;transition:background-color .26s ease-out,color .26s ease-out}
+.app header{display:flex;gap:1.25rem;align-items:center;padding:.7rem 1rem;border-bottom:1px solid var(--t-line);font-size:var(--t-s)}
+.app header b{margin-right:auto}
+.app .body{padding:1.25rem 1rem 1.5rem}
+.app .t{font-size:clamp(1.3rem,2.4vw,1.7rem);font-weight:600;line-height:1.15;margin:0}
+.app .m{color:var(--t-mute);font-size:var(--t-s);margin:.25rem 0 1rem}
+.app .row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1.25rem}
+.app .go{display:inline-block;background:var(--t-accent);color:var(--t-on);border-radius:var(--t-radius);padding:.5rem 1rem;font-weight:600;font-size:var(--t-s)}
+.why{display:none;margin:.75rem 0 0;font-size:var(--t-s);color:var(--mute)}
+.why b{color:var(--fg)}
+.dirs:has(#dir-1:checked) .why.w1,.dirs:has(#dir-2:checked) .why.w2,.dirs:has(#dir-3:checked) .why.w3,.dirs:has(#dir-4:checked) .why.w4{display:block}
+@media (prefers-reduced-motion:reduce){.app{transition:none}}
+/* A region cropped out of a capture, at any scale: --img, the region's --x/--y/--w/--h and the capture's --iw in source px, --s the scale */
+.ph{--s:.6;display:block;flex:none;width:calc(var(--w)*1px*var(--s));height:calc(var(--h)*1px*var(--s));background:var(--img) no-repeat calc(var(--x)*-1px*var(--s)) calc(var(--y)*-1px*var(--s))/calc(var(--iw)*1px*var(--s)) auto}
+
+/* Borrowed from the product's world: source → where it lives in the UI */
+.desk{list-style:none;padding:0;margin:3.5rem 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(16rem,100%),1fr));gap:1rem}
+.desk li{max-width:none;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-m);padding:1.25rem;display:flex;flex-direction:column;gap:.6rem}
+.desk .art{height:6.5rem;display:grid;place-items:center;background:var(--t-bg,var(--card));border-radius:var(--r-s);color:var(--t-fg,var(--fg));margin-bottom:.4rem;overflow:hidden}
+.desk .from{font:600 var(--t-xs)/1.4 var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--mute)}
+.desk b{font-size:var(--t-l);line-height:1.25}
+.desk span:last-child{color:var(--mute);font-size:var(--t-s)}
+
+/* Design language: a style board, drawn in the product's values */
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(20rem,100%),1fr));gap:1rem}
+.board>figure{margin:0;background:var(--card);border-radius:var(--r-m);padding:1.5rem}
+.board .wide{grid-column:1/-1}
+.specimen{font-family:var(--f);font-size:var(--size);font-weight:var(--w,400);line-height:1.1;display:block;overflow-wrap:anywhere;margin-bottom:.5rem}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(9.5rem,100%),1fr));gap:.5rem;margin-bottom:.75rem}
+.chip{border-radius:var(--r-s);background:var(--bg);color:var(--fg);padding:0 0 .6rem;display:flex;flex-direction:column;overflow:hidden;font-size:var(--t-xs);line-height:1.35;border:1px solid var(--line)}
+.chip b{font-size:var(--t-s)}
+.chip>b,.chip>span{padding:0 .6rem}
+.chip .on{display:block;background:var(--s);color:var(--c);font:600 1.5rem/1 var(--t-font,var(--font));padding:1.1rem .6rem;margin-bottom:.5rem;border-bottom:1px solid var(--line)}
+.space{display:inline-block;height:.6rem;width:var(--s);background:var(--fg);vertical-align:middle;margin-right:.3rem}
+.radius{display:inline-block;width:2.5rem;height:2.5rem;border:3px solid var(--fg);border-right:0;border-bottom:0;border-top-left-radius:var(--r);vertical-align:middle;margin-right:.75rem}
+.ctl{display:inline-grid;place-items:center;margin:0 .4rem .6rem 0}
+.voice{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(18rem,100%),1fr));gap:1rem 2rem;margin:0 0 2rem}
+.voice div{border-top:2px solid var(--accent-line);padding-top:.75rem}
+.voice div.not{border-top-style:dashed;border-color:var(--faint)}
+.voice dt{font:600 var(--t-xs)/1.4 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-bottom:.5rem}
+.voice dd{margin:0 0 .5rem;font-family:var(--t-font,var(--font));font-size:var(--t-l)}
+.voice .not dd{color:var(--mute);text-decoration:line-through;text-decoration-color:var(--faint)}
+
+/* Captures: hover a note and its pin lights up, and the other way round (up to four pins per capture) */
+.annotated{display:grid;grid-template-columns:minmax(0,3fr) minmax(15rem,1fr);gap:2rem;align-items:start;margin:0}
+.annotated+.annotated{margin-top:3.5rem}
+@media (max-width:56rem){.annotated{grid-template-columns:1fr}}
+.shot{position:relative;display:block}
+.shot img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:var(--r-s)}
+.pin{position:absolute;left:var(--x);top:var(--y);transform:translate(-50%,-50%);width:1.75rem;height:1.75rem;border-radius:50%;background:var(--accent);color:var(--accent-on);font:700 var(--t-s)/1.75rem var(--font);text-align:center;text-decoration:none;box-shadow:0 0 0 3px var(--bg);transition:transform .12s ease-out}
+.annotated figcaption>p{margin-top:0}
+.legend{margin:0;padding:0;list-style:none;counter-reset:pin var(--start,0)}
+.legend li{counter-increment:pin;display:grid;grid-template-columns:2rem 1fr;gap:.25rem;padding:.6rem .5rem;margin:0 -.5rem;border-radius:var(--r-s);color:var(--fg);font-size:var(--t-m)}
+.legend li::before{content:counter(pin);font-weight:700}
+.legend a{color:var(--mute);font:var(--t-xs) var(--mono)}
+.annotated:has(.pin:nth-of-type(1):hover) .legend li:nth-child(1),.annotated:has(.legend li:nth-child(1):hover) .legend li:nth-child(1),
+.annotated:has(.pin:nth-of-type(2):hover) .legend li:nth-child(2),.annotated:has(.legend li:nth-child(2):hover) .legend li:nth-child(2),
+.annotated:has(.pin:nth-of-type(3):hover) .legend li:nth-child(3),.annotated:has(.legend li:nth-child(3):hover) .legend li:nth-child(3),
+.annotated:has(.pin:nth-of-type(4):hover) .legend li:nth-child(4),.annotated:has(.legend li:nth-child(4):hover) .legend li:nth-child(4){background:var(--bg)}
+.annotated:has(.legend li:nth-child(1):hover) .pin:nth-of-type(1),.annotated:has(.legend li:nth-child(2):hover) .pin:nth-of-type(2),
+.annotated:has(.legend li:nth-child(3):hover) .pin:nth-of-type(3),.annotated:has(.legend li:nth-child(4):hover) .pin:nth-of-type(4),.pin:hover{transform:translate(-50%,-50%) scale(1.3);background:var(--flag);color:#fff}
+@media (prefers-reduced-motion:reduce){.pin{transition:none}}
+
+/* Session: the turn, the proof, the feel */
+.kicker{max-width:none;font:600 var(--t-xs)/1.4 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--mute);margin:0 0 1rem}
+.call{margin:1.5rem 0 2.5rem}
+.judge{font-size:var(--t-m);margin:0 0 1rem}
+.options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(15rem,100%),1fr));gap:1rem}
+.opt{margin:0;border:1px dashed var(--faint);border-radius:var(--r-m);padding:.75rem;background:var(--bg)}
+.opt.picked{border:2px solid var(--accent-line)}
+.opt .stage{background:var(--t-bg,var(--card));border-radius:var(--r-s);min-height:8rem;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;overflow:hidden;padding:.75rem}
+.opt .stage img{display:block;max-width:100%;height:auto}
+.opt figcaption{margin-top:.75rem}
+.pick{font:600 var(--t-xs) var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--fg);margin-left:.35rem}
+.badge{font:600 var(--t-xs) var(--mono);letter-spacing:.04em;border:1px solid currentColor;border-radius:var(--r-s);padding:.1rem .35rem;color:var(--mute);white-space:nowrap}
+.counts,.deltas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(14rem,100%),1fr));gap:1rem 2rem;margin:0}
+.counts div,.deltas div{border-top:2px solid var(--accent-line);padding-top:.75rem;display:flex;flex-direction:column-reverse;justify-content:flex-end}
+.counts dd,.deltas dd{margin:0;font-size:clamp(2rem,4vw,3rem);font-weight:750;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.counts dt,.deltas dt{color:var(--mute);font-size:var(--t-s);margin-top:.5rem}
+.counts .open{border-color:var(--flag)}.counts .open dd{color:var(--flag)}
+.deltas dd s{color:var(--faint);font-weight:400;text-decoration-thickness:2px}
+
+/* Decisions: the bars are the index; press one to see its rows (rows carry data-l = layer number) */
+.layers{border:0;margin:0 0 1rem;padding:0;max-width:44rem;min-width:0}
+.layers legend{font-size:var(--t-s);color:var(--mute);padding:0;margin-bottom:.5rem}
+.layers input{position:absolute;opacity:0;pointer-events:none}
+.layers label{display:grid;grid-template-columns:minmax(0,11rem) 1fr 2.5rem;align-items:center;gap:.75rem;padding:.4rem .5rem;margin:0 -.5rem;border-radius:var(--r-s);font-size:var(--t-s);cursor:pointer}
+.layers label::after{content:"";order:1;height:.65rem;width:calc(var(--n) * 4.5%);min-width:3px;background:var(--accent-line);border-radius:1px}
+.layers label b{order:2;text-align:right;font-variant-numeric:tabular-nums}
+.layers label:hover,.layers label:has(:checked){background:var(--card)}
+.layers label:has(:checked){font-weight:600}
+.layers label:has(:focus-visible){outline:2px solid var(--fg)}
+.layers label.all{border-top:1px solid var(--line);border-radius:0 0 var(--r-s) var(--r-s);margin-top:.25rem}
+.layers label.all::after{visibility:hidden}
+.decisions .hint{color:var(--mute);font-size:var(--t-s);margin:.5rem 0 0}
+.decisions tbody tr{display:none}
+.decisions:has(input:checked) .hint{display:none}
+.decisions:has(#l-all:checked) tbody tr,.decisions:has(#l-1:checked) tr[data-l="1"],.decisions:has(#l-2:checked) tr[data-l="2"],.decisions:has(#l-3:checked) tr[data-l="3"],.decisions:has(#l-4:checked) tr[data-l="4"],.decisions:has(#l-5:checked) tr[data-l="5"],.decisions:has(#l-6:checked) tr[data-l="6"],.decisions tbody tr:target{display:table-row}
+.decisions table{display:none}
+.decisions:has(input:checked) table,.decisions:has(tr:target) table{display:table}
+
+/* Life: two or three moments as cards */
+.life{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(16rem,100%),1fr));gap:1rem}
+.life li{background:var(--card);border-radius:var(--r-m);padding:1.25rem;max-width:none}
+.life strong{display:block;font-size:var(--t-l);margin-bottom:.35rem}
+
+/* For you to decide: the closing ask, the one inverted band on the page */
+.ask{background:var(--fg);color:var(--bg);box-shadow:0 0 0 100vmax var(--fg);clip-path:inset(0 -100vmax);padding-bottom:clamp(4rem,8vw,6rem);margin-top:clamp(4rem,9vw,7rem);--line:color-mix(in oklch,var(--bg) 22%,var(--fg));--mute:color-mix(in oklch,var(--bg) 70%,var(--fg));--card:color-mix(in oklch,var(--bg) 9%,var(--fg));--flag:oklch(0.75 0.15 25)}
+:root:has(#dark:checked) .ask{--flag:oklch(0.5 0.19 27)}
+.ask h2 .key{color:var(--flag)}
+.cards{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(19rem,100%),1fr));gap:1rem;counter-reset:card}
+.cards>li{counter-increment:card;background:var(--card);border-radius:var(--r-m);padding:1.25rem;max-width:none;display:flex;flex-direction:column}
+.cards>li::before{content:counter(card);font:750 2rem/1 var(--display);margin-bottom:.75rem;color:var(--flag)}
+.cards b{display:block;font-size:var(--t-l);line-height:1.25;margin-bottom:.4rem}
+.cards a{color:var(--mute);font:var(--t-xs) var(--mono)}
+.cards>li>span:not(.alt){margin-bottom:.9rem}
+.cards .alt{display:block;margin-top:auto;padding-top:.75rem;border-top:1px solid var(--line);color:var(--mute)}
+.cards .alt::before{content:"Or: ";font-weight:600;color:var(--bg)}
+.owed{margin:0;padding:0;list-style:none;columns:2 22rem;column-gap:2.5rem}
+.owed li{padding:.6rem 0 .6rem 1.4rem;border-top:1px solid var(--line);break-inside:avoid;position:relative}
+.owed li::before{content:"○";position:absolute;left:0;color:var(--flag);font-weight:700}
+.ask h3{margin-top:3rem}
+
+/* Tables: reference, folded */
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;margin:.5rem 0;font-size:var(--t-s)}
+th,td{text-align:left;vertical-align:top;padding:.6rem .75rem .6rem 0;border-bottom:1px solid var(--line)}
+thead th{font-size:var(--t-xs);color:var(--mute);font-weight:600;position:sticky;top:0;background:var(--bg)}
+.band thead th{background:var(--band)}
+td.rejected{color:var(--mute)}
+tr[id]{scroll-margin-top:4rem}
+tr:target{outline:0;background:color-mix(in oklch,var(--flag) 12%,var(--bg))}
+.id{font:600 var(--t-xs) var(--mono);color:var(--mute);display:block}
+.superseded{text-decoration:line-through;color:var(--mute)}
+/* Motion: the duration drawn; hover or focus a row to play it */
+td:has(.dur){min-width:12rem}
+.dur{display:inline-block;height:.45rem;width:calc(var(--ms) * .2px);background:var(--accent-line);vertical-align:middle;margin-right:.4rem}
+.demo{display:inline-block;width:2rem;height:.75rem;position:relative;vertical-align:middle;margin-right:.4rem}
+.demo::after{content:"";position:absolute;left:0;top:.125rem;width:.5rem;height:.5rem;border-radius:50%;background:var(--fg);animation:run calc(var(--ms) * 1ms) var(--ease,ease) infinite alternate paused}
+tr:is(:hover,:focus-within,:focus) .demo::after{animation-play-state:running}
+.dur.loop{background:repeating-linear-gradient(90deg,var(--fg) 0 6px,transparent 6px 10px);width:3rem}
+.motion td:first-child,.motion th:first-child{position:sticky;left:0;background:var(--bg)}
+@keyframes run{to{left:1.5rem}}
+@media (prefers-reduced-motion:reduce){.demo::after{animation:none}}
+.foot{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:.5rem 2rem;color:var(--mute);font-size:var(--t-s)}
+
+/* Print opens every fold and shows every decision row; ::details-content is the no-script way (Chromium 131+, Safari 18.4+). Older engines print folds closed. */
+/* Icons: one stroke set, drawn with CSS masks in the text colour, so they follow the theme, dark mode and print.
+   An icon always sits beside its word and means one thing on the whole page (see "Icons" in references/report.md).
+   Chapters and their nav links get theirs from the section id; a new chapter falls back to a dot.
+   Elsewhere add a class: <h3 class="i-scale">, <div class="i-fix"> in .stats or .counts, or <span class="ic i-flag"></span> inline. */
+:root{--ic-user:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21a8 8 0 0 1 16 0'/%3E%3C/svg%3E");--ic-route:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='6' cy='19' r='3'/%3E%3Ccircle cx='18' cy='5' r='3'/%3E%3Cpath d='M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15'/%3E%3C/svg%3E");--ic-compass:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m16 8-2 6-6 2 2-6z'/%3E%3C/svg%3E");--ic-palette:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 22a10 10 0 1 1 10-10c0 2.8-2.2 4-4 4h-2a2 2 0 0 0-1.5 3.3A1.6 1.6 0 0 1 12 22z'/%3E%3Ccircle cx='7.5' cy='11.5' r='1'/%3E%3Ccircle cx='10.5' cy='7.5' r='1'/%3E%3Ccircle cx='15.5' cy='8.5' r='1'/%3E%3C/svg%3E");--ic-search:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");--ic-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-5-5L5 21'/%3E%3C/svg%3E");--ic-history:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 3-6.7L3 8'/%3E%3Cpath d='M3 3v5h5M12 7v5l3 2'/%3E%3C/svg%3E");--ic-flag:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 22V4s1-1 4-1 5 2 8 2 4-1 4-1v11s-1 1-4 1-5-2-8-2-4 1-4 1'/%3E%3C/svg%3E");--ic-help:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01'/%3E%3C/svg%3E");--ic-scale:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3v18M7 21h10M3 7h18M6 7l-3 7a3 3 0 0 0 6 0zM18 7l-3 7a3 3 0 0 0 6 0z'/%3E%3C/svg%3E");--ic-ruler:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 17 17 3l4 4L7 21z'/%3E%3Cpath d='m7.5 12.5 2 2m1-5 2 2m1-5 2 2'/%3E%3C/svg%3E");--ic-list:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 7 2 2 4-4M3 17l2 2 4-4M13 6h8M13 12h8M13 18h8'/%3E%3C/svg%3E");--ic-spark:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 17v4M17 19h4'/%3E%3C/svg%3E");--ic-motion:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12h-4l-3 9L9 3l-3 9H2'/%3E%3C/svg%3E");--ic-voice:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/%3E%3C/svg%3E");--ic-screen:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='3' width='20' height='14' rx='2'/%3E%3Cpath d='M8 21h8M12 17v4'/%3E%3C/svg%3E");--ic-choice:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2 22 12 12 22 2 12z'/%3E%3C/svg%3E");--ic-check:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");--ic-x:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E");--ic-alert:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 8v4M12 16h.01'/%3E%3C/svg%3E");--ic-fix:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z'/%3E%3C/svg%3E");--ic-keep:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z'/%3E%3C/svg%3E");--ic-dot:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E")}
+.i-user{--i:var(--ic-user)}
+.i-route{--i:var(--ic-route)}
+.i-compass{--i:var(--ic-compass)}
+.i-palette{--i:var(--ic-palette)}
+.i-search{--i:var(--ic-search)}
+.i-image{--i:var(--ic-image)}
+.i-history{--i:var(--ic-history)}
+.i-flag{--i:var(--ic-flag)}
+.i-help{--i:var(--ic-help)}
+.i-scale{--i:var(--ic-scale)}
+.i-ruler{--i:var(--ic-ruler)}
+.i-list{--i:var(--ic-list)}
+.i-spark{--i:var(--ic-spark)}
+.i-motion{--i:var(--ic-motion)}
+.i-voice{--i:var(--ic-voice)}
+.i-screen{--i:var(--ic-screen)}
+.i-choice{--i:var(--ic-choice)}
+.i-check{--i:var(--ic-check)}
+.i-x{--i:var(--ic-x)}
+.i-alert{--i:var(--ic-alert)}
+.i-fix{--i:var(--ic-fix)}
+.i-keep{--i:var(--ic-keep)}
+.i-dot{--i:var(--ic-dot)}
+#brief,.bar a[href="#brief"]{--i:var(--ic-user)}
+#flows,.bar a[href="#flows"]{--i:var(--ic-route)}
+#direction,.bar a[href="#direction"]{--i:var(--ic-compass)}
+#language,.bar a[href="#language"]{--i:var(--ic-palette)}
+#audit,.bar a[href="#audit"]{--i:var(--ic-search)}
+#captures,.bar a[href="#captures"]{--i:var(--ic-image)}
+#decide,.bar a[href="#decide"]{--i:var(--ic-flag)}
+#assumed,.bar a[href="#assumed"]{--i:var(--ic-help)}
+[id^="session-"],.bar a[href^="#session-"]{--i:var(--ic-history)}
+.ic,h2 .key::after,h3[class*="i-"] .key::after,.bar nav a::before,.stats [class*="i-"] dt::before,.counts [class*="i-"] dt::before,.counts .open dt::before,.stats .open dt::before,.flow i::before,.owed li::before,.pick::before,.choice .tag::before,.voice dt::before{content:"";display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;flex:none;background:currentColor;-webkit-mask:var(--i,var(--ic-dot)) center/contain no-repeat;mask:var(--i,var(--ic-dot)) center/contain no-repeat;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+h2 .key,h3 .key{display:flex;align-items:center;gap:.5rem}h2 .key::before{order:-2;margin-right:.25rem}h2 .key::after,h3 .key::after{order:-1}
+.bar nav a::before{margin-right:.35rem;opacity:.7}.stats dt::before,.counts dt::before{margin-right:.4rem}.flow i::before{margin-right:.35rem}.pick::before,.choice .tag::before{width:1em;height:1em;margin-right:.2rem}
+.flow li{--i:var(--ic-screen)}.flow .fork{--i:var(--ic-choice)}.flow .end{--i:var(--ic-flag)}.pick,.choice .tag,.voice div{--i:var(--ic-check)}.voice .not{--i:var(--ic-x)}.owed li{--i:var(--ic-alert)}.counts .open dt::before,.stats .open dt::before{color:var(--flag)}.counts .open,.stats .open{--i:var(--ic-alert)}
+@media print{:root,:root:has(#dark:checked){color-scheme:light;--accent:var(--brand);--accent-on:var(--brand-on);--accent-line:var(--brand);--bg:#fff;--fg:oklch(0.2 0 0);--mute:oklch(0.4 0 0);--faint:oklch(0.6 0 0);--line:oklch(0.85 0 0);--card:oklch(0.96 0 0);--band:#fff}
+.bar,.ctas,.bridge,.choices,.layers,.hint{display:none}.ask{background:#fff;color:var(--fg);box-shadow:none;--flag:oklch(0.5 0.19 27);--card:oklch(0.96 0 0);--mute:oklch(0.4 0 0);--line:oklch(0.85 0 0)}.cards .alt::before{color:var(--fg)}
+details::details-content{content-visibility:visible;display:block}summary{list-style:none;color:var(--fg)}summary::-webkit-details-marker{display:none}
+.decisions table{display:table}.decisions tbody tr{display:table-row}.chapter,.session{padding-top:2.5rem}.band{padding-bottom:0}h2,h3{break-after:avoid}figure,tr,.cards>li{break-inside:avoid}thead th{position:static}.demo{display:none}}
+
+/* Product values: with the Report theme at the top, the only product-specific CSS. Fill these from the directions sampled, real values only.
+   .preview takes the chosen direction's values (dir-1); each rule below restyles the preview when another direction is picked.
+   --t-bg, --t-fg, --t-mute, --t-line, --t-accent, --t-on (text on the accent), --t-font, --t-radius. Delete rules for directions you did not sample. */
+.preview{--t-bg:#ffffff;--t-fg:#111111;--t-mute:#666666;--t-line:#e5e5e5;--t-accent:#111111;--t-on:#ffffff;--t-font:system-ui;--t-radius:4px}
+.dirs:has(#dir-2:checked) .preview{--t-bg:#ffffff;--t-fg:#111111;--t-mute:#666666;--t-line:#e5e5e5;--t-accent:#111111;--t-on:#ffffff;--t-font:system-ui;--t-radius:4px}
+.dirs:has(#dir-3:checked) .preview{--t-bg:#ffffff;--t-fg:#111111;--t-mute:#666666;--t-line:#e5e5e5;--t-accent:#111111;--t-on:#ffffff;--t-font:system-ui;--t-radius:4px}
+.dirs:has(#dir-4:checked) .preview{--t-bg:#ffffff;--t-fg:#111111;--t-mute:#666666;--t-line:#e5e5e5;--t-accent:#111111;--t-on:#ffffff;--t-font:system-ui;--t-radius:4px}
+/* Flow life: one @keyframes per glyph motion, written from its start state; the element's own styles are its end state. Delete these if no flow acts. */
+@keyframes act-pop{from{transform:scale(.6);opacity:0}}
+@keyframes act-draw{from{stroke-dashoffset:1}}
+</style>
+</head>
+<div class="bar"><div>
+<span class="name">LumoSnap share gallery <span class="note">· design decisions</span></span>
+<nav aria-label="Chapters"><a href="#brief">Brief</a><a href="#direction">Direction</a><a href="#audit">Audit</a><a href="#captures">In the product</a><a href="#session-2026-11-02">What changed</a><a href="#assumed">Assumed</a></nav>
+<a class="needs" href="#decide">1 needs you</a>
+<label class="theme"><input type="checkbox" id="dark"> Dark</label>
+</div></div>
+<main>
+
+<header class="hero" id="top">
+<h1>Design decisions: LumoSnap share gallery</h1>
+<p class="verdict">A photo that has not arrived yet <mark>looks like a photo still loading</mark>, not like a broken page.</p>
+<p class="dek">The tile keeps the grey surface or the ThumbHash it already shows while it loads. We rejected a new "missing" icon, because an album that is still uploading is normal, not an error.</p>
+<div class="ctas"><a class="btn primary" href="#decide"><b>1</b> choice needs your call</a><a class="btn" href="#brief">Read the story ↓</a></div>
+<dl class="stats">
+<div class="i-list"><dt>decisions, each with its reason and the default it beat</dt><dd>3</dd></div>
+<div class="i-search"><dt>checker findings in this change</dt><dd>0</dd></div>
+<div class="open"><dt>choices waiting for you</dt><dd>1</dd></div>
+</dl>
+<p class="note">Latest session <time datetime="2026-11-02">2026-11-02</time>. Coverage: <a href="design-coverage.html">design-coverage.html</a></p>
+<nav class="short" aria-labelledby="short-h">
+<h2 id="short-h">The short version</h2>
+<ol>
+<li><a href="#brief"><span>A client opens the album link while the photographer still uploads</span></a></li>
+<li><a href="#direction"><span>Kept: grey paper, white prints</span></a></li>
+<li><a href="#audit"><span>Two image elements could show the browser's broken-image icon</span></a></li>
+<li><a href="#captures"><span>Missing photos read as quiet grey tiles</span></a></li>
+<li><a href="#session-2026-11-02"><span>One shared fallback for every photo element</span></a></li>
+<li><a href="#decide"><span>For you to decide: 1, and 3 things owed</span></a></li>
+<li><a href="#assumed"><span>Assumed: 2, the riskiest that no icon is needed</span></a></li>
+</ol>
+</nav>
+</header>
+
+<section class="chapter" id="brief">
+<h2><span class="key">Brief<span class="vh">:</span></span> a client opens the album link while the photographer still uploads</h2>
+<ul class="pull">
+<li><strong>Character:</strong> the photographer's contact sheet, handed over before every print is dry.</li>
+</ul>
+<ul class="fields key">
+<li><strong>For:</strong> the couple and their family, who got the album link from the photographer.</li>
+<li><strong>Job:</strong> look through the photos and heart the ones they want.</li>
+<li><strong>Moment:</strong> relaxed browsing, often on a phone, often soon after the event, while the upload can still run.</li>
+<li><strong>Feel:</strong> calm and finished; the studio looks careful even when some photos are not there yet.</li>
+</ul>
+<details>
+<summary>The rest of the brief</summary>
+<ul class="fields">
+<li><strong>Who sets the look:</strong> Existing, Minimal. The share page has a measured design language (canvas, card, inset tokens in app/assets/css/main.css).</li>
+<li><strong>Scope:</strong> control: the photo image element in the grid tile and in the notes panel header.</li>
+<li><strong>Screens:</strong> 375 px to 1440 px and up: phones and desktop. Source: the code (grid-cols-2 on phones, md and xl breakpoints).</li>
+<li><strong>Genre:</strong> photo proofing gallery. Kept conventions: grid of tiles, a grey frame while a photo loads, no error noise per tile.</li>
+<li><strong>Richness:</strong> very low for this control: the photos are the content, so a missing photo must take no attention.</li>
+<li><strong>Identity:</strong> existing.</li>
+<li><strong>Core copy:</strong> no new strings. The file name stays the image alt text for screen readers.</li>
+<li><strong>Signature moment:</strong> hearting a photo; not changed here.</li>
+<li><strong>Delight piece:</strong> none, because a fallback must be invisible.</li>
+<li><strong>Constraints:</strong> no new dependency; one shared fix, not a patch per usage.</li>
+</ul>
+</details>
+<p class="bridge">The page already has a calm "not loaded yet" surface. <a href="#direction">So the fix reuses it →</a></p>
+</section>
+
+<section class="chapter band" id="direction">
+<h2><span class="key">Direction<span class="vh">:</span></span> grey paper, white prints, kept</h2>
+<ul class="fields">
+<li><strong>Chosen:</strong> the existing direction (grey canvas, white cards, photos as prints). A missing photo is an empty print slot: the inset grey (--color-inset-2) or its ThumbHash, the same surface a tile shows while it loads.</li>
+</ul>
+<p class="bridge">Before the change, we listed every image on the page. <a href="#audit">The audit →</a></p>
+</section>
+
+<section class="chapter" id="language">
+<h2><span class="key">Design language<span class="vh">:</span></span> rows this change touches</h2>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Token</th><th scope="col">Value</th><th scope="col">Source</th><th scope="col">Because</th></tr></thead>
+<tbody>
+<tr><th scope="row">Colour roles</th><td>--color-inset-2: oklch(93% 0.004 255), the empty print slot under every photo</td><td>Existing: app/assets/css/main.css line 12, used as bg-inset-2 on the tile and the notes thumbnail</td><td>It already is the "photo not here yet" surface, so a failed photo reuses it.</td></tr>
+<tr><th scope="row">Mechanics (where each kind of style goes, and what it wins over)</th><td>The directive writes an inline style (opacity) on the img. Inline style wins over the Tailwind utilities on it; no utility or layer sets opacity on these imgs.</td><td>Proved in the render: failed tiles report style.opacity 0 and show the grey frame</td><td>A runtime state belongs on the element, not in a new class that a layer could override.</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="chapter" id="audit">
+<h2><span class="key">Audit<span class="vh">:</span></span> two image elements could show the broken-image icon</h2>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Element</th><th scope="col">Variant</th><th scope="col">States checked</th><th scope="col">Where</th><th scope="col">Unit (anchor)</th><th scope="col">Matches system?</th><th scope="col">Finding</th><th scope="col">Action (converge, change, keep)</th><th scope="col">Because</th></tr></thead>
+<tbody>
+<tr><td>Photo tile image</td><td>grid</td><td>loading, loaded, 404, no thumbnail, offline</td><td>app/components/BrowseTile.vue</td><td>tile (4:5 frame)</td><td>No</td><td>A failed load showed the broken-image icon and the file name over the grey frame.</td><td>change</td><td>The frame already is the placeholder; the img must get out of the way.</td></tr>
+<tr><td>Notes panel thumbnail</td><td>44 px square</td><td>loaded, 404</td><td>app/components/CommentSidebar.vue</td><td>panel header</td><td>No</td><td>Same broken icon in a 44 px box.</td><td>change</td><td>Same fix, same reason.</td></tr>
+<tr><td>Face avatars</td><td>column, compact, lightbox, filter bar</td><td>loaded, 404</td><td>PersonFace.vue, BrowseGrid.vue, [token].vue</td><td>avatar circle</td><td>Yes</td><td>CSS background images: a failure shows the initial under it, no icon.</td><td>keep</td><td>Already designed.</td></tr>
+<tr><td>Lightbox placeholder</td><td>PhotoSwipe msrc</td><td>not checked in a render</td><td>BrowseGrid.vue</td><td>full screen</td><td>Unknown</td><td>PhotoSwipe draws its own img; a missing thumbnail can show briefly before its own error text.</td><td>keep, flagged</td><td>Library-owned; see Still owed.</td></tr>
+<tr><td>Landing page images</td><td>marketing</td><td>loaded</td><td>app/pages/index.vue</td><td>cards</td><td>Yes</td><td>Fixed external URLs; out of this scope.</td><td>keep</td><td>Not album content.</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="chapter band" id="captures">
+<h2><span class="key">Captures<span class="vh">:</span></span> missing photos read as quiet grey tiles</h2>
+<p class="note">Rendered locally against a mock backend (24 photos, 5 with a missing thumbnail, 2 named people, 4 tags), at 390 px and 1280 px. Captures are outside the repo: /private/tmp/claude-501/-Users-darkwebplayer-Documents-Work-Jithin-Lumosnap-lumo-desktop/6893df1d-30fb-4be1-8a73-08c72ce094a8/scratchpad/share-390.png and share-1280.png.</p>
+</section>
+
+<section class="chapter" id="session-2026-11-02">
+<article>
+<h2><span class="key">Session 2026-11-02<span class="vh">:</span></span> one shared fallback for every photo element</h2>
+<p class="lede">Clients saw the browser's broken-image icon on photos that were still uploading. One directive, v-img-fallback, now makes a failed image see-through, so the surface under it shows.</p>
+
+<h3>Chunks</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">Chunk</th><th scope="col">Files</th><th scope="col">By</th><th scope="col">Contract</th><th scope="col">Parity</th></tr></thead>
+<tbody>
+<tr><td>Image fallback directive</td><td>app/plugins/img-fallback.ts</td><td>coordinator subagent</td><td>New: on error the img goes opacity 0; on load it comes back; on mount an image that already failed (before hydration) goes opacity 0.</td><td>Rendered: 5 of 5 failed tiles at opacity 0, 19 loaded tiles untouched, no console errors.</td></tr>
+<tr><td>Grid tile</td><td>app/components/BrowseTile.vue</td><td>coordinator subagent</td><td>Baseline: tile opens the lightbox, heart and note buttons work, ThumbHash shows while loading.</td><td>Same: only the directive was added to the img; click handlers, alt, sizes and lazy loading unchanged.</td></tr>
+<tr><td>Notes panel thumbnail</td><td>app/components/CommentSidebar.vue</td><td>coordinator subagent</td><td>Baseline: 44 px thumbnail of the current photo on bg-inset-2.</td><td>Same markup and size; a failed load now shows the inset square. A new photo with a good src shows again (load listener). Not rendered: the panel needs a name first.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-list" id="decisions-2026-11-02"><span class="key">Decisions</span> 3, all in state</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">#</th><th scope="col">Layer</th><th scope="col">Element</th><th scope="col">Decision</th><th scope="col">Because</th><th scope="col">Rejected default or kept convention</th></tr></thead>
+<tbody>
+<tr id="d-1" data-l="5"><td>d-1</td><td>5</td><td>Failed photo</td><td>Show the existing loading surface (inset grey or ThumbHash), no icon, no text.</td><td>Moment: the album is often still uploading; a missing photo is normal and must take no attention.</td><td>Rejected: an image-off icon in each tile, which turns many uploading photos into many alarms.</td></tr>
+<tr id="d-2" data-l="5"><td>d-2</td><td>5</td><td>Hide method</td><td>opacity 0, not display none or visibility hidden.</td><td>The tile keeps its size, and the file name stays the accessible name of the tile link.</td><td>Rejected: visibility hidden, which removes the alt text from the accessibility tree.</td></tr>
+<tr id="d-3" data-l="5"><td>d-3</td><td>5</td><td>Where the fix lives</td><td>One global directive, used on both photo imgs.</td><td>Constraint: one shared fix; a third usage gets it with one attribute.</td><td>Rejected: an @error handler copied into each component.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-alert"><span class="key">App-wide states</span> 1 touched, 5 not applicable</h3>
+<div class="scroll">
+<table>
+<thead><tr><th scope="col">State</th><th scope="col">What the person sees</th><th scope="col">The way back</th></tr></thead>
+<tbody>
+<tr><td>Offline / photo failed</td><td>Changed: the tile shows the grey frame or ThumbHash instead of a broken icon.</td><td>Reload; the img shows again when it loads.</td></tr>
+<tr><td>Not found</td><td>Not applicable to this change: the "This album isn't here" card is unchanged.</td><td>Unchanged.</td></tr>
+<tr><td>No access</td><td>Not applicable: a share link has no sign-in.</td><td>Not applicable.</td></tr>
+<tr><td>Signed out</td><td>Not applicable: no account on the share page.</td><td>Not applicable.</td></tr>
+<tr><td>Crash</td><td>Not applicable to this change: Nuxt's error page is unchanged.</td><td>Unchanged.</td></tr>
+<tr><td>First launch</td><td>Not applicable to this change: the name prompt is unchanged.</td><td>Unchanged.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-motion"><span class="key">Motion map</span> none added</h3>
+<div class="scroll">
+<table class="motion">
+<thead><tr><th scope="col">Moment</th><th scope="col">Tier (none, micro, transition, moment)</th><th scope="col">How often</th><th scope="col">Trigger, feedback, loops</th><th scope="col">Reduced-motion version</th><th scope="col">How much it matters</th><th scope="col">What they need to know</th></tr></thead>
+<tbody>
+<tr><td>Photo fails to load</td><td>none</td><td>rare to often (while uploading)</td><td>The img goes see-through at once; no fade.</td><td>Same: nothing moves.</td><td>Low</td><td>Nothing; the photo is not there yet.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="i-ruler" id="measured-2026-11-02"><span class="key">Measured</span> no checker finding in the changed lines</h3>
+<ul class="fields">
+<li><strong>check.py app/:</strong> 8 errors, 8 asks, all in lines this change did not touch (transition on all in main.css and the booking page, scale(0) entries, reduced motion, copy on index and booking). Flagged in Still owed, not fixed at Minimal.</li>
+<li><strong>check.py --inventory app/:</strong> no new value added. The change uses the existing inset surface and opacity only.</li>
+<li><strong>render_check.py http://localhost:3123/share/test:</strong> did not run to the end. The script crashed in its own overrides() step (IndexError at render_check.py line 206). Its checks are owed, not passed.</li>
+</ul>
+
+<details>
+<summary>Look notes and what was removed</summary>
+<h3>Look notes</h3>
+<p class="note">390 px and 1280 px, light scheme, against the mock: the five tiles with a missing thumbnail show the plain inset grey with the heart button on top, the same as a tile that is still loading. No broken icon and no file name text. The People column card (1280 px) and the People strip (390 px) render with both faces; Arjun's cover is missing, so his avatar shows the initial "A", as designed. The notes panel thumbnail was not rendered (owed). Largest text size and keyboard-only were not checked: the change adds no text and no focusable element.</p>
+<h3>Removed</h3>
+<p class="note">Nothing removed.</p>
+</details>
+</article>
+</section>
+
+<section class="chapter ask" id="decide">
+<h2><span class="key">For you to decide<span class="vh">:</span></span> 1 choice, and 3 things owed</h2>
+<ol class="cards">
+<li><b>No icon on a missing photo</b><span>Calm while the album uploads; but a photo that will never load looks the same as one still loading. <a href="#d-1">d-1</a></span><span class="alt">a small image-off icon in the frame, if photos often fail for good</span></li>
+</ol>
+<h3>Still owed</h3>
+<ul class="owed">
+<li>render_check.py: fix its IndexError in overrides(), then run it on a share page.</li>
+<li>The notes panel thumbnail and the PhotoSwipe placeholder were not rendered with a failed image. Fixing the lightbox needs a PhotoSwipe contentErrorElement or placeholder filter.</li>
+<li>Pre-existing checker findings outside this change (transition on all, reduced motion that freezes spinners, straight quotes on the landing page).</li>
+</ul>
+</section>
+
+<section class="chapter" id="assumed">
+<h2><span class="key">Assumed, please correct<span class="vh">:</span></span> 2, the riskiest that no icon is needed</h2>
+<ul class="fields">
+<li><b>Missing means uploading</b> Most failed photos are photos still uploading or without a thumbnail yet, not lost files.</li>
+<li><b>Grey is enough</b> The inset grey is a clear enough "not here yet" without words.</li>
+</ul>
+</section>
+</main>
+</body>
+</html>

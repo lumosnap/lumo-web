@@ -17,7 +17,7 @@
           <div class="p-4 pl-5 flex items-center justify-between gap-3">
             <div class="flex items-center gap-3 min-w-0">
               <div class="w-11 h-11 rounded-tile overflow-hidden bg-inset-2 shrink-0">
-                <img v-if="image" :src="image.thumbnailUrl || image.url" class="w-full h-full object-cover" alt="" />
+                <img v-if="image" v-img-fallback :src="image.thumbnailUrl || image.url" class="w-full h-full object-cover" alt="" />
               </div>
               <div class="min-w-0">
                 <h3 id="notes-title" class="text-base font-medium text-ink">Notes</h3>

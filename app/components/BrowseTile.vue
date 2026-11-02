@@ -4,7 +4,7 @@
   <a :href="imageUrl(base, image)" :data-idx="index" target="_blank" @click.prevent="emit('open', index)"
     class="group relative block aspect-[4/5] rounded-tile overflow-hidden bg-inset-2 bg-cover bg-center cursor-zoom-in"
     :style="placeholder ? { backgroundImage: `url(${placeholder})` } : undefined">
-    <img :src="thumbUrl(base, image)" :alt="fileName(image)" :width="image.w" :height="image.h"
+    <img v-img-fallback :src="thumbUrl(base, image)" :alt="fileName(image)" :width="image.w" :height="image.h"
       :loading="eager ? 'eager' : 'lazy'" :fetchpriority="high ? 'high' : 'auto'" decoding="async"
       class="w-full h-full object-cover" />
 
